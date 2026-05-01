@@ -139,5 +139,4 @@ All colors MUST be HSL.
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-pop { box-shadow: var(--shadow-pop); }
   .text-balance { text-wrap: balance; }
-  }
 }
