@@ -31,8 +31,8 @@ export default function Dashboard() {
             Mitosis y meiosis. ¿Practicamos 5 preguntas antes de rendirlo?
           </p>
           <Button asChild size="lg" className="rounded-full bg-background text-foreground hover:bg-background/90 font-bold h-12 px-6">
-            <Link to="/app/practica">
-              <Mic className="w-5 h-5 mr-1" /> Empezar práctica oral
+            <Link to="/app/curso/bio/semana/3">
+              <Mic className="w-5 h-5 mr-1" /> Empezar evaluación
             </Link>
           </Button>
         </motion.div>
@@ -86,7 +86,7 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Responde 3 preguntas orales seguidas con más de 15/20 y gana <span className="font-bold text-foreground">+100 XP</span>.</p>
         </div>
         <Button asChild className="rounded-full h-12 px-6 font-bold bg-foreground text-background hover:bg-foreground/90">
-          <Link to="/app/practica">Aceptar reto</Link>
+          <Link to="/app/curso/bio/semana/3/evaluacion/conversation">Aceptar reto</Link>
         </Button>
       </section>
     </div>
