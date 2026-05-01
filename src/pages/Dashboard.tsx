@@ -54,7 +54,7 @@ export default function Dashboard() {
           {courses.map((c) => (
             <Link
               key={c.id}
-              to="/app/practica"
+              to={`/app/curso/${c.id}`}
               className="group bg-card border border-border rounded-3xl p-6 shadow-soft hover:-translate-y-1 transition-all"
             >
               <div className={`w-14 h-14 rounded-2xl ${colorMap[c.color]} grid place-items-center text-3xl shadow-soft mb-4`}>
@@ -71,7 +71,7 @@ export default function Dashboard() {
                 <span className="text-xs font-bold text-muted-foreground">{c.progress}%</span>
               </div>
               <div className="flex items-center justify-between mt-4 text-sm font-semibold text-primary opacity-0 group-hover:opacity-100 transition">
-                Practicar <ArrowRight className="w-4 h-4" />
+                Ver temas <ArrowRight className="w-4 h-4" />
               </div>
             </Link>
           ))}
