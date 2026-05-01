@@ -31,8 +31,8 @@ export default function Dashboard() {
             Mitosis y meiosis. ¿Practicamos 5 preguntas antes de rendirlo?
           </p>
           <Button asChild size="lg" className="rounded-full bg-background text-foreground hover:bg-background/90 font-bold h-12 px-6">
-            <Link to="/app/practica">
-              <Mic className="w-5 h-5 mr-1" /> Empezar práctica oral
+            <Link to="/app/curso/bio/semana/3">
+              <Mic className="w-5 h-5 mr-1" /> Empezar evaluación
             </Link>
           </Button>
         </motion.div>
@@ -54,7 +54,7 @@ export default function Dashboard() {
           {courses.map((c) => (
             <Link
               key={c.id}
-              to="/app/practica"
+              to={`/app/curso/${c.id}`}
               className="group bg-card border border-border rounded-3xl p-6 shadow-soft hover:-translate-y-1 transition-all"
             >
               <div className={`w-14 h-14 rounded-2xl ${colorMap[c.color]} grid place-items-center text-3xl shadow-soft mb-4`}>
@@ -71,7 +71,7 @@ export default function Dashboard() {
                 <span className="text-xs font-bold text-muted-foreground">{c.progress}%</span>
               </div>
               <div className="flex items-center justify-between mt-4 text-sm font-semibold text-primary opacity-0 group-hover:opacity-100 transition">
-                Practicar <ArrowRight className="w-4 h-4" />
+                Ver temas <ArrowRight className="w-4 h-4" />
               </div>
             </Link>
           ))}
@@ -86,7 +86,7 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Responde 3 preguntas orales seguidas con más de 15/20 y gana <span className="font-bold text-foreground">+100 XP</span>.</p>
         </div>
         <Button asChild className="rounded-full h-12 px-6 font-bold bg-foreground text-background hover:bg-foreground/90">
-          <Link to="/app/practica">Aceptar reto</Link>
+          <Link to="/app/curso/bio/semana/3/evaluacion/conversation">Aceptar reto</Link>
         </Button>
       </section>
     </div>
