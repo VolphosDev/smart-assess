@@ -10,6 +10,8 @@ import Dashboard from "./pages/Dashboard";
 import Practice from "./pages/Practice";
 import HistoryPage from "./pages/HistoryPage";
 import Leaderboard from "./pages/Leaderboard";
+import Course from "./pages/Course";
+import EvalModeSelect from "./pages/EvalModeSelect";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +26,9 @@ const App = () => (
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="practica" element={<Practice />} />
+            <Route path="curso/:courseId" element={<Course />} />
+            <Route path="curso/:courseId/semana/:week" element={<EvalModeSelect />} />
+            <Route path="curso/:courseId/semana/:week/evaluacion/:mode" element={<Practice />} />
             <Route path="historial" element={<HistoryPage />} />
             <Route path="ranking" element={<Leaderboard />} />
           </Route>
