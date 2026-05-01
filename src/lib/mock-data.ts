@@ -14,6 +14,83 @@ export const courses: Course[] = [
   { id: "lit", name: "Literatura", emoji: "📚", color: "coral", progress: 35, nextExam: "El Modernismo" },
 ];
 
+export type WeekTopic = {
+  week: number;
+  title: string;
+  subtopics: string[];
+  status: "completado" | "en-curso" | "bloqueado";
+  bestScore?: number;
+};
+
+export const courseSyllabus: Record<string, WeekTopic[]> = {
+  bio: [
+    { week: 1, title: "La célula y sus componentes", subtopics: ["Membrana", "Citoplasma", "Núcleo"], status: "completado", bestScore: 18 },
+    { week: 2, title: "Transporte celular", subtopics: ["Difusión", "Ósmosis", "Transporte activo"], status: "completado", bestScore: 16 },
+    { week: 3, title: "Mitosis y meiosis", subtopics: ["Fases del ciclo", "Mitosis", "Meiosis"], status: "en-curso", bestScore: 14 },
+    { week: 4, title: "Genética mendeliana", subtopics: ["Leyes de Mendel", "Cruces", "Herencia"], status: "bloqueado" },
+    { week: 5, title: "ADN y replicación", subtopics: ["Estructura ADN", "Replicación", "Mutaciones"], status: "bloqueado" },
+  ],
+  his: [
+    { week: 1, title: "Culturas pre-incas", subtopics: ["Chavín", "Paracas", "Nazca"], status: "completado", bestScore: 15 },
+    { week: 2, title: "Imperio Inca", subtopics: ["Organización", "Economía", "Religión"], status: "en-curso", bestScore: 13 },
+    { week: 3, title: "Conquista y Virreinato", subtopics: ["Pizarro", "Encomiendas", "Sociedad colonial"], status: "bloqueado" },
+    { week: 4, title: "Independencia del Perú", subtopics: ["San Martín", "Bolívar", "Ayacucho"], status: "bloqueado" },
+  ],
+  mat: [
+    { week: 1, title: "Vectores", subtopics: ["Suma", "Producto escalar", "Norma"], status: "completado", bestScore: 19 },
+    { week: 2, title: "Matrices", subtopics: ["Operaciones", "Determinantes", "Inversa"], status: "completado", bestScore: 18 },
+    { week: 3, title: "Sistemas lineales", subtopics: ["Gauss", "Cramer", "Aplicaciones"], status: "en-curso", bestScore: 17 },
+    { week: 4, title: "Espacios vectoriales", subtopics: ["Bases", "Dimensión", "Subespacios"], status: "bloqueado" },
+  ],
+  lit: [
+    { week: 1, title: "Romanticismo", subtopics: ["Características", "Autores", "Obras"], status: "completado", bestScore: 12 },
+    { week: 2, title: "Realismo", subtopics: ["Contexto", "Galdós", "Clarín"], status: "en-curso" },
+    { week: 3, title: "Modernismo", subtopics: ["Darío", "Vallejo", "Estética"], status: "bloqueado" },
+    { week: 4, title: "Generación del 98", subtopics: ["Unamuno", "Machado", "Baroja"], status: "bloqueado" },
+  ],
+};
+
+export type EvalMode = "conversation" | "quiz" | "tf" | "classic";
+
+export const evalModes: { id: EvalMode; title: string; emoji: string; description: string; bullets: string[]; color: "primary" | "lime" | "coral" | "accent"; duration: string }[] = [
+  {
+    id: "conversation",
+    title: "Conversación con avatar",
+    emoji: "🎙️",
+    description: "Habla con tu tutor virtual. Él te pregunta, tú respondes en voz alta.",
+    bullets: ["Solo voz", "Repite la pregunta cuando quieras", "Calificación con IA"],
+    color: "primary",
+    duration: "10–15 min",
+  },
+  {
+    id: "quiz",
+    title: "Quiz de opción múltiple",
+    emoji: "🔤",
+    description: "Preguntas con 4 alternativas. Rápido y directo.",
+    bullets: ["10 preguntas", "Una alternativa correcta", "Resultado instantáneo"],
+    color: "lime",
+    duration: "5–8 min",
+  },
+  {
+    id: "tf",
+    title: "Verdadero o Falso",
+    emoji: "✅",
+    description: "Afirmaciones cortas para evaluar conceptos clave.",
+    bullets: ["10 afirmaciones", "Marca V o F", "Ideal para repaso veloz"],
+    color: "coral",
+    duration: "3–5 min",
+  },
+  {
+    id: "classic",
+    title: "Examen clásico",
+    emoji: "📝",
+    description: "Mezcla de preguntas abiertas, opción múltiple y V/F. Como un examen real.",
+    bullets: ["Preguntas mixtas", "Tiempo limitado", "Nota sobre 20"],
+    color: "accent",
+    duration: "20–30 min",
+  },
+];
+
 export type Question = {
   id: string;
   type: "open" | "mcq" | "tf";
