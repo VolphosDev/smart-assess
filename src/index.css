@@ -8,35 +8,55 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* EdTech vibrante: violeta eléctrico + lima + coral */
+    --background: 250 100% 99%;
+    --foreground: 250 40% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 250 40% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 250 40% 12%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 258 89% 62%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 268 95% 75%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 80 85% 60%;
+    --secondary-foreground: 250 40% 12%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 250 30% 96%;
+    --muted-foreground: 250 15% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 14 100% 67%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --success: 158 75% 45%;
+    --success-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --warning: 38 95% 58%;
+    --warning-foreground: 250 40% 12%;
 
-    --radius: 0.5rem;
+    --destructive: 0 84% 62%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 250 30% 90%;
+    --input: 250 30% 92%;
+    --ring: 258 89% 62%;
+
+    --radius: 1.25rem;
+
+    --gradient-hero: linear-gradient(135deg, hsl(258 89% 62%) 0%, hsl(290 85% 65%) 50%, hsl(14 100% 67%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(258 89% 62%), hsl(268 95% 75%));
+    --gradient-lime: linear-gradient(135deg, hsl(80 85% 60%), hsl(158 75% 55%));
+    --gradient-coral: linear-gradient(135deg, hsl(14 100% 67%), hsl(340 90% 65%));
+    --gradient-mesh: radial-gradient(at 20% 20%, hsl(258 89% 62% / 0.25) 0px, transparent 50%),
+                     radial-gradient(at 80% 10%, hsl(14 100% 67% / 0.2) 0px, transparent 50%),
+                     radial-gradient(at 50% 90%, hsl(80 85% 60% / 0.2) 0px, transparent 50%);
+
+    --shadow-glow: 0 20px 60px -15px hsl(258 89% 62% / 0.45);
+    --shadow-soft: 0 8px 24px -8px hsl(258 40% 30% / 0.15);
+    --shadow-pop: 0 12px 0 -2px hsl(250 40% 12%);
 
     --sidebar-background: 0 0% 98%;
 
@@ -56,8 +76,8 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 252 40% 8%;
+    --foreground: 250 30% 96%;
 
     --card: 222.2 84% 4.9%;
     --card-foreground: 210 40% 98%;
@@ -65,8 +85,8 @@ All colors MUST be HSL.
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 268 95% 70%;
+    --primary-foreground: 252 40% 8%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -100,6 +120,23 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   }
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer utilities {
+  .bg-mesh { background-image: var(--gradient-mesh); }
+  .bg-hero-gradient { background-image: var(--gradient-hero); }
+  .bg-primary-gradient { background-image: var(--gradient-primary); }
+  .bg-lime-gradient { background-image: var(--gradient-lime); }
+  .bg-coral-gradient { background-image: var(--gradient-coral); }
+  .shadow-glow { box-shadow: var(--shadow-glow); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-pop { box-shadow: var(--shadow-pop); }
+  .text-balance { text-wrap: balance; }
 }
