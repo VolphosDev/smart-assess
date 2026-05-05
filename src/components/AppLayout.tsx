@@ -1,15 +1,14 @@
-import { NavLink, Outlet, Link } from "react-router-dom";
-import { Home, Mic, History, Trophy, Sparkles } from "lucide-react";
+import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
+import { Home, History, Sparkles, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
   { to: "/app", icon: Home, label: "Inicio", end: true },
-  { to: "/app/practica", icon: Mic, label: "Practicar" },
   { to: "/app/historial", icon: History, label: "Historial" },
-  { to: "/app/ranking", icon: Trophy, label: "Ranking" },
 ];
 
 export default function AppLayout() {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-background bg-mesh">
       <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/70 border-b border-border/60">
@@ -40,10 +39,12 @@ export default function AppLayout() {
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/30 border border-secondary/50">
-              <span className="text-lg">🔥</span>
-              <span className="font-bold text-sm">7 días</span>
-            </div>
+            <button
+              onClick={() => navigate("/")}
+              className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="w-4 h-4" /> Salir
+            </button>
             <div className="w-10 h-10 rounded-2xl bg-coral-gradient grid place-items-center text-lg shadow-soft">
               🚀
             </div>

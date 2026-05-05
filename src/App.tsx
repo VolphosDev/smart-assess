@@ -9,9 +9,11 @@ import AppLayout from "./components/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Practice from "./pages/Practice";
 import HistoryPage from "./pages/HistoryPage";
-import Leaderboard from "./pages/Leaderboard";
 import Course from "./pages/Course";
 import EvalModeSelect from "./pages/EvalModeSelect";
+import TeacherLayout from "./components/TeacherLayout";
+import TeacherDashboard from "./pages/teacher/TeacherDashboard";
+import TeacherCourse from "./pages/teacher/TeacherCourse";
 
 const queryClient = new QueryClient();
 
@@ -30,7 +32,10 @@ const App = () => (
             <Route path="curso/:courseId/semana/:week" element={<EvalModeSelect />} />
             <Route path="curso/:courseId/semana/:week/evaluacion/:mode" element={<Practice />} />
             <Route path="historial" element={<HistoryPage />} />
-            <Route path="ranking" element={<Leaderboard />} />
+          </Route>
+          <Route path="/docente" element={<TeacherLayout />}>
+            <Route index element={<TeacherDashboard />} />
+            <Route path="curso/:courseId" element={<TeacherCourse />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

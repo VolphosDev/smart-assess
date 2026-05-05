@@ -1,162 +1,120 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mic, Sparkles, Zap, Trophy, BookOpen, ArrowRight, Play } from "lucide-react";
-import Avatar2D from "@/components/Avatar2D";
+import { Sparkles, GraduationCap, BookOpenCheck, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
-const Index = () => {
+type Role = "student" | "teacher";
+
+export default function Index() {
+  const [role, setRole] = useState<Role>("student");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const navigate = useNavigate();
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    navigate(role === "student" ? "/app" : "/docente");
+  };
+
   return (
-    <div className="min-h-screen bg-background bg-mesh overflow-hidden">
-      {/* Nav */}
-      <header className="container flex h-20 items-center justify-between">
-        <div className="flex items-center gap-2 font-display font-bold text-2xl">
-          <span className="grid place-items-center w-10 h-10 rounded-2xl bg-primary-gradient text-primary-foreground shadow-glow">
+    <div className="min-h-screen bg-background bg-mesh grid lg:grid-cols-2">
+      {/* Left: brand panel */}
+      <div className="hidden lg:flex flex-col justify-between p-12 bg-hero-gradient text-primary-foreground relative overflow-hidden">
+        <div className="absolute -right-20 -bottom-20 text-[22rem] opacity-15 select-none leading-none">🎓</div>
+        <Link to="/" className="flex items-center gap-2 font-display font-bold text-2xl relative">
+          <span className="grid place-items-center w-10 h-10 rounded-2xl bg-background/20 backdrop-blur">
             <Sparkles className="w-5 h-5" />
           </span>
           Vocali
-        </div>
-        <div className="flex items-center gap-3">
-          <Link to="/app" className="hidden sm:inline text-sm font-semibold text-muted-foreground hover:text-foreground">
-            Iniciar sesión
-          </Link>
-          <Button asChild className="rounded-full bg-foreground text-background hover:bg-foreground/90 font-bold px-5">
-            <Link to="/app">Empieza gratis</Link>
-          </Button>
-        </div>
-      </header>
-
-      {/* Hero */}
-      <section className="container grid lg:grid-cols-2 gap-12 items-center pt-8 pb-24">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/40 border border-secondary text-sm font-semibold mb-6">
-            <Zap className="w-4 h-4" /> Evaluación oral con IA
-          </span>
-          <h1 className="font-display text-5xl md:text-7xl font-bold leading-[1.05] text-balance mb-6">
-            Aprende{" "}
-            <span className="relative inline-block">
-              <span className="relative z-10">hablando</span>
-              <span className="absolute inset-x-0 bottom-2 h-4 bg-secondary/70 -z-0 -rotate-1" />
-            </span>{" "}
-            con tu tutor <span className="bg-hero-gradient bg-clip-text text-transparent">IA</span>.
+        </Link>
+        <div className="relative space-y-4 max-w-md">
+          <h1 className="font-display text-5xl font-bold leading-tight">
+            Aprende hablando, evalúa con IA.
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl">
-            Practica para tus exámenes conversando con un avatar que te escucha, te corrige y te motiva. Sin notas frías, solo feedback que entiendes.
+          <p className="opacity-90 text-lg">
+            Plataforma educativa para docentes y alumnos. Practica oralmente, recibe retroalimentación inmediata y sigue tu progreso semana a semana.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Button asChild size="lg" className="rounded-full h-14 px-7 text-base font-bold bg-primary-gradient hover:opacity-90 shadow-glow">
-              <Link to="/app/practica">
-                <Mic className="w-5 h-5 mr-1" /> Empezar a practicar
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="rounded-full h-14 px-6 text-base font-bold border-2">
-              <Link to="/app">
-                <Play className="w-4 h-4 mr-1" /> Ver demo
-              </Link>
-            </Button>
-          </div>
+        </div>
+        <div className="relative text-sm opacity-80">© 2026 Vocali · Educación generativa</div>
+      </div>
 
-          <div className="flex items-center gap-6 mt-10 pt-6 border-t border-border/60">
-            <div>
-              <div className="font-display font-bold text-2xl">+12k</div>
-              <div className="text-xs text-muted-foreground">alumnos activos</div>
-            </div>
-            <div className="w-px h-10 bg-border" />
-            <div>
-              <div className="font-display font-bold text-2xl">94%</div>
-              <div className="text-xs text-muted-foreground">mejoran sus notas</div>
-            </div>
-            <div className="w-px h-10 bg-border" />
-            <div>
-              <div className="font-display font-bold text-2xl">4.9★</div>
-              <div className="text-xs text-muted-foreground">en reseñas</div>
-            </div>
-          </div>
-        </motion.div>
-
+      {/* Right: login */}
+      <div className="flex items-center justify-center p-6 sm:p-10">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.7, delay: 0.1 }}
-          className="relative"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md"
         >
-          <Avatar2D state="speaking" />
-          {/* Floating chips */}
-          <motion.div
-            animate={{ y: [0, -10, 0] }}
-            transition={{ duration: 4, repeat: Infinity }}
-            className="absolute top-6 -left-2 bg-card border border-border rounded-2xl p-3 shadow-soft max-w-[220px]"
-          >
-            <div className="text-xs font-semibold text-muted-foreground mb-1">Tutor IA</div>
-            <div className="text-sm font-medium">¿Puedes explicarme la mitosis con tus propias palabras?</div>
-          </motion.div>
-          <motion.div
-            animate={{ y: [0, 10, 0] }}
-            transition={{ duration: 4, repeat: Infinity, delay: 1 }}
-            className="absolute bottom-10 -right-2 bg-foreground text-background rounded-2xl p-3 shadow-soft max-w-[200px]"
-          >
-            <div className="text-xs font-semibold opacity-70 mb-1">Tú 🎙️</div>
-            <div className="text-sm font-medium">Es la división celular en la que…</div>
-          </motion.div>
-          <motion.div
-            animate={{ rotate: [-3, 3, -3] }}
-            transition={{ duration: 3, repeat: Infinity }}
-            className="absolute -bottom-2 left-6 bg-secondary text-secondary-foreground rounded-2xl px-3 py-2 shadow-pop font-bold text-sm"
-          >
-            +25 XP 🎉
-          </motion.div>
-        </motion.div>
-      </section>
+          <div className="lg:hidden flex items-center gap-2 font-display font-bold text-2xl mb-8">
+            <span className="grid place-items-center w-10 h-10 rounded-2xl bg-primary-gradient text-primary-foreground shadow-glow">
+              <Sparkles className="w-5 h-5" />
+            </span>
+            Vocali
+          </div>
 
-      {/* Features */}
-      <section className="container py-16">
-        <h2 className="font-display text-4xl md:text-5xl font-bold text-center mb-3">Todo en uno para clavar tus exámenes</h2>
-        <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-          Desde practicar oralmente hasta competir con tu salón. Vocali te acompaña en cada paso.
-        </p>
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { icon: Mic, title: "Habla, no escribas", text: "Responde con voz natural y recibe feedback al instante.", grad: "bg-primary-gradient" },
-            { icon: BookOpen, title: "Tu material, tus preguntas", text: "La IA genera exámenes desde el contenido de tu profe.", grad: "bg-lime-gradient" },
-            { icon: Trophy, title: "Compite y mejora", text: "Sube en el ranking del curso y mantén tu racha viva.", grad: "bg-coral-gradient" },
-          ].map((f) => (
-            <div key={f.title} className="bg-card border border-border rounded-3xl p-7 shadow-soft hover:-translate-y-1 transition-transform">
-              <div className={`w-14 h-14 rounded-2xl ${f.grad} grid place-items-center text-primary-foreground shadow-glow mb-4`}>
-                <f.icon className="w-7 h-7" />
-              </div>
-              <h3 className="font-display font-bold text-xl mb-2">{f.title}</h3>
-              <p className="text-muted-foreground">{f.text}</p>
+          <h2 className="font-display text-3xl font-bold mb-2">Iniciar sesión</h2>
+          <p className="text-muted-foreground mb-6">Elige tu rol y continúa.</p>
+
+          {/* Role tabs */}
+          <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-2xl mb-6">
+            <RoleTab active={role === "student"} onClick={() => setRole("student")} icon={GraduationCap} label="Alumno" />
+            <RoleTab active={role === "teacher"} onClick={() => setRole("teacher")} icon={BookOpenCheck} label="Docente" />
+          </div>
+
+          <form onSubmit={submit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Correo institucional</Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                placeholder={role === "student" ? "alumno@colegio.edu" : "docente@colegio.edu"}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12 rounded-2xl"
+              />
             </div>
-          ))}
-        </div>
-      </section>
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input
+                id="password"
+                type="password"
+                required
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="h-12 rounded-2xl"
+              />
+            </div>
+            <Button type="submit" size="lg" className="w-full h-12 rounded-2xl bg-primary-gradient font-bold shadow-glow">
+              Entrar como {role === "student" ? "alumno" : "docente"} <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          </form>
 
-      {/* CTA */}
-      <section className="container pb-24">
-        <div className="bg-hero-gradient rounded-[2.5rem] p-10 md:p-16 text-center text-primary-foreground shadow-glow relative overflow-hidden">
-          <div className="absolute top-6 left-10 text-4xl animate-float">📚</div>
-          <div className="absolute bottom-8 right-12 text-4xl animate-float [animation-delay:-2s]">🎓</div>
-          <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">¿Listo para hablar con tu tutor?</h2>
-          <p className="text-lg opacity-90 mb-8 max-w-xl mx-auto">
-            Empieza tu primera evaluación oral en 30 segundos. Sin tarjeta, sin instalar nada.
+          <p className="text-center text-sm text-muted-foreground mt-6">
+            ¿Aún no tienes cuenta? <a className="font-semibold text-primary hover:underline" href="#">Solicita acceso</a>
           </p>
-          <Button asChild size="lg" className="rounded-full h-14 px-8 text-base font-bold bg-background text-foreground hover:bg-background/90">
-            <Link to="/app/practica">
-              Probar ahora <ArrowRight className="w-5 h-5 ml-1" />
-            </Link>
-          </Button>
-        </div>
-      </section>
-
-      <footer className="container py-8 border-t border-border/60 text-sm text-muted-foreground flex flex-wrap items-center justify-between gap-3">
-        <span>© 2026 Vocali · Hecho con 💜 para estudiantes</span>
-        <span>Privacidad · Términos · Contacto</span>
-      </footer>
+        </motion.div>
+      </div>
     </div>
   );
-};
+}
 
-export default Index;
+function RoleTab({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: any; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all",
+        active ? "bg-card shadow-soft text-foreground" : "text-muted-foreground hover:text-foreground"
+      )}
+    >
+      <Icon className="w-4 h-4" /> {label}
+    </button>
+  );
+}
