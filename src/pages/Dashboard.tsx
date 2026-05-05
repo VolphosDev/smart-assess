@@ -22,7 +22,7 @@ export default function Dashboard() {
         >
           <div className="absolute -right-10 -top-10 text-[10rem] opacity-20 select-none">🎯</div>
           <span className="inline-block px-3 py-1 rounded-full bg-background/20 text-xs font-bold uppercase tracking-wider mb-4">
-            Hola, Alex 👋
+            Hola, estudiante 👋
           </span>
           <h1 className="font-display text-4xl md:text-5xl font-bold mb-3 max-w-md">
             Tienes un examen oral de Biología hoy.
@@ -78,17 +78,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* Daily challenge */}
-      <section className="bg-card border border-border rounded-3xl p-7 shadow-soft flex flex-col md:flex-row items-center gap-6">
-        <div className="text-6xl">🏆</div>
-        <div className="flex-1 text-center md:text-left">
-          <h3 className="font-display font-bold text-xl mb-1">Reto del día</h3>
-          <p className="text-muted-foreground">Responde 3 preguntas orales seguidas con más de 15/20 y gana <span className="font-bold text-foreground">+100 XP</span>.</p>
-        </div>
-        <Button asChild className="rounded-full h-12 px-6 font-bold bg-foreground text-background hover:bg-foreground/90">
-          <Link to="/app/curso/bio/semana/3/evaluacion/conversation">Aceptar reto</Link>
-        </Button>
-      </section>
     </div>
   );
 }
