@@ -29,7 +29,7 @@ export default function Index() {
           <span className="grid place-items-center w-10 h-10 rounded-2xl bg-background/20 backdrop-blur">
             <Sparkles className="w-5 h-5" />
           </span>
-          Vocali
+          Semantika
         </Link>
         <div className="relative space-y-4 max-w-md">
           <h1 className="font-display text-5xl font-bold leading-tight">
