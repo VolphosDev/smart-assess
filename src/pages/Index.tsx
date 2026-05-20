@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Sparkles, GraduationCap, BookOpenCheck, ArrowRight } from "lucide-react";
+import { Sparkles, GraduationCap, BookOpenCheck, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-type Role = "student" | "teacher";
+type Role = "student" | "teacher" | "admin";
 
 export default function Index() {
   const [role, setRole] = useState<Role>("student");
@@ -17,7 +17,7 @@ export default function Index() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate(role === "student" ? "/app" : "/docente");
+    navigate(role === "student" ? "/app" : role === "teacher" ? "/docente" : "/admin");
   };
 
   return (
@@ -60,9 +60,10 @@ export default function Index() {
           <p className="text-muted-foreground mb-6">Elige tu rol y continúa.</p>
 
           {/* Role tabs */}
-          <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-2xl mb-6">
+          <div className="grid grid-cols-3 gap-2 p-1 bg-muted rounded-2xl mb-6">
             <RoleTab active={role === "student"} onClick={() => setRole("student")} icon={GraduationCap} label="Alumno" />
             <RoleTab active={role === "teacher"} onClick={() => setRole("teacher")} icon={BookOpenCheck} label="Docente" />
+            <RoleTab active={role === "admin"} onClick={() => setRole("admin")} icon={ShieldCheck} label="Admin" />
           </div>
 
           <form onSubmit={submit} className="space-y-4">
@@ -72,7 +73,10 @@ export default function Index() {
                 id="email"
                 type="email"
                 required
-                placeholder={role === "student" ? "alumno@colegio.edu" : "docente@colegio.edu"}
+                placeholder={
+                  role === "student" ? "alumno@colegio.edu" :
+                  role === "teacher" ? "docente@colegio.edu" : "admin@colegio.edu"
+                }
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12 rounded-2xl"
@@ -91,7 +95,7 @@ export default function Index() {
               />
             </div>
             <Button type="submit" size="lg" className="w-full h-12 rounded-2xl bg-primary-gradient font-bold shadow-glow">
-              Entrar como {role === "student" ? "alumno" : "docente"} <ArrowRight className="w-4 h-4 ml-1" />
+              Entrar como {role === "student" ? "alumno" : role === "teacher" ? "docente" : "admin"} <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </form>
 
