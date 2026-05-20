@@ -2,7 +2,7 @@
  * Store en memoria + localStorage para mocks. Permite suscripciones
  * reactivas vía useSyncExternalStore.
  */
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, useRef } from "react";
 
 export type Role = "admin" | "teacher" | "student";
 
@@ -129,12 +129,38 @@ export const store = {
   },
 };
 
+function shallowEqual(a: any, b: any): boolean {
+  if (Object.is(a, b)) return true;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (!Object.is(a[i], b[i])) return false;
+    return true;
+  }
+  if (a && b && typeof a === "object" && typeof b === "object") {
+    const ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (const k of ka) if (!Object.is(a[k], b[k])) return false;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * useStore con cache de snapshot: si el selector devuelve una estructura
+ * equivalente (shallow), reusa la referencia anterior para evitar loops
+ * en useSyncExternalStore.
+ */
 export function useStore<T>(selector: (s: State) => T): T {
-  return useSyncExternalStore(
-    (cb) => store.subscribe(cb),
-    () => selector(store.getState()),
-    () => selector(store.getState()),
-  );
+  const cache = useRef<{ value: T; has: boolean }>({ value: undefined as any, has: false });
+  const get = () => {
+    const next = selector(store.getState());
+    if (cache.current.has && shallowEqual(cache.current.value, next)) {
+      return cache.current.value;
+    }
+    cache.current = { value: next, has: true };
+    return next;
+  };
+  return useSyncExternalStore((cb) => store.subscribe(cb), get, get);
 }
 
 export function uid(prefix = "id") {
