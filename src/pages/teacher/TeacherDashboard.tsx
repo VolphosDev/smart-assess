@@ -24,7 +24,9 @@ const colors: Array<"primary" | "lime" | "coral"> = ["primary", "lime", "coral"]
 export default function TeacherDashboard() {
   const courses = useStore((s) => s.courses.filter((c) => c.teacherId === TEACHER_ID));
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "", weeks: 4, emoji: "📘", color: "primary" as const });
+  const [form, setForm] = useState<{ name: string; description: string; weeks: number; emoji: string; color: "primary" | "lime" | "coral" }>({
+    name: "", description: "", weeks: 4, emoji: "📘", color: "primary",
+  });
 
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
