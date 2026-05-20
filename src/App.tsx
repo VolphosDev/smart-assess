@@ -14,6 +14,8 @@ import EvalModeSelect from "./pages/EvalModeSelect";
 import TeacherLayout from "./components/TeacherLayout";
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import TeacherCourse from "./pages/teacher/TeacherCourse";
+import AdminLayout from "./components/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +38,9 @@ const App = () => (
           <Route path="/docente" element={<TeacherLayout />}>
             <Route index element={<TeacherDashboard />} />
             <Route path="curso/:courseId" element={<TeacherCourse />} />
+          </Route>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
