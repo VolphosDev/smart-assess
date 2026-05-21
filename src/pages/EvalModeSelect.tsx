@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Clock, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { semanasApi } from "@/api/courses.ts";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 const evalModes = [
     {
@@ -57,6 +58,7 @@ const colorMap = {
 
 export default function EvalModeSelect() {
     const { courseId = "", semanaId: week = "" } = useParams();
+    const [cantidad, setCantidad] = useState(5);
 
     const { data: semana, isLoading } = useQuery({
         queryKey: ["semana", week],
@@ -81,7 +83,6 @@ export default function EvalModeSelect() {
         );
     }
 
-    // 👇 Extraemos los materiales para usarlos en la vista
     const materiales = semana.materiales || [];
 
     return (
@@ -98,7 +99,6 @@ export default function EvalModeSelect() {
                     {semana.numSem}
                 </span>
 
-                {/* 👇 ACTUALIZAMOS EL TÍTULO PARA QUE LEA LOS MATERIALES */}
                 <h1 className="font-display text-4xl md:text-5xl font-bold text-balance">
                     {materiales.length > 0
                         ? (materiales.length === 1 ? materiales[0].nombreArchivo : `Materiales de la semana (${materiales.length})`)
@@ -115,7 +115,6 @@ export default function EvalModeSelect() {
                 )}
             </header>
 
-            {/* 👇 BLOQUEAMOS SOLO SI EL PROFESOR NO HA SUBIDO NINGÚN MATERIAL */}
             {materiales.length === 0 ? (
                 <div className="bg-card border border-dashed border-border rounded-3xl p-10 text-center">
                     <p className="text-muted-foreground">
@@ -123,74 +122,100 @@ export default function EvalModeSelect() {
                     </p>
                 </div>
             ) : (
-                <div className="grid sm:grid-cols-2 gap-5">
-                    {evalModes.map((m, i) => {
-                        const cardContent = (
-                            <div
-                                className={cn(
-                                    "group block bg-card border rounded-3xl p-6 shadow-soft h-full transition-all",
-                                    m.disabled
-                                        ? "border-border opacity-50 grayscale cursor-not-allowed"
-                                        : "border-border hover:-translate-y-1 cursor-pointer"
-                                )}
-                            >
-                                <div className={cn(
-                                    "w-16 h-16 rounded-2xl grid place-items-center text-3xl shadow-soft mb-4",
-                                    colorMap[m.color]
-                                )}>
-                                    {m.emoji}
-                                </div>
-
-                                <div className="flex items-center gap-2 mb-1.5">
-                                    <h3 className="font-display font-bold text-xl">{m.title}</h3>
-                                    {m.disabled && (
-                                        <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
-                                            Pronto
-                                        </span>
+                <>
+                    {/* Selector de cantidad */}
+                    <div className="flex items-center justify-center gap-3">
+                        <span className="text-sm font-semibold text-muted-foreground">
+                            Cantidad de preguntas:
+                        </span>
+                        <div className="flex rounded-2xl border border-border overflow-hidden">
+                            {[5, 10].map((n) => (
+                                <button
+                                    key={n}
+                                    onClick={() => setCantidad(n)}
+                                    className={cn(
+                                        "px-5 py-2 text-sm font-bold transition-all",
+                                        cantidad === n
+                                            ? "bg-primary text-white"
+                                            : "bg-card text-muted-foreground hover:bg-secondary/40"
                                     )}
-                                </div>
+                                >
+                                    {n}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
 
-                                <p className="text-sm text-muted-foreground mb-4">{m.description}</p>
-
-                                <ul className="space-y-1.5 mb-5">
-                                    {m.bullets.map((b) => (
-                                        <li key={b} className="text-xs font-semibold flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" /> {b}
-                                        </li>
-                                    ))}
-                                </ul>
-
-                                <div className="flex items-center justify-between pt-4 border-t border-border">
-                                    <span className="text-xs font-bold text-muted-foreground inline-flex items-center gap-1.5">
-                                        <Clock className="w-3.5 h-3.5" /> {m.duration}
-                                    </span>
-                                    {!m.disabled && (
-                                        <span className="text-sm font-bold text-primary inline-flex items-center gap-1 group-hover:gap-2 transition-all">
-                                            Empezar <ArrowRight className="w-4 h-4" />
-                                        </span>
+                    {/* Cards de modalidad */}
+                    <div className="grid sm:grid-cols-2 gap-5">
+                        {evalModes.map((m, i) => {
+                            const cardContent = (
+                                <div
+                                    className={cn(
+                                        "group block bg-card border rounded-3xl p-6 shadow-soft h-full transition-all",
+                                        m.disabled
+                                            ? "border-border opacity-50 grayscale cursor-not-allowed"
+                                            : "border-border hover:-translate-y-1 cursor-pointer"
                                     )}
-                                </div>
-                            </div>
-                        );
+                                >
+                                    <div className={cn(
+                                        "w-16 h-16 rounded-2xl grid place-items-center text-3xl shadow-soft mb-4",
+                                        colorMap[m.color]
+                                    )}>
+                                        {m.emoji}
+                                    </div>
 
-                        return (
-                            <motion.div
-                                key={m.id}
-                                initial={{ opacity: 0, y: 12 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.06 }}
-                            >
-                                {m.disabled ? (
-                                    <div>{cardContent}</div>
-                                ) : (
-                                    <Link to={`/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}`}>
-                                        {cardContent}
-                                    </Link>
-                                )}
-                            </motion.div>
-                        );
-                    })}
-                </div>
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <h3 className="font-display font-bold text-xl">{m.title}</h3>
+                                        {m.disabled && (
+                                            <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
+                                                Pronto
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <p className="text-sm text-muted-foreground mb-4">{m.description}</p>
+
+                                    <ul className="space-y-1.5 mb-5">
+                                        {m.bullets.map((b) => (
+                                            <li key={b} className="text-xs font-semibold flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" /> {b}
+                                            </li>
+                                        ))}
+                                    </ul>
+
+                                    <div className="flex items-center justify-between pt-4 border-t border-border">
+                                        <span className="text-xs font-bold text-muted-foreground inline-flex items-center gap-1.5">
+                                            <Clock className="w-3.5 h-3.5" /> {m.duration}
+                                        </span>
+                                        {!m.disabled && (
+                                            <span className="text-sm font-bold text-primary inline-flex items-center gap-1 group-hover:gap-2 transition-all">
+                                                Empezar <ArrowRight className="w-4 h-4" />
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+
+                            return (
+                                <motion.div
+                                    key={m.id}
+                                    initial={{ opacity: 0, y: 12 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.06 }}
+                                >
+                                    {m.disabled ? (
+                                        <div>{cardContent}</div>
+                                    ) : (
+                                        <Link to={`/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${materiales[0]?.mongoId ?? ""}`}>
+                                            {cardContent}
+                                        </Link>
+                                    )}
+                                </motion.div>
+                            );
+                        })}
+                    </div>
+                </>
             )}
         </div>
     );

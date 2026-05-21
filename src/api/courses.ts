@@ -2,6 +2,13 @@ import { apiClient } from "./client";
 // Quitamos API_ENDPOINTS porque ahora usaremos las rutas directas de Spring Boot
 import type { CourseRecord } from "./store";
 
+export const evaluacionApi = {
+    generarPreguntas: (mongoId: string, tipo: string, cantidad: number = 5) =>
+        apiClient.post<any>(
+            `/archivos/una-tecnica-pdf-id?mongoId=${encodeURIComponent(mongoId)}&tipo=${tipo}&cantidad=${cantidad}`,
+            null
+        ),
+};
 export const coursesApi = {
     // Para el dashboard del Docente
     forTeacher: (teacherId: string) =>

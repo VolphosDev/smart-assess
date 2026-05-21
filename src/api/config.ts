@@ -6,7 +6,7 @@
 export const API_CONFIG = {
   baseUrl: (import.meta.env.VITE_API_BASE_URL as string) || "https://api.semantika.local/v1",
   mock: (import.meta.env.VITE_API_MOCK ?? "true") !== "false",
-  timeoutMs: 15000,
+  timeoutMs: 120_000,
 };
 
 export const API_ENDPOINTS = {
