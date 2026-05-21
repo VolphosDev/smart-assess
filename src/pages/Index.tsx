@@ -23,12 +23,16 @@ export default function Index() {
         setIsLoading(true);
 
         try {
-            // 1. Llamamos a tu backend solo con email y password
             const response = await authApi.login(email, password);
 
             console.log("¡Login exitoso!", response.user);
 
-            // 2. Redirigimos según el rol que nos devolvió tu base de datos
+            // 👇 ¡NUEVO! Guardamos el token y el usuario en el navegador
+            localStorage.setItem("token", response.user.token);
+            // Guardamos el resto de info (id, name, role) convertido a texto
+            localStorage.setItem("user", JSON.stringify(response.user));
+
+            // Redirigimos según el rol que nos devolvió tu base de datos
             const userRole = response.user.role.toLowerCase();
             navigate(userRole === "student" ? "/app" : userRole === "teacher" ? "/docente" : "/admin");
 

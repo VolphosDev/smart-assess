@@ -6,43 +6,60 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { coursesApi, useStore } from "@/api";
+import { coursesApi } from "@/api";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 
 const colorMap = {
-  primary: "bg-primary-gradient",
-  lime: "bg-lime-gradient",
-  coral: "bg-coral-gradient",
+    primary: "bg-primary-gradient",
+    lime: "bg-lime-gradient",
+    coral: "bg-coral-gradient",
 } as const;
-
-// docente "logueado" demo
-const TEACHER_ID = "u-prof-1";
 
 const emojis = ["📘", "🧬", "🏛️", "📐", "📚", "🧪", "🌍", "🎨", "💻", "🎵"];
 const colors: Array<"primary" | "lime" | "coral"> = ["primary", "lime", "coral"];
 
 export default function TeacherDashboard() {
-  const courses = useStore((s) => s.courses.filter((c) => c.teacherId === TEACHER_ID));
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<{ name: string; description: string; weeks: number; emoji: string; color: "primary" | "lime" | "coral" }>({
-    name: "", description: "", weeks: 4, emoji: "📘", color: "primary",
-  });
+    // 1. Obtenemos el usuario real que inició sesión
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const teacherId = user.id;
 
-  const create = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await coursesApi.create({
-      name: form.name,
-      description: form.description,
-      weeks: form.weeks,
-      emoji: form.emoji,
-      color: form.color,
-      teacherId: TEACHER_ID,
-      studentIds: [],
+    // 2. Traemos los cursos reales con React Query
+    const { data: courses = [], refetch } = useQuery({
+        queryKey: ['teacher-courses', teacherId],
+        queryFn: () => coursesApi.forTeacher(teacherId),
+        enabled: !!teacherId // Solo busca si hay un ID válido
     });
-    toast.success("Curso creado");
-    setOpen(false);
-    setForm({ name: "", description: "", weeks: 4, emoji: "📘", color: "primary" });
-  };
+
+    const [open, setOpen] = useState(false);
+    const [form, setForm] = useState<{ name: string; description: string; weeks: number; emoji: string; color: "primary" | "lime" | "coral" }>({
+        name: "", description: "", weeks: 4, emoji: "📘", color: "primary",
+    });
+
+    const create = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await coursesApi.create({
+                nombre: form.name, // ⚠️ Ajustado a los nombres que espera tu Java Map
+                descripcion: form.description,
+                emoji: form.emoji,
+                color: form.color,
+                profesorId: teacherId,
+                gradoId: 1, // TEMPORAL: Luego puedes poner un <select> en tu formulario
+                seccionId: 1, // TEMPORAL: Luego puedes poner un <select> en tu formulario
+                semanas: form.weeks
+            });
+
+            toast.success("Curso creado exitosamente");
+            setOpen(false);
+            setForm({ name: "", description: "", weeks: 4, emoji: "📘", color: "primary" });
+
+            // ¡Recargamos la lista automáticamente!
+            refetch();
+        } catch (err) {
+            toast.error("Error al crear el curso");
+        }
+    };
 
   return (
     <div className="space-y-10">
@@ -84,7 +101,7 @@ export default function TeacherDashboard() {
                   <h3 className="font-display font-bold text-lg mb-1">{c.name}</h3>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground font-semibold mb-4">
                     <span className="inline-flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> {c.weeks} semanas</span>
-                    <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {c.studentIds.length} alumnos</span>
+                    <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {c.studentCount} alumnos</span>
                   </div>
                   <div className="flex items-center gap-1 text-sm font-bold text-primary">
                     Ver sesiones <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />

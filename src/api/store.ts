@@ -6,13 +6,14 @@ import { useSyncExternalStore, useRef } from "react";
 
 export type Role = "admin" | "teacher" | "student";
 
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  avatar?: string;
-};
+export interface User {
+    id: string;
+    email: string;
+    role: "student" | "teacher" | "admin";
+    name: string;
+    token: string;
+    avatar?: string;
+}
 
 export type CourseRecord = {
   id: string;

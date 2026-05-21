@@ -16,6 +16,7 @@ import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import TeacherCourse from "./pages/teacher/TeacherCourse";
 import AdminLayout from "./components/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import TeacherWeek from "./pages/teacher/TeacherWeek";
 
 const queryClient = new QueryClient();
 
@@ -30,15 +31,16 @@ const App = () => (
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="practica" element={<Practice />} />
-            <Route path="curso/:courseId" element={<Course />} />
-            <Route path="curso/:courseId/semana/:week" element={<EvalModeSelect />} />
-            <Route path="curso/:courseId/semana/:week/evaluacion/:mode" element={<Practice />} />
+              <Route path="curso/:courseId" element={<Course />} />
+              <Route path="curso/:courseId/semana/:semanaId" element={<EvalModeSelect />} />
+              <Route path="curso/:courseId/semana/:semanaId/evaluacion/:mode" element={<Practice />} />
             <Route path="historial" element={<HistoryPage />} />
           </Route>
-          <Route path="/docente" element={<TeacherLayout />}>
+            <Route path="/docente" element={<TeacherLayout />}>
             <Route index element={<TeacherDashboard />} />
             <Route path="curso/:courseId" element={<TeacherCourse />} />
-          </Route>
+            <Route path="curso/:courseId/semana/:semanaId" element={<TeacherWeek />} />
+            </Route>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
           </Route>

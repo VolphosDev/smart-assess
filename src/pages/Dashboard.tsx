@@ -2,27 +2,39 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Mic, Flame, Target, TrendingUp, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { courses } from "@/lib/mock-data";
+import { useQuery } from "@tanstack/react-query";
+import { coursesApi } from "@/api";
 
 const colorMap = {
-  primary: "bg-primary-gradient",
-  lime: "bg-lime-gradient",
-  coral: "bg-coral-gradient",
+    primary: "bg-primary-gradient",
+    lime: "bg-lime-gradient",
+    coral: "bg-coral-gradient",
 } as const;
 
 export default function Dashboard() {
-  return (
-    <div className="space-y-10">
-      {/* Hero greeting */}
-      <section className="grid lg:grid-cols-3 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-2 bg-hero-gradient rounded-[2rem] p-8 text-primary-foreground shadow-glow relative overflow-hidden"
-        >
-          <div className="absolute -right-10 -top-10 text-[10rem] opacity-20 select-none">🎯</div>
-          <span className="inline-block px-3 py-1 rounded-full bg-background/20 text-xs font-bold uppercase tracking-wider mb-4">
-            Hola, estudiante 👋
+    // 1. Obtenemos al estudiante logueado
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const studentId = user.id;
+
+    // 2. Traemos sus cursos matriculados
+    const { data: courses = [], isLoading } = useQuery({
+        queryKey: ['student-courses', studentId],
+        queryFn: () => coursesApi.forStudent(studentId),
+        enabled: !!studentId
+    });
+
+    return (
+        <div className="space-y-10">
+            {/* Hero greeting */}
+            <section className="grid lg:grid-cols-3 gap-6">
+                <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="lg:col-span-2 bg-hero-gradient rounded-[2rem] p-8 text-primary-foreground shadow-glow relative overflow-hidden"
+                >
+                    <div className="absolute -right-10 -top-10 text-[10rem] opacity-20 select-none">🎯</div>
+                    <span className="inline-block px-3 py-1 rounded-full bg-background/20 text-xs font-bold uppercase tracking-wider mb-4">
+            Hola, {user.name?.split(' ')[0] || 'estudiante'} 👋  {/* ¡Saludo real! */}
           </span>
           <h1 className="font-display text-4xl md:text-5xl font-bold mb-3 max-w-md">
             Tienes un examen oral de Biología hoy.
