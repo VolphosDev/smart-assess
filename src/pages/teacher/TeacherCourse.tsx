@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, PlayCircle, Sparkles, BookOpen, FileText } from "lucide-react";
+import {ArrowLeft, ArrowRight, PlayCircle, Sparkles, BookOpen, FileText, Users} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { coursesApi } from "@/api";
@@ -65,10 +65,22 @@ export default function TeacherCourse() {
                 <span className="inline-block px-3 py-1 rounded-full bg-background/20 text-xs font-bold uppercase tracking-wider mb-3">
                     Curso · Semestre 2026-1
                 </span>
-                <h1 className="font-display text-4xl md:text-5xl font-bold mb-3 max-w-2xl">{course.name}</h1>
-                <p className="opacity-90 max-w-xl">
-                    {weeks.length} semanas · {course.studentCount ?? 0} alumnos matriculados
-                </p>
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 relative z-10">
+                    <div>
+                        <h1 className="font-display text-4xl md:text-5xl font-bold mb-3 max-w-2xl">{course.name}</h1>
+                        <p className="opacity-90 max-w-xl">
+                            {weeks.length} semanas · {course.studentCount ?? 0} alumnos matriculados
+                        </p>
+                    </div>
+
+                    {/* Botón para ir a gestionar alumnos */}
+                    <Link
+                        to={`/docente/curso/${courseId}/alumnos`}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-background/20 hover:bg-background/30 border border-white/70 transition-colors text-white font-bold rounded-xl backdrop-blur-sm shrink-0"
+                    >
+                        <Users className="w-4 h-4" /> Gestionar clase
+                    </Link>
+                </div>
             </motion.section>
 
             {/* Lista de semanas */}

@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { semanasApi } from "@/api/courses.ts";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { Eye } from "lucide-react";
+import { PdfPreviewModal } from "@/components/PdfPreviewModal";
 
 const evalModes = [
     {
@@ -59,6 +61,7 @@ const colorMap = {
 export default function EvalModeSelect() {
     const { courseId = "", semanaId: week = "" } = useParams();
     const [cantidad, setCantidad] = useState(5);
+    const [previewMongoId, setPreviewMongoId] = useState<string | null>(null);
 
     const { data: semana, isLoading } = useQuery({
         queryKey: ["semana", week],
@@ -104,6 +107,14 @@ export default function EvalModeSelect() {
                         ? (materiales.length === 1 ? materiales[0].nombreArchivo : `Materiales de la semana (${materiales.length})`)
                         : "Material de la semana"}
                 </h1>
+                {materiales.length > 0 && materiales[0].mongoId && (
+                    <button
+                        onClick={() => setPreviewMongoId(materiales[0].mongoId)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-secondary/50 hover:bg-secondary text-sm font-bold rounded-xl transition-colors mx-auto"
+                    >
+                        <Eye className="w-4 h-4" /> Leer documento antes de empezar
+                    </button>
+                )}
 
                 <p className="text-muted-foreground max-w-xl mx-auto">
                     ¿Cómo te quieres evaluar hoy? Elige la modalidad que mejor se adapte a ti.
@@ -217,6 +228,11 @@ export default function EvalModeSelect() {
                     </div>
                 </>
             )}
+            <PdfPreviewModal
+                mongoId={previewMongoId || ""}
+                isOpen={!!previewMongoId}
+                onClose={() => setPreviewMongoId(null)}
+            />
         </div>
     );
 }

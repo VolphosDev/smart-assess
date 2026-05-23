@@ -30,6 +30,13 @@ export const coursesApi = {
         apiClient.delete<{ ok: true }>(`/cursos/${courseId}/desmatricular/${studentId}`),
     weeks: (courseId: string | number) =>
         apiClient.get<any[]>(`/cursos/${courseId}/semanas`),
+
+    students: (courseId: string | number) =>
+        apiClient.get<any[]>(`/cursos/${courseId}/alumnos`),
+    update: (courseId: string | number, data: any) =>
+        apiClient.put<any>(`/cursos/${courseId}`, data),
+    delete: (courseId: string | number) =>
+        apiClient.delete<{ message: string }>(`/cursos/${courseId}`),
 };
 export const semanasApi = {
     get: (semanaId: string | number) =>
@@ -50,7 +57,7 @@ export const semanasApi = {
         return apiClient.postForm<any>(`/semanas/${semanaId}/archivos`, form);
     },
     deleteMaterial: (materialId: string | number) =>
-        apiClient.delete<void>(`/material/${materialId}`),
+        apiClient.delete<void>(`/semanas/material/${materialId}`),
 };
 
 export const archivosApi = {

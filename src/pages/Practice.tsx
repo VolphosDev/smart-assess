@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 interface Pregunta {
     enunciado: string;
-    opciones_o_respuesta: string;
+    opciones_o_respuesta: string[] | string;
     justificacion_pregunta: string;
 }
 
@@ -39,19 +39,24 @@ const modeLabels: Record<string, { label: string; icon: React.ReactNode; color: 
 
 
 function PreguntaMultiple({ pregunta, index }: { pregunta: Pregunta; index: number }) {
-    const lineas = pregunta.opciones_o_respuesta
-        .split(/\n/)
-        .map((l) => l.trim())
-        .filter(Boolean);
+    const opcionesArray = Array.isArray(pregunta.opciones_o_respuesta)
+        ? pregunta.opciones_o_respuesta
+        : (pregunta.opciones_o_respuesta || "").split(" | ");
 
     return (
         <div className="space-y-3">
-            <p className="font-semibold text-foreground leading-relaxed">{pregunta.enunciado}</p>
+            <p className="font-semibold text-foreground leading-relaxed">
+                {pregunta.enunciado}
+            </p>
             <ul className="space-y-2">
-                {lineas.map((op, i) => (
+                {opcionesArray.map((op, i) => (
                     <li key={i}>
                         <label className="flex items-start gap-3 p-3 rounded-xl border border-border bg-secondary/20 hover:bg-secondary/40 cursor-pointer transition-colors">
-                            <input type="radio" name={`q-${index}`} className="mt-0.5 accent-primary shrink-0" />
+                            <input
+                                type="radio"
+                                name={`q-${index}`}
+                                className="mt-0.5 accent-primary shrink-0"
+                            />
                             <span className="text-sm">{op}</span>
                         </label>
                     </li>
@@ -172,17 +177,35 @@ export default function Practice() {
     }
 
     if (isError) {
+        const errorMsg = (error as any)?.response?.data || (error as any)?.message || String(error);
+        const isOverloaded = errorMsg.includes("503") || errorMsg.includes("high demand") || errorMsg.includes("Service Unavailable");
+        const isRateLimited = errorMsg.includes("429") || errorMsg.includes("Too Many Requests") || errorMsg.includes("Quota exceeded");
+        const isFreeTierIssue = isOverloaded || isRateLimited;
+
         return (
-            <div className="text-center py-20 space-y-3">
-                <AlertCircle className="w-8 h-8 mx-auto text-destructive" />
-                <p className="font-semibold">Ocurrió un error al generar las preguntas.</p>
-                <p className="text-xs text-muted-foreground">{String(error)}</p>
-                <Link
-                    to={`/app/curso/${courseId}/semana/${semanaId}`}
-                    className="text-primary font-semibold hover:underline text-sm"
-                >
-                    Volver
-                </Link>
+            <div className="text-center py-20 space-y-4 max-w-md mx-auto">
+                <AlertCircle className={cn("w-16 h-16 mx-auto", isFreeTierIssue ? "text-amber-500" : "text-destructive")} />
+
+                <h2 className="font-display font-bold text-2xl">
+                    {isFreeTierIssue ? "¡Ups! La IA necesita un respiro 🤖" : "Error al generar las preguntas"}
+                </h2>
+
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                    {isFreeTierIssue
+                        ? (isRateLimited
+                            ? "Hemos alcanzado el límite de peticiones rápidas (Cosas de la capa gratuita de Google 😅). Por favor, espera unos 15 segundos y vuelve a intentarlo."
+                            : "Los servidores de IA están experimentando una alta demanda en este momento. Por favor, espera un minuto y vuelve a intentarlo.")
+                        : errorMsg}
+                </p>
+
+                <div className="pt-4">
+                    <Link
+                        to={`/app/curso/${courseId}/semana/${semanaId}`}
+                        className="inline-block px-6 py-3 rounded-xl bg-primary-gradient text-white font-bold shadow-soft hover:opacity-90 active:scale-95 transition-all"
+                    >
+                        Volver e intentar de nuevo
+                    </Link>
+                </div>
             </div>
         );
     }

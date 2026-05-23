@@ -17,6 +17,7 @@ import TeacherCourse from "./pages/teacher/TeacherCourse";
 import AdminLayout from "./components/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import TeacherWeek from "./pages/teacher/TeacherWeek";
+import CourseStudentsManager from "./pages/teacher/CourseStudentsManager";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="historial" element={<HistoryPage />} />
           </Route>
             <Route path="/docente" element={<TeacherLayout />}>
+            <Route path="/docente/curso/:courseId/alumnos" element={<CourseStudentsManager />} />
             <Route index element={<TeacherDashboard />} />
             <Route path="curso/:courseId" element={<TeacherCourse />} />
             <Route path="curso/:courseId/semana/:semanaId" element={<TeacherWeek />} />

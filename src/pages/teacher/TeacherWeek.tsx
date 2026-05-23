@@ -6,6 +6,9 @@ import { semanasApi } from "@/api/courses.ts"; // Asegúrate de que apunte a tu 
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useRef } from "react";
+import { useState } from "react";
+import { Eye } from "lucide-react"; // <-- Agrega Eye a tus importaciones de lucide-react
+import { PdfPreviewModal } from "@/components/PdfPreviewModal";
 
 export default function TeacherWeek() {
     const { courseId = "", semanaId = "" } = useParams();
@@ -17,6 +20,8 @@ export default function TeacherWeek() {
         queryFn: () => semanasApi.get(semanaId),
         enabled: !!semanaId,
     });
+
+    const [previewMongoId, setPreviewMongoId] = useState<string | null>(null);
 
     const uploadMutation = useMutation({
         mutationFn: (files: File[]) => semanasApi.uploadFiles(semanaId, files),
@@ -132,6 +137,14 @@ export default function TeacherWeek() {
                                 </div>
                                 <Button
                                     size="sm"
+                                    variant="secondary"
+                                    className="rounded-xl"
+                                    onClick={() => setPreviewMongoId(mat.mongoId)}
+                                >
+                                    <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                    size="sm"
                                     variant="destructive"
                                     className="rounded-xl"
                                     onClick={() => deleteMutation.mutate(mat.id)}
@@ -161,7 +174,7 @@ export default function TeacherWeek() {
                 <input
                     ref={fileInputRef}
                     type="file"
-                    multiple // 👈 Habilita múltiple selección
+                    multiple
                     accept=".pdf,.docx,.jpg,.jpeg,.png"
                     className="hidden"
                     onChange={handleFileChange}
@@ -191,6 +204,11 @@ export default function TeacherWeek() {
                     </div>
                 </div>
             </motion.section>
+            <PdfPreviewModal
+                mongoId={previewMongoId || ""}
+                isOpen={!!previewMongoId}
+                onClose={() => setPreviewMongoId(null)}
+            />
         </div>
     );
 }
