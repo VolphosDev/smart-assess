@@ -81,7 +81,9 @@ export default function EvalModeSelect() {
         return (
             <div className="text-center py-20">
                 <h1 className="font-display font-bold text-3xl mb-3">Semana no encontrada</h1>
-                <Link to="/app" className="text-primary font-semibold hover:underline">Volver al inicio</Link>
+                <Link to="/app" className="text-primary font-semibold hover:underline">
+                    Volver al inicio
+                </Link>
             </div>
         );
     }
@@ -104,16 +106,30 @@ export default function EvalModeSelect() {
 
                 <h1 className="font-display text-4xl md:text-5xl font-bold text-balance">
                     {materiales.length > 0
-                        ? (materiales.length === 1 ? materiales[0].nombreArchivo : `Materiales de la semana (${materiales.length})`)
+                        ? materiales.length === 1
+                            ? materiales[0].nombreArchivo
+                            : `Materiales de la semana (${materiales.length})`
                         : "Material de la semana"}
                 </h1>
-                {materiales.length > 0 && materiales[0].mongoId && (
-                    <button
-                        onClick={() => setPreviewMongoId(materiales[0].mongoId)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-secondary/50 hover:bg-secondary text-sm font-bold rounded-xl transition-colors mx-auto"
-                    >
-                        <Eye className="w-4 h-4" /> Leer documento antes de empezar
-                    </button>
+
+                {/* Botón por cada documento disponible */}
+                {materiales.length > 0 && (
+                    <div className="flex flex-wrap justify-center gap-2">
+                        {materiales.map((mat: any, idx: number) =>
+                            mat.mongoId ? (
+                                <button
+                                    key={mat.mongoId}
+                                    onClick={() => setPreviewMongoId(mat.mongoId)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-secondary/50 hover:bg-secondary text-sm font-bold rounded-xl transition-colors"
+                                >
+                                    <Eye className="w-4 h-4" />
+                                    {materiales.length === 1
+                                        ? "Leer documento antes de empezar"
+                                        : `Documento ${idx + 1}: ${mat.nombreArchivo}`}
+                                </button>
+                            ) : null
+                        )}
+                    </div>
                 )}
 
                 <p className="text-muted-foreground max-w-xl mx-auto">
@@ -169,10 +185,12 @@ export default function EvalModeSelect() {
                                             : "border-border hover:-translate-y-1 cursor-pointer"
                                     )}
                                 >
-                                    <div className={cn(
-                                        "w-16 h-16 rounded-2xl grid place-items-center text-3xl shadow-soft mb-4",
-                                        colorMap[m.color]
-                                    )}>
+                                    <div
+                                        className={cn(
+                                            "w-16 h-16 rounded-2xl grid place-items-center text-3xl shadow-soft mb-4",
+                                            colorMap[m.color]
+                                        )}
+                                    >
                                         {m.emoji}
                                     </div>
 
@@ -190,7 +208,8 @@ export default function EvalModeSelect() {
                                     <ul className="space-y-1.5 mb-5">
                                         {m.bullets.map((b) => (
                                             <li key={b} className="text-xs font-semibold flex items-center gap-2">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" /> {b}
+                                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />{" "}
+                                                {b}
                                             </li>
                                         ))}
                                     </ul>
@@ -218,7 +237,9 @@ export default function EvalModeSelect() {
                                     {m.disabled ? (
                                         <div>{cardContent}</div>
                                     ) : (
-                                        <Link to={`/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${materiales[0]?.mongoId ?? ""}`}>
+                                        <Link
+                                            to={`/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${materiales[0]?.mongoId ?? ""}`}
+                                        >
                                             {cardContent}
                                         </Link>
                                     )}
@@ -228,6 +249,7 @@ export default function EvalModeSelect() {
                     </div>
                 </>
             )}
+
             <PdfPreviewModal
                 mongoId={previewMongoId || ""}
                 isOpen={!!previewMongoId}

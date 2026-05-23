@@ -1,10 +1,10 @@
-import { useParams, useSearchParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Loader2, AlertCircle, BookOpen, Brain, CheckSquare } from "lucide-react";
-import { evaluacionApi } from "@/api/courses.ts";
+import { ArrowLeft, Loader2, AlertCircle, BookOpen, Brain, CheckSquare, RefreshCw } from "lucide-react";
+import { evaluacionApi, agentJudgeApi } from "@/api/courses.ts";
 import { cn } from "@/lib/utils";
-
 
 interface Pregunta {
     enunciado: string;
@@ -37,25 +37,33 @@ const modeLabels: Record<string, { label: string; icon: React.ReactNode; color: 
     },
 };
 
-
-function PreguntaMultiple({ pregunta, index }: { pregunta: Pregunta; index: number }) {
+function PreguntaMultiple({
+                              pregunta, index, valor, onChange, disabled,
+                          }: {
+    pregunta: Pregunta; index: number; valor: string; onChange: (val: string) => void; disabled?: boolean;
+}) {
     const opcionesArray = Array.isArray(pregunta.opciones_o_respuesta)
         ? pregunta.opciones_o_respuesta
         : (pregunta.opciones_o_respuesta || "").split(" | ");
 
     return (
         <div className="space-y-3">
-            <p className="font-semibold text-foreground leading-relaxed">
-                {pregunta.enunciado}
-            </p>
+            <p className="font-semibold text-foreground leading-relaxed">{pregunta.enunciado}</p>
             <ul className="space-y-2">
                 {opcionesArray.map((op, i) => (
                     <li key={i}>
-                        <label className="flex items-start gap-3 p-3 rounded-xl border border-border bg-secondary/20 hover:bg-secondary/40 cursor-pointer transition-colors">
+                        <label className={cn(
+                            "flex items-start gap-3 p-3 rounded-xl border border-border bg-secondary/20 transition-colors",
+                            disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/40 cursor-pointer"
+                        )}>
                             <input
                                 type="radio"
                                 name={`q-${index}`}
-                                className="mt-0.5 accent-primary shrink-0"
+                                value={op}
+                                checked={valor === op}
+                                onChange={(e) => onChange(e.target.value)}
+                                disabled={disabled}
+                                className="mt-0.5 accent-primary shrink-0 disabled:cursor-not-allowed"
                             />
                             <span className="text-sm">{op}</span>
                         </label>
@@ -66,17 +74,35 @@ function PreguntaMultiple({ pregunta, index }: { pregunta: Pregunta; index: numb
     );
 }
 
-function PreguntaVF({ pregunta, index }: { pregunta: Pregunta; index: number }) {
+function PreguntaVF({
+                        pregunta, index, valor, onChange, disabled,
+                    }: {
+    pregunta: Pregunta; index: number; valor: string; onChange: (val: string) => void; disabled?: boolean;
+}) {
     return (
         <div className="space-y-3">
             <p className="font-semibold text-foreground leading-relaxed">{pregunta.enunciado}</p>
             <div className="flex gap-3">
-                {["Verdadero", "Falso"].map((op) => (
+                {["VERDADERO", "FALSO"].map((op) => (
                     <label
                         key={op}
-                        className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-border bg-secondary/20 hover:bg-secondary/40 cursor-pointer transition-colors text-sm font-semibold"
+                        className={cn(
+                            "flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-colors text-sm font-semibold",
+                            disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer",
+                            valor === op
+                                ? "border-primary bg-primary/10"
+                                : "border-border bg-secondary/20 hover:bg-secondary/40"
+                        )}
                     >
-                        <input type="radio" name={`q-${index}`} className="accent-primary" />
+                        <input
+                            type="radio"
+                            name={`q-${index}`}
+                            value={op}
+                            checked={valor === op}
+                            onChange={(e) => onChange(e.target.value)}
+                            disabled={disabled}
+                            className="hidden"
+                        />
                         {op}
                     </label>
                 ))}
@@ -85,20 +111,31 @@ function PreguntaVF({ pregunta, index }: { pregunta: Pregunta; index: number }) 
     );
 }
 
-function PreguntaAbierta({ pregunta }: { pregunta: Pregunta }) {
+function PreguntaAbierta({
+                             pregunta, valor, onChange, disabled,
+                         }: {
+    pregunta: Pregunta; valor: string; onChange: (val: string) => void; disabled?: boolean;
+}) {
     return (
         <div className="space-y-3">
             <p className="font-semibold text-foreground leading-relaxed">{pregunta.enunciado}</p>
             <textarea
                 rows={4}
+                value={valor}
+                onChange={(e) => onChange(e.target.value)}
+                disabled={disabled}
                 placeholder="Escribe tu respuesta aquí..."
-                className="w-full rounded-xl border border-border bg-secondary/20 p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+                className="w-full rounded-xl border border-border bg-secondary/20 p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 transition disabled:opacity-50 disabled:cursor-not-allowed"
             />
         </div>
     );
 }
 
-function PreguntaCard({ pregunta, index, tipo }: { pregunta: Pregunta; index: number; tipo: string }) {
+function PreguntaCard({
+                          pregunta, index, tipo, valor, onChange, disabled,
+                      }: {
+    pregunta: Pregunta; index: number; tipo: string; valor: string; onChange: (val: string) => void; disabled?: boolean;
+}) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -115,15 +152,29 @@ function PreguntaCard({ pregunta, index, tipo }: { pregunta: Pregunta; index: nu
                 </span>
             </div>
 
-            {tipo === "OPCION_MULTIPLE" && <PreguntaMultiple pregunta={pregunta} index={index} />}
-            {tipo === "VERDADERO_FALSO" && <PreguntaVF pregunta={pregunta} index={index} />}
-            {tipo === "ABIERTA" && <PreguntaAbierta pregunta={pregunta} />}
+            {tipo === "OPCION_MULTIPLE" && (
+                <PreguntaMultiple pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} />
+            )}
+            {tipo === "VERDADERO_FALSO" && (
+                <PreguntaVF pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} />
+            )}
+            {tipo === "ABIERTA" && (
+                <PreguntaAbierta pregunta={pregunta} valor={valor} onChange={onChange} disabled={disabled} />
+            )}
         </motion.div>
     );
 }
 
 export default function Practice() {
-    // mongoId llega directo desde la URL (puesto por EvalModeSelect en el Link)
+    const topRef = useRef<HTMLDivElement>(null);
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
+
+    const [respuestas, setRespuestas] = useState<Record<number, string>>({});
+    const [evaluando, setEvaluando] = useState(false);
+    const [resultados, setResultados] = useState<any[]>([]);
+    const [errorEnIndice, setErrorEnIndice] = useState<number | null>(null);
+
     const { courseId = "", semanaId = "", mode = "OPCION_MULTIPLE" } = useParams();
     const [searchParams] = useSearchParams();
     const cantidad = Number(searchParams.get("cantidad") ?? "5");
@@ -144,6 +195,28 @@ export default function Practice() {
         refetchOnWindowFocus: false,
         refetchOnMount: false,
     });
+
+    const preguntas = evaluacion?.preguntas ?? [];
+    const evaluacionCompleta = resultados.length === preguntas.length && preguntas.length > 0;
+
+    // Al desmontar el componente, limpiar caché si el examen ya terminó
+    useEffect(() => {
+        return () => {
+            if (evaluacionCompleta) {
+                queryClient.removeQueries({
+                    queryKey: ["evaluacion", mongoId, mode, cantidad],
+                });
+            }
+        };
+    }, [evaluacionCompleta]);
+
+    const handleVolver = () => {
+        // Limpiar caché siempre al volver — garantiza preguntas frescas la próxima vez
+        queryClient.removeQueries({
+            queryKey: ["evaluacion", mongoId, mode, cantidad],
+        });
+        navigate(`/app/curso/${courseId}/semana/${semanaId}`);
+    };
 
     const modeInfo = modeLabels[mode] ?? modeLabels["OPCION_MULTIPLE"];
 
@@ -185,11 +258,9 @@ export default function Practice() {
         return (
             <div className="text-center py-20 space-y-4 max-w-md mx-auto">
                 <AlertCircle className={cn("w-16 h-16 mx-auto", isFreeTierIssue ? "text-amber-500" : "text-destructive")} />
-
                 <h2 className="font-display font-bold text-2xl">
                     {isFreeTierIssue ? "¡Ups! La IA necesita un respiro 🤖" : "Error al generar las preguntas"}
                 </h2>
-
                 <p className="text-sm text-muted-foreground leading-relaxed">
                     {isFreeTierIssue
                         ? (isRateLimited
@@ -197,7 +268,6 @@ export default function Practice() {
                             : "Los servidores de IA están experimentando una alta demanda en este momento. Por favor, espera un minuto y vuelve a intentarlo.")
                         : errorMsg}
                 </p>
-
                 <div className="pt-4">
                     <Link
                         to={`/app/curso/${courseId}/semana/${semanaId}`}
@@ -210,17 +280,68 @@ export default function Practice() {
         );
     }
 
-    const preguntas = evaluacion?.preguntas ?? [];
+    // Bloquear inputs si se está evaluando, hay resultados, o hubo un error (pausa)
+    const inputsBloqueados = evaluando || resultados.length > 0 || errorEnIndice !== null;
+
+    const manejarEnvio = async (desdeIndice = 0) => {
+        setEvaluando(true);
+        setErrorEnIndice(null);
+
+        // Solo limpiar resultados al inicio, no al reanudar
+        if (desdeIndice === 0) {
+            setResultados([]);
+        }
+
+        setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
+
+        try {
+            for (let index = desdeIndice; index < preguntas.length; index++) {
+                const p = preguntas[index];
+                const respuestaEstudiante = respuestas[index] || "No respondió";
+
+                let respuestaEsperada = p.justificacion_pregunta;
+                if (mode === "ABIERTA" && Array.isArray(p.opciones_o_respuesta)) {
+                    respuestaEsperada += " Rúbrica: " + p.opciones_o_respuesta[0];
+                }
+
+                try {
+                    const resultado = await agentJudgeApi.evaluarRespuesta({
+                        pregunta: p.enunciado,
+                        respuestaEsperada,
+                        respuestaEstudiante,
+                        totalPreguntas: preguntas.length,
+                    });
+
+                    setResultados((prev) => {
+                        const nuevos = [...prev];
+                        nuevos[index] = resultado;
+                        return nuevos;
+                    });
+                } catch (err) {
+                    console.error(`Error evaluando pregunta ${index + 1}:`, err);
+                    setErrorEnIndice(index);
+                    return;
+                }
+            }
+        } finally {
+            setEvaluando(false);
+        }
+    };
+
+    const notaTotal = resultados
+        .reduce((total, r) => total + (r?.evaluacion?.puntaje || 0), 0)
+        .toFixed(2);
 
     return (
-        <div className="space-y-8 max-w-3xl mx-auto">
+        <div ref={topRef} className="space-y-8 max-w-3xl mx-auto">
 
-            <Link
-                to={`/app/curso/${courseId}/semana/${semanaId}`}
+            {/* Botón volver — ahora limpia el caché al salir */}
+            <button
+                onClick={handleVolver}
                 className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
             >
                 <ArrowLeft className="w-4 h-4" /> Volver
-            </Link>
+            </button>
 
             <header className="space-y-2">
                 <div className={cn("inline-flex items-center gap-2 text-sm font-bold", modeInfo.color)}>
@@ -240,13 +361,71 @@ export default function Practice() {
 
             <AnimatePresence>
                 <div className="space-y-5">
-                    {preguntas.map((p, i) => (
-                        <PreguntaCard key={i} pregunta={p} index={i} tipo={mode} />
-                    ))}
+                    {preguntas.map((p, i) => {
+                        const estaEvaluandose = evaluando && resultados.length === i && errorEnIndice === null;
+
+                        return (
+                            <div key={i} className="relative">
+                                <PreguntaCard
+                                    pregunta={p}
+                                    index={i}
+                                    tipo={mode}
+                                    valor={respuestas[i] || ""}
+                                    onChange={(val) =>
+                                        setRespuestas((prev) => ({ ...prev, [i]: val }))
+                                    }
+                                    disabled={inputsBloqueados}
+                                />
+
+                                {estaEvaluandose && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: "auto" }}
+                                        className="mt-4 p-4 rounded-xl border border-primary/20 bg-primary/5 flex items-center gap-3 text-sm font-semibold text-primary"
+                                    >
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        La IA está evaluando tu respuesta...
+                                    </motion.div>
+                                )}
+
+                                {resultados[i] && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className={cn(
+                                            "mt-4 p-5 rounded-xl border text-sm space-y-2",
+                                            resultados[i].evaluacion.esCorrecta
+                                                ? "bg-green-50/50 border-green-200"
+                                                : "bg-red-50/50 border-red-200"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <span className={cn(
+                                                "px-2 py-1 rounded text-xs font-bold uppercase",
+                                                resultados[i].evaluacion.esCorrecta
+                                                    ? "bg-green-200 text-green-800"
+                                                    : "bg-red-200 text-red-800"
+                                            )}>
+                                                {resultados[i].evaluacion.esCorrecta ? "Correcto" : "Incorrecto"}
+                                            </span>
+                                            <span className="font-bold text-foreground">
+                                                Puntaje: {resultados[i].evaluacion.puntaje} /{" "}
+                                                {resultados[i].evaluacion.puntaje_maximo}
+                                            </span>
+                                        </div>
+                                        <p className="text-foreground/80 leading-relaxed">
+                                            {resultados[i].evaluacion.explicacion}
+                                        </p>
+                                    </motion.div>
+                                )}
+                            </div>
+                        );
+                    })}
                 </div>
             </AnimatePresence>
 
-            {preguntas.length > 0 && (
+            {/* Botón enviar */}
+            {preguntas.length > 0 && resultados.length === 0 && errorEnIndice === null && (
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -254,13 +433,56 @@ export default function Practice() {
                     className="flex justify-end pt-4"
                 >
                     <button
-                        className="px-8 py-3 rounded-2xl bg-primary-gradient text-white font-bold shadow-soft hover:opacity-90 active:scale-95 transition-all"
-                        onClick={() => {
-                            alert("¡Evaluador próximamente!");
-                        }}
+                        className="px-8 py-3 rounded-2xl bg-primary-gradient text-white font-bold shadow-soft flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => manejarEnvio(0)}
+                        disabled={evaluando}
                     >
-                        Enviar respuestas
+                        {evaluando ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" /> Evaluando...
+                            </>
+                        ) : (
+                            "Enviar respuestas"
+                        )}
                     </button>
+                </motion.div>
+            )}
+
+            {/* Banner de error con botón reanudar */}
+            {errorEnIndice !== null && !evaluando && (
+                <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-4 p-4 rounded-2xl border border-amber-200 bg-amber-50/60"
+                >
+                    <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
+                    <p className="text-sm font-semibold text-amber-800 flex-1">
+                        La IA se interrumpió en la pregunta {errorEnIndice + 1}. Las respuestas están bloqueadas.
+                    </p>
+                    <button
+                        onClick={() => manejarEnvio(errorEnIndice)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 text-white font-bold text-sm hover:opacity-90 active:scale-95 transition-all shrink-0"
+                    >
+                        <RefreshCw className="w-4 h-4" /> Reanudar
+                    </button>
+                </motion.div>
+            )}
+
+            {/* Calificación final */}
+            {evaluacionCompleta && (
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="mt-8 p-6 rounded-3xl border-2 border-primary/20 bg-primary/5 text-center space-y-2"
+                >
+                    <h2 className="text-xl font-bold text-muted-foreground">Calificación Final</h2>
+                    <p className="text-5xl font-display font-bold text-primary">
+                        {notaTotal}
+                        <span className="text-2xl text-muted-foreground"> / 20</span>
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-4">
+                        Revisa la retroalimentación en cada pregunta para mejorar.
+                    </p>
                 </motion.div>
             )}
         </div>

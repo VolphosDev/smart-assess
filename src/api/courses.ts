@@ -82,3 +82,30 @@ export const archivosApi = {
     },
 
 };
+export interface EvaluarRespuestaRequest {
+    pregunta: string;
+    respuestaEsperada: string;
+    respuestaEstudiante: string;
+    totalPreguntas: number;
+}
+
+export interface EvaluarRespuestaResponse {
+    pregunta_evaluada: string;
+    evaluacion: {
+        esCorrecta: boolean;
+        puntaje: number;
+        explicacion: string;
+    };
+    metricas_rendimiento: {
+        latencia_segundos: number;
+        input_tokens: number;
+        output_tokens: number;
+        total_tokens: number;
+    };
+}
+
+export const agentJudgeApi = {
+    evaluarRespuesta: (data: EvaluarRespuestaRequest) =>
+        // Usamos apiClient como en las demás rutas
+        apiClient.post<EvaluarRespuestaResponse>('/agent-judge/evaluar-respuesta', data),
+};
