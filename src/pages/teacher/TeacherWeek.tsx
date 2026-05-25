@@ -1,14 +1,13 @@
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Upload, Trash2, FileText, BookOpen, Loader2 } from "lucide-react";
+import { ArrowLeft, Upload, Trash2, FileText, BookOpen, Loader2, Eye } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { semanasApi } from "@/api/courses.ts"; // Asegúrate de que apunte a tu archivo correcto
+import { semanasApi } from "@/api/courses.ts";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useRef } from "react";
-import { useState } from "react";
-import { Eye } from "lucide-react"; // <-- Agrega Eye a tus importaciones de lucide-react
-import { PdfPreviewModal } from "@/components/PdfPreviewModal";
+import { useRef, useState } from "react";
+// 1. IMPORTAMOS EL NUEVO MODAL UNIVERSAL
+import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 
 export default function TeacherWeek() {
     const { courseId = "", semanaId = "" } = useParams();
@@ -21,7 +20,8 @@ export default function TeacherWeek() {
         enabled: !!semanaId,
     });
 
-    const [previewMongoId, setPreviewMongoId] = useState<string | null>(null);
+    // 2. ACTUALIZAMOS EL ESTADO PARA GUARDAR ID Y NOMBRE
+    const [selectedFile, setSelectedFile] = useState<{ id: string, name: string } | null>(null);
 
     const uploadMutation = useMutation({
         mutationFn: (files: File[]) => semanasApi.uploadFiles(semanaId, files),
@@ -34,7 +34,6 @@ export default function TeacherWeek() {
     });
 
     const deleteMutation = useMutation({
-        // Asegúrate de tener este método en tu backend si quieres borrar archivos individuales
         mutationFn: (materialId: string | number) => semanasApi.deleteMaterial(materialId),
         onSuccess: () => {
             toast.success("Archivo eliminado");
@@ -62,7 +61,7 @@ export default function TeacherWeek() {
 
             uploadMutation.mutate(files);
         }
-        e.target.value = ""; // Limpiamos el input
+        e.target.value = "";
     };
 
     if (isLoading) {
@@ -73,7 +72,6 @@ export default function TeacherWeek() {
         );
     }
 
-    // Adaptamos para leer la nueva lista 'materiales' (o un array vacío si no existe)
     const materiales = semana?.materiales || [];
 
     return (
@@ -135,11 +133,12 @@ export default function TeacherWeek() {
                                         ID MongoDB: <span className="font-mono">{mat.mongoId ?? "—"}</span>
                                     </p>
                                 </div>
+                                {/* 3. ACTUALIZAMOS EL BOTÓN DEL OJO PARA PASAR ID Y NOMBRE */}
                                 <Button
                                     size="sm"
                                     variant="secondary"
                                     className="rounded-xl"
-                                    onClick={() => setPreviewMongoId(mat.mongoId)}
+                                    onClick={() => setSelectedFile({ id: mat.mongoId, name: mat.nombreArchivo })}
                                 >
                                     <Eye className="w-4 h-4" />
                                 </Button>
@@ -204,10 +203,13 @@ export default function TeacherWeek() {
                     </div>
                 </div>
             </motion.section>
-            <PdfPreviewModal
-                mongoId={previewMongoId || ""}
-                isOpen={!!previewMongoId}
-                onClose={() => setPreviewMongoId(null)}
+
+            {/* 4. INYECTAMOS EL NUEVO MODAL AQUÍ */}
+            <UniversalPreviewModal
+                isOpen={!!selectedFile}
+                onClose={() => setSelectedFile(null)}
+                mongoId={selectedFile?.id || ""}
+                fileName={selectedFile?.name || ""}
             />
         </div>
     );

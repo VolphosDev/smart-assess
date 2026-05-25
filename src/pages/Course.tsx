@@ -1,9 +1,11 @@
 import { Link, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, CheckCircle2, Lock, PlayCircle, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Lock, PlayCircle, Sparkles, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { coursesApi } from "@/api";
+import { useState } from "react";
+import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 
 const colorMap = {
     primary: "bg-primary-gradient",
@@ -14,7 +16,10 @@ const colorMap = {
 export default function Course() {
     const { courseId = "" } = useParams();
 
-    // 1. Traemos el curso (ya lo tienes en caché del dashboard, pero lo pedimos igual)
+    // Estado para controlar el modal de previsualización
+    const [selectedFile, setSelectedFile] = useState<{ id: string, name: string } | null>(null);
+
+    // 1. Traemos el curso
     const { data: courses = [] } = useQuery({
         queryKey: ['student-courses'],
         queryFn: () => {
@@ -30,6 +35,10 @@ export default function Course() {
         queryFn: () => coursesApi.weeks(courseId),
         enabled: !!courseId,
     });
+
+    const openPreview = (id: string, name: string) => {
+        setSelectedFile({ id, name });
+    };
 
     if (!course) {
         return (
@@ -54,8 +63,8 @@ export default function Course() {
             >
                 <div className="absolute -right-6 -top-6 text-[10rem] opacity-20 select-none">{course.emoji}</div>
                 <span className="inline-block px-3 py-1 rounded-full bg-background/20 text-xs font-bold uppercase tracking-wider mb-3">
-          Curso · Semestre 2026-1
-        </span>
+                    Curso · Semestre 2026-1
+                </span>
                 <h1 className="font-display text-4xl md:text-5xl font-bold mb-3 max-w-2xl">{course.name}</h1>
                 <p className="opacity-90 max-w-xl mb-5">
                     {weeks.length} semanas
@@ -81,34 +90,50 @@ export default function Course() {
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: i * 0.05 }}
                         >
-                            <Link
-                                to={`/app/curso/${courseId}/semana/${w.id}`}
-                                className="group flex items-center gap-5 bg-card border border-border rounded-3xl p-5 shadow-soft transition-all hover:-translate-y-0.5"
-                            >
+                            <div className="group flex items-center gap-5 bg-card border border-border rounded-3xl p-5 shadow-soft transition-all hover:-translate-y-0.5">
+
                                 <div className="w-14 h-14 rounded-2xl grid place-items-center font-display font-bold text-xl shadow-soft shrink-0 bg-primary-gradient text-primary-foreground">
                                     {i + 1}
                                 </div>
+
                                 <div className="flex-1 min-w-0">
                                     <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                                         {w.numSem}
                                     </span>
 
-                                    <h3 className="font-display font-bold text-lg leading-tight truncate">
-                                        {w.materiales && w.materiales.length > 0
-                                            ? (w.materiales.length === 1
-                                                ? w.materiales[0].nombreArchivo
-                                                : `${w.materiales.length} archivos subidos`)
-                                            : "Sin material aún"}
-                                    </h3>
+                                    {/* Lógica de los materiales modificada para abrir el modal */}
+                                    {w.materiales && w.materiales.length > 0 ? (
+                                        <button
+                                            onClick={() => openPreview(w.materiales[0].mongoId, w.materiales[0].nombreArchivo)}
+                                            className="font-display font-bold text-lg leading-tight truncate flex items-center gap-2 hover:text-primary transition-colors text-left w-full mt-1"
+                                            title="Ver documento"
+                                        >
+                                            <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                                            <span className="truncate hover:underline">
+                                                {w.materiales.length === 1
+                                                    ? w.materiales[0].nombreArchivo
+                                                    : `${w.materiales.length} archivos subidos`}
+                                            </span>
+                                        </button>
+                                    ) : (
+                                        <h3 className="font-display font-bold text-lg leading-tight truncate text-muted-foreground mt-1">
+                                            Sin material aún
+                                        </h3>
+                                    )}
 
                                     <p className="text-sm text-muted-foreground mt-1">
                                         {w.totalPreguntas ?? 0} preguntas disponibles
                                     </p>
                                 </div>
-                                <div className="hidden sm:flex items-center gap-2 text-primary font-semibold text-sm shrink-0">
+
+                                {/* El enlace a la vista de la semana se mantiene solo en el botón de Evaluarme */}
+                                <Link
+                                    to={`/app/curso/${courseId}/semana/${w.id}`}
+                                    className="hidden sm:flex items-center gap-2 text-primary font-semibold text-sm shrink-0 px-4 py-2 rounded-xl hover:bg-primary/10 transition-colors"
+                                >
                                     <PlayCircle className="w-5 h-5" /> Evaluarme <ArrowRight className="w-4 h-4" />
-                                </div>
-                            </Link>
+                                </Link>
+                            </div>
                         </motion.li>
                     ))}
                 </ul>
@@ -123,6 +148,14 @@ export default function Course() {
                     <p className="text-sm text-muted-foreground">Te recomendamos seguir con la semana en curso para mantener tu racha.</p>
                 </div>
             </section>
+
+            {/* Aquí inyectamos el modal para que flote sobre todo */}
+            <UniversalPreviewModal
+                isOpen={!!selectedFile}
+                onClose={() => setSelectedFile(null)}
+                mongoId={selectedFile?.id || ""}
+                fileName={selectedFile?.name || ""}
+            />
         </div>
     );
 }
