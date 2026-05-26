@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Clock, Loader2, Eye } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Loader2, Eye, Lock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { semanasApi } from "@/api/courses.ts";
 import { cn } from "@/lib/utils";
@@ -119,11 +119,17 @@ export default function EvalModeSelect() {
                             mat.mongoId ? (
                                 <button
                                     key={mat.mongoId}
-                                    // CAMBIO 2: Pasamos un objeto con id y name
-                                    onClick={() => setSelectedFile({ id: mat.mongoId, name: mat.nombreArchivo })}
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-secondary/50 hover:bg-secondary text-sm font-bold rounded-xl transition-colors"
+                                    onClick={() => mat.visible && setSelectedFile({ id: mat.mongoId, name: mat.nombreArchivo })}
+                                    disabled={!mat.visible}
+                                    className={cn(
+                                        "inline-flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl transition-colors",
+                                        mat.visible
+                                            ? "bg-secondary/50 hover:bg-secondary cursor-pointer"
+                                            : "bg-secondary/20 text-muted-foreground/50 cursor-not-allowed"
+                                    )}
+                                    title={!mat.visible ? "Material oculto por el docente" : ""}
                                 >
-                                    <Eye className="w-4 h-4" />
+                                    {mat.visible ? <Eye className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                                     {materiales.length === 1
                                         ? "Leer documento antes de empezar"
                                         : `Documento ${idx + 1}: ${mat.nombreArchivo}`}
@@ -143,10 +149,21 @@ export default function EvalModeSelect() {
                 )}
             </header>
 
+            {/* Lógica de bloqueo de la semana */}
             {materiales.length === 0 ? (
                 <div className="bg-card border border-dashed border-border rounded-3xl p-10 text-center">
                     <p className="text-muted-foreground">
                         Tu profesor aún no ha cargado el material de esta semana.
+                    </p>
+                </div>
+            ) : materiales.every((mat: any) => !mat.visible) ? (
+                <div className="bg-card border border-dashed border-border rounded-3xl p-10 text-center flex flex-col items-center justify-center gap-2">
+                    <Lock className="w-8 h-8 text-muted-foreground/50" />
+                    <p className="text-muted-foreground font-semibold">
+                        El material de esta semana se encuentra oculto.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        No puedes iniciar evaluaciones hasta que el docente lo habilite.
                     </p>
                 </div>
             ) : (

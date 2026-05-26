@@ -101,20 +101,31 @@ export default function Course() {
                                         {w.numSem}
                                     </span>
 
-                                    {/* Lógica de los materiales modificada para abrir el modal */}
+                                    {/* Lógica de los materiales modificada para manejar la visibilidad */}
                                     {w.materiales && w.materiales.length > 0 ? (
-                                        <button
-                                            onClick={() => openPreview(w.materiales[0].mongoId, w.materiales[0].nombreArchivo)}
-                                            className="font-display font-bold text-lg leading-tight truncate flex items-center gap-2 hover:text-primary transition-colors text-left w-full mt-1"
-                                            title="Ver documento"
-                                        >
-                                            <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                                            <span className="truncate hover:underline">
-                                                {w.materiales.length === 1
-                                                    ? w.materiales[0].nombreArchivo
-                                                    : `${w.materiales.length} archivos subidos`}
-                                            </span>
-                                        </button>
+                                        w.materiales[0].visible ? (
+                                            <button
+                                                onClick={() => openPreview(w.materiales[0].mongoId, w.materiales[0].nombreArchivo)}
+                                                className="font-display font-bold text-lg leading-tight truncate flex items-center gap-2 hover:text-primary transition-colors text-left w-full mt-1"
+                                                title="Ver documento"
+                                            >
+                                                <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                                                <span className="truncate hover:underline">
+                                                    {w.materiales.length === 1
+                                                        ? w.materiales[0].nombreArchivo
+                                                        : `${w.materiales.length} archivos subidos`}
+                                                </span>
+                                            </button>
+                                        ) : (
+                                            <div className="font-display font-bold text-lg leading-tight truncate flex items-center gap-2 text-muted-foreground/50 text-left w-full mt-1 cursor-not-allowed" title="El profesor ocultó este material">
+                                                <Lock className="w-4 h-4 shrink-0" />
+                                                <span className="truncate">
+                                                    {w.materiales.length === 1
+                                                        ? w.materiales[0].nombreArchivo
+                                                        : `${w.materiales.length} archivos subidos`}
+                                                </span>
+                                            </div>
+                                        )
                                     ) : (
                                         <h3 className="font-display font-bold text-lg leading-tight truncate text-muted-foreground mt-1">
                                             Sin material aún
