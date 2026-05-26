@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Upload, Trash2, FileText, BookOpen, Loader2, Eye } from "lucide-react";
+import { ArrowLeft, Upload, Trash2, FileText, BookOpen, Loader2, Eye,EyeOff } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { semanasApi } from "@/api/courses.ts";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useRef, useState } from "react";
 // 1. IMPORTAMOS EL NUEVO MODAL UNIVERSAL
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
+import {cn} from "@/lib/utils.ts";
 
 export default function TeacherWeek() {
     const { courseId = "", semanaId = "" } = useParams();
@@ -41,6 +42,15 @@ export default function TeacherWeek() {
             queryClient.invalidateQueries({ queryKey: ["semanas", courseId] });
         },
         onError: () => toast.error("Error al eliminar el archivo"),
+    });
+
+    const toggleVisibilidadMutation = useMutation({
+        mutationFn: (materialId: string | number) => semanasApi.toggleMaterialVisibility(materialId),
+        onSuccess: () => {
+            toast.success("Visibilidad actualizada");
+            queryClient.invalidateQueries({ queryKey: ["semana", semanaId] });
+        },
+        onError: () => toast.error("Error al cambiar la visibilidad"),
     });
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,17 +133,31 @@ export default function TeacherWeek() {
                 {materiales.length > 0 ? (
                     <div className="space-y-3">
                         {materiales.map((mat: any) => (
-                            <div key={mat.id} className="flex items-center gap-4 bg-muted/50 rounded-2xl p-4">
-                                <div className="w-12 h-12 rounded-xl bg-primary-gradient grid place-items-center text-primary-foreground shadow-soft shrink-0">
+                            <div key={mat.id} className={cn(
+                                "flex items-center gap-4 rounded-2xl p-4 transition-all",
+                                mat.visible ? "bg-muted/50" : "bg-muted/20 opacity-60" // Si está oculto, se ve más apagado
+                            )}>
+                                <div className={cn(
+                                    "w-12 h-12 rounded-xl grid place-items-center text-primary-foreground shadow-soft shrink-0",
+                                    mat.visible ? "bg-primary-gradient" : "bg-muted-foreground"
+                                )}>
                                     <FileText className="w-5 h-5" />
                                 </div>
+
                                 <div className="flex-1 min-w-0">
                                     <p className="font-semibold truncate">{mat.nombreArchivo}</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                        ID MongoDB: <span className="font-mono">{mat.mongoId ?? "—"}</span>
-                                    </p>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                        <span className="font-mono">ID: {mat.mongoId ?? "—"}</span>
+                                        {mat.fechaCarga && (
+                                            <>
+                                                <span>•</span>
+                                                <span>{new Date(mat.fechaCarga).toLocaleDateString()}</span>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
-                                {/* 3. ACTUALIZAMOS EL BOTÓN DEL OJO PARA PASAR ID Y NOMBRE */}
+
+                                {/* Botón para previsualizar */}
                                 <Button
                                     size="sm"
                                     variant="secondary"
@@ -142,6 +166,19 @@ export default function TeacherWeek() {
                                 >
                                     <Eye className="w-4 h-4" />
                                 </Button>
+
+                                <Button
+                                    size="sm"
+                                    variant={mat.visible ? "outline" : "secondary"}
+                                    className={cn("rounded-xl", !mat.visible && "text-amber-600 bg-amber-100 hover:bg-amber-200")}
+                                    onClick={() => toggleVisibilidadMutation.mutate(mat.id)}
+                                    disabled={toggleVisibilidadMutation.isPending}
+                                    title={mat.visible ? "Ocultar a estudiantes" : "Mostrar a estudiantes"}
+                                >
+                                    {mat.visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </Button>
+
+                                {/* Botón de eliminar (ya lo tenías) */}
                                 <Button
                                     size="sm"
                                     variant="destructive"

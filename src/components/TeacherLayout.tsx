@@ -12,7 +12,7 @@ export default function TeacherLayout() {
             <span className="grid place-items-center w-9 h-9 rounded-2xl bg-primary-gradient text-primary-foreground shadow-glow">
               <Sparkles className="w-5 h-5" />
             </span>
-            Vocali · Docente
+            Semantika · Docente
           </Link>
           <nav className="hidden md:flex items-center gap-1 bg-card rounded-full p-1 border border-border shadow-soft">
             <NavLink

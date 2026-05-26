@@ -3,8 +3,9 @@ import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom"
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2, AlertCircle, BookOpen, Brain, CheckSquare, RefreshCw } from "lucide-react";
-import { evaluacionApi, agentJudgeApi } from "@/api/courses.ts";
+import { evaluacionApi, agentJudgeApi, intentosApi } from "@/api/courses.ts";
 import { cn } from "@/lib/utils";
+import {toast} from "sonner";
 
 interface Pregunta {
     enunciado: string;
@@ -294,14 +295,23 @@ export default function Practice() {
 
         setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
 
+        // Array temporal para ir acumulando las evaluaciones sin perder las anteriores
+        const nuevosResultados = [...resultados];
+
         try {
             for (let index = desdeIndice; index < preguntas.length; index++) {
                 const p = preguntas[index];
                 const respuestaEstudiante = respuestas[index] || "No respondió";
 
-                let respuestaEsperada = p.justificacion_pregunta;
-                if (mode === "ABIERTA" && Array.isArray(p.opciones_o_respuesta)) {
-                    respuestaEsperada += " Rúbrica: " + p.opciones_o_respuesta[0];
+                let respuestaEsperada: string;
+                if (mode === "VERDADERO_FALSO" || mode === "OPCION_MULTIPLE") {
+                    respuestaEsperada = p.justificacion_pregunta;
+                } else {
+                    // ABIERTA
+                    respuestaEsperada = p.justificacion_pregunta;
+                    if (Array.isArray(p.opciones_o_respuesta)) {
+                        respuestaEsperada += " Rúbrica: " + p.opciones_o_respuesta[0];
+                    }
                 }
 
                 try {
@@ -310,19 +320,42 @@ export default function Practice() {
                         respuestaEsperada,
                         respuestaEstudiante,
                         totalPreguntas: preguntas.length,
+                        tipoPregunta: mode,   // NUEVO
                     });
 
-                    setResultados((prev) => {
-                        const nuevos = [...prev];
-                        nuevos[index] = resultado;
-                        return nuevos;
-                    });
+                    nuevosResultados[index] = resultado;
+                    // Actualizamos el estado para que la UI se renderice pregunta por pregunta
+                    setResultados([...nuevosResultados]);
                 } catch (err) {
                     console.error(`Error evaluando pregunta ${index + 1}:`, err);
                     setErrorEnIndice(index);
-                    return;
+                    return; // Detiene el flujo si hay error (para poder reanudar luego)
                 }
             }
+
+            const notaCalculada = nuevosResultados.reduce((total, r) => total + (r?.evaluacion?.puntaje || 0), 0);
+
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+            const respuestasDetalle = nuevosResultados.map((res, i) => ({
+                preguntaTexto: preguntas[i].enunciado,
+                tipoPregunta: mode,
+                respuestaEstudiante: respuestas[i] || "No respondió",
+                esCorrecta: res.evaluacion.esCorrecta
+            }));
+
+            await intentosApi.guardar({
+                usuarioId: Number(user.id),
+                semanaId: Number(semanaId),
+                notaFinal: Number(notaCalculada.toFixed(2)),
+                respuestas: respuestasDetalle
+            });
+
+            toast.success("¡Examen calificado y guardado en tu historial!");
+
+        } catch(e) {
+            console.error("Error al guardar el historial:", e);
+            toast.error("El examen se calificó, pero hubo un error al guardarlo en el historial.");
         } finally {
             setEvaluando(false);
         }
@@ -471,18 +504,20 @@ export default function Practice() {
             {/* Calificación final */}
             {evaluacionCompleta && (
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="mt-8 p-6 rounded-3xl border-2 border-primary/20 bg-primary/5 text-center space-y-2"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-8 p-8 rounded-3xl border border-border bg-card shadow-soft space-y-6"
                 >
-                    <h2 className="text-xl font-bold text-muted-foreground">Calificación Final</h2>
-                    <p className="text-5xl font-display font-bold text-primary">
-                        {notaTotal}
-                        <span className="text-2xl text-muted-foreground"> / 20</span>
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-4">
-                        Revisa la retroalimentación en cada pregunta para mejorar.
-                    </p>
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-display text-2xl font-bold">Resultado final</h2>
+                        <div className="text-3xl font-bold text-primary">{notaTotal} / 20</div>
+                    </div>
+                    <button
+                        onClick={handleVolver}
+                        className="w-full py-3 rounded-2xl bg-primary-gradient text-white font-bold shadow-soft hover:opacity-90 active:scale-95 transition-all"
+                    >
+                        Volver
+                    </button>
                 </motion.div>
             )}
         </div>

@@ -1,12 +1,11 @@
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Clock, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Loader2, Eye } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { semanasApi } from "@/api/courses.ts";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { Eye } from "lucide-react";
-import { PdfPreviewModal } from "@/components/PdfPreviewModal";
+import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 
 const evalModes = [
     {
@@ -61,7 +60,8 @@ const colorMap = {
 export default function EvalModeSelect() {
     const { courseId = "", semanaId: week = "" } = useParams();
     const [cantidad, setCantidad] = useState(5);
-    const [previewMongoId, setPreviewMongoId] = useState<string | null>(null);
+
+    const [selectedFile, setSelectedFile] = useState<{ id: string, name: string } | null>(null);
 
     const { data: semana, isLoading } = useQuery({
         queryKey: ["semana", week],
@@ -119,7 +119,8 @@ export default function EvalModeSelect() {
                             mat.mongoId ? (
                                 <button
                                     key={mat.mongoId}
-                                    onClick={() => setPreviewMongoId(mat.mongoId)}
+                                    // CAMBIO 2: Pasamos un objeto con id y name
+                                    onClick={() => setSelectedFile({ id: mat.mongoId, name: mat.nombreArchivo })}
                                     className="inline-flex items-center gap-2 px-4 py-2 bg-secondary/50 hover:bg-secondary text-sm font-bold rounded-xl transition-colors"
                                 >
                                     <Eye className="w-4 h-4" />
@@ -250,10 +251,11 @@ export default function EvalModeSelect() {
                 </>
             )}
 
-            <PdfPreviewModal
-                mongoId={previewMongoId || ""}
-                isOpen={!!previewMongoId}
-                onClose={() => setPreviewMongoId(null)}
+            <UniversalPreviewModal
+                isOpen={!!selectedFile}
+                onClose={() => setSelectedFile(null)}
+                mongoId={selectedFile?.id || ""}
+                fileName={selectedFile?.name || ""}
             />
         </div>
     );

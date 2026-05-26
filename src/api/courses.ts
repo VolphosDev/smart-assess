@@ -58,6 +58,16 @@ export const semanasApi = {
     },
     deleteMaterial: (materialId: string | number) =>
         apiClient.delete<void>(`/semanas/material/${materialId}`),
+    toggleMaterialVisibility: (materialId: string | number) =>
+        apiClient.patch<any>(`/semanas/material/${materialId}/visibilidad`),
+};
+
+export const intentosApi = {
+    guardar: (data: any) => apiClient.post('/intentos/guardar', data),
+    misIntentos: (usuarioId: number) =>
+        apiClient.get<any[]>(`/intentos/mis-intentos/${usuarioId}`),
+    porSemana: (semanaId: number) =>
+        apiClient.get<any[]>(`/intentos/semana/${semanaId}`),
 };
 
 export const archivosApi = {
@@ -87,6 +97,7 @@ export interface EvaluarRespuestaRequest {
     respuestaEsperada: string;
     respuestaEstudiante: string;
     totalPreguntas: number;
+    tipoPregunta: string;
 }
 
 export interface EvaluarRespuestaResponse {

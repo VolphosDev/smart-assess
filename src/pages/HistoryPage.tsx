@@ -1,23 +1,43 @@
+import { useQuery } from "@tanstack/react-query";
+import { intentosApi } from "@/api/courses";
+import { useState } from "react";
+import {Loader2} from "lucide-react";
+import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
 import { motion } from "framer-motion";
-import { LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
-import { history } from "@/lib/mock-data";
 
 export default function HistoryPage() {
-  const data = [...history].reverse().map((h) => ({ name: h.topic, score: h.score }));
-  const avg = (history.reduce((a, b) => a + b.score, 0) / history.length).toFixed(1);
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const [intentoAbierto, setIntentoAbierto] = useState<any | null>(null);
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="font-display text-4xl font-bold mb-1">Tu progreso</h1>
-        <p className="text-muted-foreground">Revisa cada intento, descubre tus puntos fuertes y los temas a reforzar.</p>
-      </div>
+    const { data: intentos = [], isLoading } = useQuery({
+        queryKey: ["mis-intentos", user.id],
+        queryFn: () => intentosApi.misIntentos(Number(user.id)),
+        enabled: !!user.id,
+    });
+
+    const avg = intentos.length
+        ? (intentos.reduce((a: number, b: any) => a + b.nota, 0) / intentos.length).toFixed(1)
+        : "0.0";
+
+    const data = [...intentos].reverse().map((h: any) => ({
+        name: `Sem ${h.semana}`,
+        score: h.nota,
+    }));
+
+    if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+
+    return (
+        <div className="space-y-8">
+            <div>
+                <h1 className="font-display text-4xl font-bold mb-1">Tu progreso</h1>
+                <p className="text-muted-foreground">Revisa cada intento y descubre tus puntos a reforzar.</p>
+            </div>
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 bg-card border border-border rounded-3xl p-6 shadow-soft">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display font-bold text-xl">Evolución de notas</h3>
-            <span className="text-sm text-muted-foreground">Últimos {history.length} intentos</span>
+              <span className="text-sm text-muted-foreground">Últimos {intentos.length} intentos</span>
           </div>
           <div className="h-64">
             <ResponsiveContainer>
@@ -44,33 +64,60 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-3xl shadow-soft overflow-hidden">
-        <div className="p-6 border-b border-border">
-          <h3 className="font-display font-bold text-xl">Intentos recientes</h3>
+            <div className="bg-card border border-border rounded-3xl shadow-soft overflow-hidden">
+                <div className="p-6 border-b border-border">
+                    <h3 className="font-display font-bold text-xl">Intentos recientes</h3>
+                </div>
+                <ul className="divide-y divide-border">
+                    {intentos.map((h: any, i: number) => (
+                        <motion.li key={h.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+                                   transition={{ delay: i * 0.04 }}
+                                   className="flex items-center gap-4 p-5 hover:bg-muted/40 transition cursor-pointer"
+                                   onClick={() => setIntentoAbierto(h)}
+                        >
+                            <div className="w-12 h-12 rounded-2xl bg-primary-gradient grid place-items-center text-2xl shrink-0">📝</div>
+                            <div className="flex-1 min-w-0">
+                                <div className="font-bold">Semana {h.semana}</div>
+                                <div className="text-sm text-muted-foreground">
+                                    {new Date(h.fecha).toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" })}
+                                </div>
+                            </div>
+                            <div className={`px-4 py-2 rounded-full font-display font-bold ${h.nota >= 17 ? "bg-green-100 text-green-800" : h.nota >= 14 ? "bg-primary/15 text-primary" : "bg-red-100 text-red-800"}`}>
+                                {h.nota}/20
+                            </div>
+                        </motion.li>
+                    ))}
+                </ul>
+            </div>
+
+            {/* Modal de detalle */}
+            {intentoAbierto && (
+                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+                     onClick={() => setIntentoAbierto(null)}>
+                    <div className="bg-card rounded-3xl shadow-soft max-w-lg w-full max-h-[80vh] overflow-y-auto p-6 space-y-4"
+                         onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-display font-bold text-xl">Semana {intentoAbierto.semana}</h3>
+                            <span className="font-bold text-primary text-lg">{intentoAbierto.nota}/20</span>
+                        </div>
+                        <ul className="space-y-3">
+                            {intentoAbierto.respuestas.map((r: any, i: number) => (
+                                <li key={i} className={`p-4 rounded-xl border text-sm space-y-1 ${r.esCorrecta ? "border-green-200 bg-green-50/50" : "border-red-200 bg-red-50/50"}`}>
+                                    <p className="font-semibold text-foreground">{i + 1}. {r.pregunta}</p>
+                                    <p className="text-muted-foreground">Tu respuesta: <span className="font-medium text-foreground">{r.respuesta}</span></p>
+                                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${r.esCorrecta ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"}`}>
+                                        {r.esCorrecta ? "Correcto" : "Incorrecto"}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                        <button onClick={() => setIntentoAbierto(null)}
+                                className="w-full py-2 rounded-xl bg-primary-gradient text-white font-bold">
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
-        <ul className="divide-y divide-border">
-          {history.map((h, i) => (
-            <motion.li
-              key={h.id}
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.04 }}
-              className="flex items-center gap-4 p-5 hover:bg-muted/40 transition"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-primary-gradient grid place-items-center text-2xl shrink-0">
-                {h.course === "Biología" ? "🧬" : h.course === "Historia" ? "🏛️" : h.course === "Álgebra" ? "📐" : "📚"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold truncate">{h.topic}</div>
-                <div className="text-sm text-muted-foreground">{h.course} · {new Date(h.date).toLocaleDateString("es-PE", { day: "numeric", month: "short" })} · {h.durationMin} min</div>
-              </div>
-              <div className={`px-4 py-2 rounded-full font-display font-bold ${h.score >= 17 ? "bg-success/20 text-success" : h.score >= 14 ? "bg-primary/15 text-primary" : "bg-accent/20 text-accent"}`}>
-                {h.score}/20
-              </div>
-            </motion.li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
+    );
 }
