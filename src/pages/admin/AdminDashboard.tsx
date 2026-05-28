@@ -111,7 +111,7 @@ export default function AdminDashboard() {
           Panel administrador
         </span>
                 <h1 className="font-display text-4xl md:text-5xl font-bold mb-2 max-w-2xl">
-                    Gestiona alumnos, docentes y cursos
+                    Gestiona cuentas de alumnos y docentes
                 </h1>
                 <p className="opacity-90 max-w-xl">
                     Registra nuevas cuentas y asígnales una contraseña temporal.
