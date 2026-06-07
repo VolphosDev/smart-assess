@@ -21,6 +21,7 @@
     "noUnusedParameters": false,
     "noImplicitAny": false,
     "noFallthroughCasesInSwitch": false,
+    "types": ["vite/client", "dom-speech-recognition"],
 
     "paths": {
       "@/*": ["./src/*"]

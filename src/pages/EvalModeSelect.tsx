@@ -41,12 +41,12 @@ const evalModes = [
     {
         id: "avatar",
         emoji: "🤖",
-        color: "muted" as const,
+        color: "primary" as const,
         title: "Hablar con el avatar",
-        description: "Practica respondiendo en voz alta con un avatar conversacional.",
-        bullets: ["Evaluación por voz", "Retroalimentación en tiempo real", "Próximamente disponible"],
-        duration: "Próximamente",
-        disabled: true,
+        description: "Practica respondiendo en voz alta con ARIA, tu tutora IA.",
+        bullets: ["Conversación por voz", "Retroalimentación inmediata", "Preguntas del material real"],
+        duration: "10–15 min",
+        disabled: false,
     },
 ];
 
