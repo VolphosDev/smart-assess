@@ -290,7 +290,8 @@ export default function Practice() {
 
         try {
             const token = localStorage.getItem("token") || "";
-            const url = `http://localhost:8080/api/archivos/stream-tecnica-pdf?mongoId=${encodeURIComponent(
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+            const url = `${baseUrl}/archivos/stream-tecnica-pdf?mongoId=${encodeURIComponent(
                 mongoId
             )}&tipo=${mode}&cantidad=${cantidad}${tema ? `&tema=${encodeURIComponent(tema)}` : ""}&token=${token}`;
 

@@ -689,7 +689,8 @@ export default function AvatarTutor() {
         setTipoUltimoIntento("pregunta");
 
         try {
-            const res = await fetch("http://localhost:8080/api/archivos/tutor/pregunta", {
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+            const res = await fetch(`${baseUrl}/archivos/tutor/pregunta`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -746,7 +747,8 @@ export default function AvatarTutor() {
         setTurnoActual(turnoConRespuesta);
 
         try {
-            const res = await fetch("http://localhost:8080/api/archivos/tutor/analizar", {
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+            const res = await fetch(`${baseUrl}/archivos/tutor/analizar`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -885,7 +887,8 @@ export default function AvatarTutor() {
             formData.append("tema", tema);
             formData.append("nivelDificultad", turno <= 2 ? "básico" : turno <= 4 ? "intermedio" : "avanzado");
 
-            const res = await fetch("http://localhost:8080/api/archivos/tutor/analizar-audio", {
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+            const res = await fetch(`${baseUrl}/archivos/tutor/analizar-audio`, {
                 method: "POST",
                 headers: {
                     "Accept": "text/event-stream",
