@@ -2,6 +2,9 @@ import {useState, useEffect, useRef} from "react";
 import {useParams, useSearchParams, Link} from "react-router-dom";
 import {ArrowLeft, Mic, MicOff} from "lucide-react";
 import {motion, AnimatePresence} from "framer-motion";
+import {intentosApi} from "@/api/courses";
+import {toast} from "sonner";
+import {cn} from "@/lib/utils";
 
 type EstadoAvatar = "idle" | "pensando" | "hablando" | "esperando" | "escuchando" | "feliz" | "triste";
 
@@ -12,6 +15,7 @@ interface TurnData {
     pistaSiNoResponde: string;
     respuestaEstudiante?: string;
     feedback?: string;
+    puntuacion?: number;
 }
 
 
@@ -503,12 +507,14 @@ function useAudioRecorder(onAudioReady: (blob: Blob) => void, onError?: (msg: st
 
 // ── Detecta si la respuesta fue positiva o negativa ───────────────────────
 
-function detectarVeredicto(texto: string): "feliz" | "triste" {
-
+function detectarVeredicto(texto: string, puntuacion?: number): EstadoAvatar {
+    if (puntuacion !== undefined) {
+        if (puntuacion >= 3) return "feliz";
+        if (puntuacion === 2) return "idle";
+        return "triste";
+    }
     const positivos = /muy bien|excelente|correcto|perfecto|¡así es|exactamente|eso es|¡bien|acertaste|correc/i;
-
     return positivos.test(texto) ? "feliz" : "triste";
-
 }
 
 
@@ -599,13 +605,46 @@ export default function AvatarTutor() {
     const [turnoActual, setTurnoActual] = useState<TurnData | null>(null);
     const [feedback, setFeedback] = useState("");
     const [cargando, setCargando] = useState(false);
-    const [error, setError] = useState("");
+    const [error, setErrorState] = useState("");
+    const setError = (rawMsg: string) => {
+        if (!rawMsg) {
+            setErrorState("");
+            return;
+        }
+        const errorLower = rawMsg.toLowerCase();
+        if (
+            rawMsg.includes("503") || 
+            errorLower.includes("service unavailable") || 
+            errorLower.includes("high demand") || 
+            errorLower.includes("temporary") ||
+            errorLower.includes("experiencing high demand")
+        ) {
+            setErrorState("La IA está experimentando una alta demanda en su capa gratuita en este momento. Por favor, espera unos segundos e inténtalo de nuevo.");
+        } else if (
+            rawMsg.includes("429") || 
+            errorLower.includes("quota") || 
+            errorLower.includes("too many requests") || 
+            errorLower.includes("limit")
+        ) {
+            setErrorState("Hay muchas peticiones en la IA, actualmente está ocupada, así que inténtalo de nuevo más tarde.");
+        } else {
+            setErrorState(rawMsg);
+        }
+    };
     const [turnoListo, setTurnoListo] = useState(false);
 
     const [modoTexto, setModoTexto] = useState(false);
     const [textoEscrito, setTextoEscrito] = useState("");
 
     const {hablar, parar} = useTTS();
+
+    const [sesionFinalizada, setSesionFinalizada] = useState(false);
+    const [ultimoAudioBlob, setUltimoAudioBlob] = useState<Blob | null>(null);
+    const [ultimaRespuestaTexto, setUltimaRespuestaTexto] = useState("");
+    const [tipoUltimoIntento, setTipoUltimoIntento] = useState<"pregunta" | "analisis-texto" | "analisis-audio" | null>(null);
+
+    const cantidadParam = searchParams.get("cantidad");
+    const totalPreguntas = cantidadParam ? parseInt(cantidadParam, 10) : 5;
 
     const manejarErrorVoz = (msg: string) => {
         setError(msg);
@@ -637,11 +676,17 @@ export default function AvatarTutor() {
     };
 
     async function pedirSiguientePregunta(turnoNum: number) {
+        if (turnoNum > totalPreguntas) {
+            setSesionFinalizada(true);
+            return;
+        }
         setCargando(true);
         setEstado("pensando");
         setFeedback("");
         setTurnoActual(null);
         setTurnoListo(false);
+        setError("");
+        setTipoUltimoIntento("pregunta");
 
         try {
             const res = await fetch("http://localhost:8080/api/archivos/tutor/pregunta", {
@@ -652,7 +697,21 @@ export default function AvatarTutor() {
                 },
                 body: JSON.stringify({tema, mongoId, turno: turnoNum}),
             });
-            if (!res.ok) throw new Error("HTTP " + res.status);
+            if (!res.ok) {
+                let errorMsg = `Error del servidor: HTTP ${res.status}`;
+                try {
+                    const text = await res.text();
+                    if (text) {
+                        try {
+                            const parsed = JSON.parse(text);
+                            errorMsg = parsed.message || parsed.error || text;
+                        } catch {
+                            errorMsg = text;
+                        }
+                    }
+                } catch {}
+                throw new Error(errorMsg);
+            }
 
             const data = await res.json();
             const nuevo: TurnData = {
@@ -664,8 +723,8 @@ export default function AvatarTutor() {
             setTurnoActual(nuevo);
             setEstado("hablando");
             hablar(nuevo.pregunta, () => setEstado("esperando"));
-        } catch {
-            setError("No pude conectarme al servidor.");
+        } catch (err: any) {
+            setError(err?.message || "No pude conectarme al servidor.");
             setEstado("idle");
         } finally {
             setCargando(false);
@@ -679,6 +738,9 @@ export default function AvatarTutor() {
         if (!turnoActual) return;
         setEstado("pensando");
         parar();
+        setError("");
+        setUltimaRespuestaTexto(texto);
+        setTipoUltimoIntento("analisis-texto");
 
         const turnoConRespuesta: TurnData = {...turnoActual, respuestaEstudiante: texto};
         setTurnoActual(turnoConRespuesta);
@@ -722,6 +784,38 @@ export default function AvatarTutor() {
             let evName = "";
             let evData = "";
 
+            const procesarEvento = (name: string, data: string) => {
+                if (name === "feedback") {
+                    feedbackAcumulado += data;
+                    setFeedback(feedbackAcumulado);
+                } else if (name === "avatar_state") {
+                    try {
+                        const d = JSON.parse(data);
+                        setEstado(d.estado as EstadoAvatar);
+                    } catch (e) {
+                        console.error("Error al parsear avatar_state:", e);
+                    }
+                } else if (name === "done") {
+                    const match = feedbackAcumulado.match(/\[PUNTUACION:\s*(\d+)\]/i);
+                    const puntuacion = match ? parseInt(match[1], 10) : undefined;
+                    const veredicto = detectarVeredicto(feedbackAcumulado, puntuacion);
+                    const textToSpeak = feedbackAcumulado.replace(/\[PUNTUACION:\s*\d+\]/i, "").trim();
+                    if (!textToSpeak) {
+                        setError("No se pudo obtener una respuesta clara. Por favor, intenta de nuevo o escribe tu respuesta.");
+                        setEstado("esperando");
+                        return;
+                    }
+                    setEstado(veredicto);
+                    setHistorial(h => [...h, {...turnoConRespuesta, feedback: textToSpeak, puntuacion}]);
+                    setTurno(t => t + 1);
+                    setTurnoListo(true);
+                    hablar(textToSpeak);
+                } else if (name === "error") {
+                    setError(data || "Error al analizar tu respuesta.");
+                    setEstado("esperando");
+                }
+            };
+
             while (true) {
                 const {done, value} = await reader.read();
                 if (done) break;
@@ -729,42 +823,43 @@ export default function AvatarTutor() {
                 const lines = buf.split("\n");
                 buf = lines.pop()!;
                 for (const line of lines) {
-                    if (line.startsWith("event:")) evName = line.slice(6).trim();
-                    else if (line.startsWith("data:")) evData = line.slice(5).replace(/\r$/, "");
-                    else if (line.trim() === "") {
-                        if (evName === "feedback") {
-                            feedbackAcumulado += evData;
-                            setFeedback(feedbackAcumulado);
-                        } else if (evName === "avatar_state") {
-                            const d = JSON.parse(evData);
-                            setEstado(d.estado as EstadoAvatar);
-                        } else if (evName === "done") {
-                            const veredicto = detectarVeredicto(feedbackAcumulado);
-                            const textToSpeak = feedbackAcumulado.trim();
-                            if (!textToSpeak) {
-                                setError("No se pudo obtener una respuesta clara. Por favor, intenta de nuevo o escribe tu respuesta.");
-                                setEstado("esperando");
-                                return;
-                            }
-                            setEstado("hablando");
-                            hablar(textToSpeak, () => {
-                                setEstado(veredicto);
-                                setHistorial(h => [...h, {...turnoConRespuesta, feedback: textToSpeak}]);
-                                setTurno(t => t + 1);
-                                setTimeout(() => {
-                                    setEstado("idle");
-                                    setTurnoListo(true);
-                                }, 2000);
-                            });
-                        } else if (evName === "error") {
-                            setError(evData || "Error al analizar tu respuesta.");
-                            setEstado("esperando");
-                            return;
+                    if (line.startsWith("event:")) {
+                        evName = line.slice(6).trim();
+                    } else if (line.startsWith("data:")) {
+                        const val = line.slice(5).replace(/\r$/, "");
+                        evData = evData ? evData + "\n" + val : val;
+                    } else if (line.trim() === "") {
+                        if (evName) {
+                            procesarEvento(evName, evData);
+                            evName = "";
+                            evData = "";
                         }
-                        evName = "";
-                        evData = "";
                     }
                 }
+            }
+
+            // Procesar cualquier remanente en buf
+            if (buf.trim() !== "") {
+                const lines = buf.split("\n");
+                for (const line of lines) {
+                    if (line.startsWith("event:")) {
+                        evName = line.slice(6).trim();
+                    } else if (line.startsWith("data:")) {
+                        const val = line.slice(5).replace(/\r$/, "");
+                        evData = evData ? evData + "\n" + val : val;
+                    } else if (line.trim() === "") {
+                        if (evName) {
+                            procesarEvento(evName, evData);
+                            evName = "";
+                            evData = "";
+                        }
+                    }
+                }
+            }
+
+            // Procesar evento pendiente al cerrar conexión
+            if (evName) {
+                procesarEvento(evName, evData);
             }
         } catch (err: any) {
             setError(err?.message || "Error al analizar tu respuesta.");
@@ -776,6 +871,9 @@ export default function AvatarTutor() {
         if (!turnoActual) return;
         setEstado("pensando");
         parar();
+        setError("");
+        setUltimoAudioBlob(audioBlob);
+        setTipoUltimoIntento("analisis-audio");
 
         const turnoConRespuesta: TurnData = {...turnoActual, respuestaEstudiante: "[Respuesta grabada por audio]"};
         setTurnoActual(turnoConRespuesta);
@@ -819,6 +917,38 @@ export default function AvatarTutor() {
             let evName = "";
             let evData = "";
 
+            const procesarEvento = (name: string, data: string) => {
+                if (name === "feedback") {
+                    feedbackAcumulado += data;
+                    setFeedback(feedbackAcumulado);
+                } else if (name === "avatar_state") {
+                    try {
+                        const d = JSON.parse(data);
+                        setEstado(d.estado as EstadoAvatar);
+                    } catch (e) {
+                        console.error("Error al parsear avatar_state:", e);
+                    }
+                } else if (name === "done") {
+                    const match = feedbackAcumulado.match(/\[PUNTUACION:\s*(\d+)\]/i);
+                    const puntuacion = match ? parseInt(match[1], 10) : undefined;
+                    const veredicto = detectarVeredicto(feedbackAcumulado, puntuacion);
+                    const textToSpeak = feedbackAcumulado.replace(/\[PUNTUACION:\s*\d+\]/i, "").trim();
+                    if (!textToSpeak) {
+                        setError("No se pudo obtener una respuesta clara. Por favor, intenta de nuevo o escribe tu respuesta.");
+                        setEstado("esperando");
+                        return;
+                    }
+                    setEstado(veredicto);
+                    setHistorial(h => [...h, {...turnoConRespuesta, feedback: textToSpeak, puntuacion}]);
+                    setTurno(t => t + 1);
+                    setTurnoListo(true);
+                    hablar(textToSpeak);
+                } else if (name === "error") {
+                    setError(data || "Error al analizar tu respuesta.");
+                    setEstado("esperando");
+                }
+            };
+
             while (true) {
                 const {done, value} = await reader.read();
                 if (done) break;
@@ -826,42 +956,43 @@ export default function AvatarTutor() {
                 const lines = buf.split("\n");
                 buf = lines.pop()!;
                 for (const line of lines) {
-                    if (line.startsWith("event:")) evName = line.slice(6).trim();
-                    else if (line.startsWith("data:")) evData = line.slice(5).replace(/\r$/, "");
-                    else if (line.trim() === "") {
-                        if (evName === "feedback") {
-                            feedbackAcumulado += evData;
-                            setFeedback(feedbackAcumulado);
-                        } else if (evName === "avatar_state") {
-                            const d = JSON.parse(evData);
-                            setEstado(d.estado as EstadoAvatar);
-                        } else if (evName === "done") {
-                            const veredicto = detectarVeredicto(feedbackAcumulado);
-                            const textToSpeak = feedbackAcumulado.trim();
-                            if (!textToSpeak) {
-                                setError("No se pudo obtener una respuesta clara. Por favor, intenta de nuevo o escribe tu respuesta.");
-                                setEstado("esperando");
-                                return;
-                            }
-                            setEstado("hablando");
-                            hablar(textToSpeak, () => {
-                                setEstado(veredicto);
-                                setHistorial(h => [...h, {...turnoConRespuesta, feedback: textToSpeak}]);
-                                setTurno(t => t + 1);
-                                setTimeout(() => {
-                                    setEstado("idle");
-                                    setTurnoListo(true);
-                                }, 2000);
-                            });
-                        } else if (evName === "error") {
-                            setError(evData || "Error al analizar tu respuesta.");
-                            setEstado("esperando");
-                            return;
+                    if (line.startsWith("event:")) {
+                        evName = line.slice(6).trim();
+                    } else if (line.startsWith("data:")) {
+                        const val = line.slice(5).replace(/\r$/, "");
+                        evData = evData ? evData + "\n" + val : val;
+                    } else if (line.trim() === "") {
+                        if (evName) {
+                            procesarEvento(evName, evData);
+                            evName = "";
+                            evData = "";
                         }
-                        evName = "";
-                        evData = "";
                     }
                 }
+            }
+
+            // Procesar cualquier remanente en buf
+            if (buf.trim() !== "") {
+                const lines = buf.split("\n");
+                for (const line of lines) {
+                    if (line.startsWith("event:")) {
+                        evName = line.slice(6).trim();
+                    } else if (line.startsWith("data:")) {
+                        const val = line.slice(5).replace(/\r$/, "");
+                        evData = evData ? evData + "\n" + val : val;
+                    } else if (line.trim() === "") {
+                        if (evName) {
+                            procesarEvento(evName, evData);
+                            evName = "";
+                            evData = "";
+                        }
+                    }
+                }
+            }
+
+            // Procesar evento pendiente al cerrar conexión
+            if (evName) {
+                procesarEvento(evName, evData);
             }
         } catch (err: any) {
             setError(err?.message || "Error al analizar tu respuesta.");
@@ -869,7 +1000,162 @@ export default function AvatarTutor() {
         }
     }
 
+    function reintentarUltimoIntento() {
+        setError("");
+        if (tipoUltimoIntento === "pregunta") {
+            pedirSiguientePregunta(turno);
+        } else if (tipoUltimoIntento === "analisis-texto") {
+            onRespuestaVoz(ultimaRespuestaTexto);
+        } else if (tipoUltimoIntento === "analisis-audio") {
+            if (ultimoAudioBlob) {
+                onAudioListo(ultimoAudioBlob);
+            } else {
+                setError("No se encontró el audio previo para reintentar. Por favor graba de nuevo.");
+            }
+        }
+    }
+
+    async function guardarIntento() {
+        setCargando(true);
+        setError("");
+        try {
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+            if (!user.id) throw new Error("Usuario no encontrado en la sesión");
+
+            // Convertir puntajes a escala de 20 puntos:
+            const maxWeight = 20 / totalPreguntas;
+            const notaCalculada = historial.reduce((acc, h) => {
+                const pts = h.puntuacion || 1;
+                return acc + (pts / 4) * maxWeight;
+            }, 0);
+
+            const respuestasDetalle = historial.map(h => ({
+                preguntaTexto: h.pregunta,
+                tipoPregunta: "ABIERTA",
+                respuestaEstudiante: h.respuestaEstudiante || "No respondió",
+                esCorrecta: (h.puntuacion !== undefined && h.puntuacion >= 2)
+            }));
+
+            await intentosApi.guardar({
+                usuarioId: Number(user.id),
+                semanaId: Number(semanaId),
+                notaFinal: Number(notaCalculada.toFixed(2)),
+                respuestas: respuestasDetalle
+            });
+
+            toast.success("¡Sesión guardada en tu historial!");
+            setSesionFinalizada(true);
+        } catch (err: any) {
+            console.error("Error al guardar el intento:", err);
+            setError(err?.message || "No se pudo guardar la sesión en el historial.");
+        } finally {
+            setCargando(false);
+        }
+    }
+
     const anim = animProps(estado);
+
+    if (sesionFinalizada) {
+        const preguntasConPuntaje = historial.filter(h => h.puntuacion !== undefined);
+        const promedio = preguntasConPuntaje.length > 0 
+            ? (preguntasConPuntaje.reduce((acc, curr) => acc + (curr.puntuacion || 0), 0) / preguntasConPuntaje.length).toFixed(1)
+            : null;
+
+        const estadoFinal = promedio && parseFloat(promedio) >= 2.5 ? "feliz" : "triste";
+        const mensajeFinal = promedio && parseFloat(promedio) >= 2.5 ? "¡Excelente esfuerzo!" : "¡Sigue practicando!";
+
+        return (
+            <div className="max-w-2xl mx-auto space-y-6 pb-20 text-center">
+                <Link
+                    to={`/app/curso/${courseId}/semana/${semanaId}`}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground self-start mb-4"
+                >
+                    <ArrowLeft className="w-4 h-4"/> Volver al curso
+                </Link>
+
+                <header className="space-y-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Resumen de Desempeño
+                    </span>
+                    <h1 className="font-display text-4xl font-bold text-primary">¡Sesión Finalizada!</h1>
+                    <p className="text-muted-foreground">
+                        Has completado la sesión de tutoría sobre <strong>{tema}</strong>.
+                    </p>
+                </header>
+
+                {/* Aria Avatar reacts dynamically */}
+                <div className="flex flex-col items-center gap-2">
+                    <AriaSvg estado={estadoFinal}/>
+                    <span className="text-lg font-bold text-foreground">{mensajeFinal}</span>
+                </div>
+
+                {promedio && (
+                    <div className="bg-primary-gradient text-white rounded-3xl p-6 shadow-lg space-y-2">
+                        <span className="text-xs font-bold uppercase tracking-wider opacity-90 block">Puntuación de Razonamiento Promedio</span>
+                        <div className="text-5xl font-black">{promedio} <span className="text-2xl font-normal opacity-85">/ 4</span></div>
+                        <div className="text-lg font-bold border-t border-white/20 pt-2">
+                            Nota equivalente: {((parseFloat(promedio) / 4) * 20).toFixed(1)} / 20
+                        </div>
+                        <p className="text-sm opacity-90 pt-2">
+                            {parseFloat(promedio) >= 3.5 
+                                ? "¡Fantástico! Tus respuestas demuestran un nivel muy alto de fundamentación y análisis crítico."
+                                : parseFloat(promedio) >= 2.5
+                                ? "¡Buen trabajo! Has fundamentado tus ideas, aunque puedes profundizar un poco más en la justificación."
+                                : "Sigue practicando para argumentar con mayor nivel de detalle y conectar ideas del material."}
+                        </p>
+                    </div>
+                )}
+
+                <div className="space-y-4 text-left">
+                    <h3 className="font-display font-bold text-xl mb-3">Detalle de la Conversación</h3>
+                    {historial.map((h, i) => (
+                        <div key={i} className="bg-card border border-border rounded-2xl p-5 space-y-3 shadow-sm">
+                            <div className="flex justify-between items-start gap-4 border-b border-border pb-2">
+                                <span className="text-xs font-bold text-muted-foreground uppercase">
+                                    Pregunta {h.turno}
+                                </span>
+                                {h.puntuacion !== undefined && (
+                                    <div className="flex items-center gap-1">
+                                        {[...Array(4)].map((_, idx) => (
+                                            <span 
+                                                key={idx} 
+                                                className={cn(
+                                                    "text-lg", 
+                                                    idx < (h.puntuacion || 0) ? "text-amber-500" : "text-muted-foreground/30"
+                                                )}
+                                            >
+                                                ★
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+							</div>
+                            <p className="font-semibold text-foreground leading-relaxed">{h.pregunta}</p>
+                            <div className="bg-secondary/30 rounded-xl p-3 text-sm">
+                                <span className="text-xs font-bold text-muted-foreground uppercase block mb-1">Tu respuesta:</span>
+                                <p className="italic text-foreground">"{h.respuestaEstudiante}"</p>
+                            </div>
+                            {h.feedback && (
+                                <div className="bg-primary/5 border border-primary/15 rounded-xl p-3 text-sm">
+                                    <span className="text-xs font-bold text-primary uppercase block mb-1">Feedback de ARIA:</span>
+                                    <p className="text-foreground leading-relaxed">{h.feedback}</p>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+
+                <div className="pt-6">
+                    <Link
+                        to={`/app/curso/${courseId}/semana/${semanaId}`}
+                        className="inline-flex items-center justify-center px-8 py-3 rounded-xl bg-primary text-white font-bold text-md shadow hover:opacity-90 transition hover:scale-105 active:scale-95"
+                    >
+                        Volver a la Semana
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-2xl mx-auto space-y-6 pb-20">
@@ -882,7 +1168,7 @@ export default function AvatarTutor() {
 
             <header className="text-center space-y-1">
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Sesión con ARIA · Turno {turno}
+                    Sesión con ARIA · Pregunta {Math.min(turno, totalPreguntas)} de {totalPreguntas}
                 </span>
                 <h1 className="font-display text-3xl font-bold">{tema}</h1>
             </header>
@@ -921,7 +1207,7 @@ export default function AvatarTutor() {
                         Empezar Sesión
                     </button>
                     <p className="text-sm text-muted-foreground mt-4 text-center">
-                        Haz clic para iniciar y permitir el audio.
+                        Haz clic para iniciar y permitir el audio (cantidad de preguntas: {totalPreguntas}).
                     </p>
                 </div>
             ) : (
@@ -954,34 +1240,70 @@ export default function AvatarTutor() {
 
                     {/* Feedback */}
                     <AnimatePresence>
-                        {feedback && (
-                            <motion.div
-                                key="feedback-card"
-                                initial={{opacity: 0, y: 6}}
-                                animate={{opacity: 1, y: 0}}
-                                className="bg-primary/5 border border-primary/20 rounded-2xl p-5"
-                            >
-                                <span className="text-xs font-bold text-primary uppercase block mb-2">
-                                    ARIA responde:
-                                </span>
-                                <p className="text-sm leading-relaxed">{feedback}</p>
-                            </motion.div>
-                        )}
+                        {feedback && (() => {
+                            const match = feedback.match(/\[PUNTUACION:\s*(\d+)\]/i);
+                            const puntuacionActual = match ? parseInt(match[1], 10) : undefined;
+                            return (
+                                <motion.div
+                                    key="feedback-card"
+                                    initial={{opacity: 0, y: 6}}
+                                    animate={{opacity: 1, y: 0}}
+                                    className="bg-primary/5 border border-primary/20 rounded-2xl p-5"
+                                >
+                                    <div className="flex justify-between items-center mb-2 border-b border-primary/10 pb-2">
+                                        <span className="text-xs font-bold text-primary uppercase">
+                                            ARIA responde:
+                                        </span>
+                                        {puntuacionActual !== undefined && (
+                                            <div className="flex items-center gap-1.5 bg-primary/10 px-2 py-0.5 rounded-full text-xs font-bold text-primary">
+                                                <span>Fundamentación:</span>
+                                                <div className="flex">
+                                                    {[...Array(4)].map((_, idx) => (
+                                                        <span 
+                                                            key={idx} 
+                                                            className={cn(
+                                                                "text-sm", 
+                                                                idx < puntuacionActual ? "text-amber-500" : "text-muted-foreground/30"
+                                                            )}
+                                                        >
+                                                            ★
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-sm leading-relaxed">{feedback.replace(/\[PUNTUACION:\s*\d+\]/i, "").trim()}</p>
+                                </motion.div>
+                            );
+                        })()}
                     </AnimatePresence>
 
                     {turnoListo ? (
                         <div className="flex flex-col items-center justify-center py-4 w-full">
-                            <motion.button
-                                initial={{opacity: 0, y: 6}}
-                                animate={{opacity: 1, y: 0}}
-                                onClick={() => {
-                                    setModoTexto(false);
-                                    pedirSiguientePregunta(turno);
-                                }}
-                                className="px-8 py-3 rounded-xl bg-primary text-white font-bold text-md shadow hover:opacity-90 transition hover:scale-105 active:scale-95"
-                            >
-                                Siguiente pregunta →
-                            </motion.button>
+                            {turno <= totalPreguntas ? (
+                                <motion.button
+                                    initial={{opacity: 0, y: 6}}
+                                    animate={{opacity: 1, y: 0}}
+                                    onClick={() => {
+                                        setModoTexto(false);
+                                        pedirSiguientePregunta(turno);
+                                    }}
+                                    className="px-8 py-3 rounded-xl bg-primary text-white font-bold text-md shadow hover:opacity-90 transition hover:scale-105 active:scale-95"
+                                >
+                                    Siguiente pregunta →
+                                </motion.button>
+                            ) : (
+                                <motion.button
+                                    initial={{opacity: 0, y: 6}}
+                                    animate={{opacity: 1, y: 0}}
+                                    onClick={guardarIntento}
+                                    disabled={cargando}
+                                    className="px-8 py-3 rounded-xl bg-primary-gradient text-white font-bold text-md shadow hover:opacity-90 transition hover:scale-105 active:scale-95 disabled:opacity-50"
+                                >
+                                    {cargando ? "Guardando en historial..." : "Ver resultados de la sesión"}
+                                </motion.button>
+                            )}
                         </div>
                     ) : modoTexto ? (
                         <div className="w-full bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm text-left">
@@ -1088,8 +1410,25 @@ export default function AvatarTutor() {
                 <div className="space-y-3">
                     <h3 className="font-display font-bold text-lg">Historial</h3>
                     {historial.map((h, i) => (
-                        <div key={i} className="bg-secondary/30 rounded-xl p-4 text-sm space-y-1">
-                            <p className="font-semibold">Turno {h.turno}: {h.pregunta}</p>
+                        <div key={i} className="bg-secondary/30 rounded-xl p-4 text-sm space-y-2">
+                            <div className="flex justify-between items-center gap-2">
+                                <p className="font-semibold text-foreground">Turno {h.turno}: {h.pregunta}</p>
+                                {h.puntuacion !== undefined && (
+                                    <div className="flex shrink-0">
+                                        {[...Array(4)].map((_, idx) => (
+                                            <span 
+                                                key={idx} 
+                                                className={cn(
+                                                    "text-sm", 
+                                                    idx < (h.puntuacion || 0) ? "text-amber-500" : "text-muted-foreground/30"
+                                                )}
+                                            >
+                                                ★
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             <p className="text-muted-foreground">Tu respuesta: {h.respuestaEstudiante}</p>
                         </div>
                     ))}
@@ -1097,7 +1436,15 @@ export default function AvatarTutor() {
             )}
 
             {error && (
-                <p className="text-center text-sm text-destructive font-semibold">{error}</p>
+                <div className="flex flex-col items-center gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-2xl">
+                    <p className="text-center text-sm text-destructive font-semibold">{error}</p>
+                    <button
+                        onClick={reintentarUltimoIntento}
+                        className="px-5 py-2 rounded-xl bg-destructive text-white text-xs font-bold shadow hover:bg-destructive/90 transition-all"
+                    >
+                        Reintentar acción
+                    </button>
+                </div>
             )}
         </div>
     );
