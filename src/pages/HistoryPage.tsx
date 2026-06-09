@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { intentosApi } from "@/api/courses";
 import { useState } from "react";
-import {Loader2} from "lucide-react";
+import { Loader2, Eye } from "lucide-react";
 import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
 import { motion } from "framer-motion";
 
@@ -75,15 +75,28 @@ export default function HistoryPage() {
                                    className="flex items-center gap-4 p-5 hover:bg-muted/40 transition cursor-pointer"
                                    onClick={() => setIntentoAbierto(h)}
                         >
-                            <div className="w-12 h-12 rounded-2xl bg-primary-gradient grid place-items-center text-2xl shrink-0">📝</div>
+                            <div className="w-12 h-12 rounded-2xl bg-primary-gradient grid place-items-center text-2xl shrink-0">
+                                {h.cursoEmoji || "📝"}
+                            </div>
                             <div className="flex-1 min-w-0">
-                                <div className="font-bold">Semana {h.semana}</div>
+                                <div className="font-bold truncate">
+                                    {h.cursoNombre} · {h.semana}
+                                </div>
                                 <div className="text-sm text-muted-foreground">
                                     {new Date(h.fecha).toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" })}
                                 </div>
                             </div>
-                            <div className={`px-4 py-2 rounded-full font-display font-bold ${h.nota >= 17 ? "bg-green-100 text-green-800" : h.nota >= 14 ? "bg-primary/15 text-primary" : "bg-red-100 text-red-800"}`}>
-                                {h.nota}/20
+                            <div className="flex items-center gap-3 shrink-0">
+                                <span className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-primary border border-primary/20 bg-primary/5 px-3.5 py-2 rounded-2xl hover:bg-primary/10 transition-colors">
+                                    <Eye className="w-3.5 h-3.5" />
+                                    Ver respuestas anteriores
+                                </span>
+                                <span className="flex sm:hidden items-center justify-center text-xs font-bold text-primary border border-primary/20 bg-primary/5 p-2 rounded-xl hover:bg-primary/10 transition-colors" title="Ver respuestas anteriores">
+                                    <Eye className="w-4 h-4" />
+                                </span>
+                                <div className={`px-4 py-2 rounded-full font-display font-bold ${h.nota >= 17 ? "bg-green-100 text-green-800" : h.nota >= 14 ? "bg-primary/15 text-primary" : "bg-red-100 text-red-800"}`}>
+                                    {h.nota}/20
+                                </div>
                             </div>
                         </motion.li>
                     ))}
@@ -96,9 +109,15 @@ export default function HistoryPage() {
                      onClick={() => setIntentoAbierto(null)}>
                     <div className="bg-card rounded-3xl shadow-soft max-w-lg w-full max-h-[80vh] overflow-y-auto p-6 space-y-4"
                          onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-between">
-                            <h3 className="font-display font-bold text-xl">Semana {intentoAbierto.semana}</h3>
-                            <span className="font-bold text-primary text-lg">{intentoAbierto.nota}/20</span>
+                        <div className="flex flex-col gap-1 border-b border-border pb-3">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-display font-bold text-xl flex items-center gap-2">
+                                    <span>{intentoAbierto.cursoEmoji || "📝"}</span>
+                                    <span className="truncate max-w-[280px]">{intentoAbierto.cursoNombre}</span>
+                                </h3>
+                                <span className="font-bold text-primary text-lg shrink-0">{intentoAbierto.nota}/20</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground font-semibold">{intentoAbierto.semana}</p>
                         </div>
                         <ul className="space-y-3">
                             {intentoAbierto.respuestas.map((r: any, i: number) => (

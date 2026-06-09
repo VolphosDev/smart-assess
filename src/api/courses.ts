@@ -3,9 +3,9 @@ import { apiClient } from "./client";
 import type { CourseRecord } from "./store";
 
 export const evaluacionApi = {
-    generarPreguntas: (mongoId: string, tipo: string, cantidad: number = 5) =>
+    generarPreguntas: (mongoId: string, tipo: string, cantidad: number = 5, tema?: string) =>
         apiClient.post<any>(
-            `/archivos/una-tecnica-pdf-id?mongoId=${encodeURIComponent(mongoId)}&tipo=${tipo}&cantidad=${cantidad}`,
+            `/archivos/una-tecnica-pdf-id?mongoId=${encodeURIComponent(mongoId)}&tipo=${tipo}&cantidad=${cantidad}${tema ? `&tema=${encodeURIComponent(tema)}` : ""}`,
             null
         ),
 };
@@ -81,7 +81,8 @@ export const archivosApi = {
         const headers: Record<string, string> = {};
         if (token) headers["Authorization"] = `Bearer ${token}`;
 
-        const res = await fetch(`http://localhost:8080/api/archivos/subir`, {
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+        const res = await fetch(`${baseUrl}/archivos/subir`, {
             method: "POST",
             headers,
             body: formData,
