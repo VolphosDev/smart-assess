@@ -256,7 +256,12 @@ export default function EvalModeSelect() {
                                         <div>{cardContent}</div>
                                     ) : (
                                         <Link
-                                            to={`/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${materiales[0]?.mongoId ?? ""}`}
+                                            to={`/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${materiales[0]?.mongoId ?? ""}&tema=${encodeURIComponent(
+                                                (materiales[0]?.nombreArchivo || "")
+                                                    .replace(/\.[^/.]+$/, "") // Quitar extensión
+                                                    .replace(/[-_]/g, " ")     // Limpiar guiones
+                                                    .trim()
+                                            )}`}
                                         >
                                             {cardContent}
                                         </Link>

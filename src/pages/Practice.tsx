@@ -11,6 +11,7 @@ interface Pregunta {
     enunciado: string;
     opciones_o_respuesta: string[] | string;
     justificacion_pregunta: string;
+    respuesta_correcta?: string;
 }
 
 interface EvaluacionResponse {
@@ -39,74 +40,135 @@ const modeLabels: Record<string, { label: string; icon: React.ReactNode; color: 
 };
 
 function PreguntaMultiple({
-                              pregunta, index, valor, onChange, disabled,
+                              pregunta, index, valor, onChange, disabled, resultado,
                           }: {
-    pregunta: Pregunta; index: number; valor: string; onChange: (val: string) => void; disabled?: boolean;
+    pregunta: Pregunta; index: number; valor: string; onChange: (val: string) => void; disabled?: boolean; resultado?: any;
 }) {
     const opcionesArray = Array.isArray(pregunta.opciones_o_respuesta)
         ? pregunta.opciones_o_respuesta
         : (pregunta.opciones_o_respuesta || "").split(" | ");
 
+    const tieneResultado = !!resultado;
+    const respuestaCorrecta = pregunta.respuesta_correcta || "";
+
     return (
         <div className="space-y-3">
             <p className="font-semibold text-foreground leading-relaxed">{pregunta.enunciado}</p>
             <ul className="space-y-2">
-                {opcionesArray.map((op, i) => (
-                    <li key={i}>
-                        <label className={cn(
-                            "flex items-start gap-3 p-3 rounded-xl border border-border bg-secondary/20 transition-colors",
-                            disabled ? "opacity-60 cursor-not-allowed" : "hover:bg-secondary/40 cursor-pointer"
-                        )}>
-                            <input
-                                type="radio"
-                                name={`q-${index}`}
-                                value={op}
-                                checked={valor === op}
-                                onChange={(e) => onChange(e.target.value)}
-                                disabled={disabled}
-                                className="mt-0.5 accent-primary shrink-0 disabled:cursor-not-allowed"
-                            />
-                            <span className="text-sm">{op}</span>
-                        </label>
-                    </li>
-                ))}
+                {opcionesArray.map((op, i) => {
+                    const esSeleccionado = valor === op;
+                    const esCorrecto = op === respuestaCorrecta || op.trim() === respuestaCorrecta.trim();
+                    
+                    let cardStyle = "border-border bg-secondary/20 hover:bg-secondary/40";
+                    if (tieneResultado) {
+                        if (esCorrecto) {
+                            cardStyle = "border-green-300 bg-green-500/10 text-green-700 dark:text-green-300";
+                        } else if (esSeleccionado && !esCorrecto) {
+                            cardStyle = "border-red-300 bg-red-500/10 text-red-700 dark:text-red-300";
+                        } else {
+                            cardStyle = "border-border bg-secondary/10 opacity-60";
+                        }
+                    } else if (esSeleccionado) {
+                        cardStyle = "border-primary bg-primary/5";
+                    }
+
+                    return (
+                        <li key={i}>
+                            <label className={cn(
+                                "flex items-start gap-3 p-3 rounded-xl border transition-colors text-sm",
+                                disabled ? "cursor-not-allowed" : "cursor-pointer",
+                                cardStyle
+                            )}>
+                                <input
+                                    type="radio"
+                                    name={`q-${index}`}
+                                    value={op}
+                                    checked={esSeleccionado}
+                                    onChange={(e) => onChange(e.target.value)}
+                                    disabled={disabled}
+                                    className="mt-0.5 accent-primary shrink-0 disabled:cursor-not-allowed"
+                                />
+                                <span className="font-medium">{op}</span>
+                                {tieneResultado && esCorrecto && (
+                                    <span className="ml-auto text-xs font-bold text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-full shrink-0">
+                                        Correcta
+                                    </span>
+                                )}
+                                {tieneResultado && esSeleccionado && !esCorrecto && (
+                                    <span className="ml-auto text-xs font-bold text-red-600 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full shrink-0">
+                                        Tu respuesta
+                                    </span>
+                                )}
+                            </label>
+                        </li>
+                    );
+                })}
             </ul>
         </div>
     );
 }
 
 function PreguntaVF({
-                        pregunta, index, valor, onChange, disabled,
+                        pregunta, index, valor, onChange, disabled, resultado,
                     }: {
-    pregunta: Pregunta; index: number; valor: string; onChange: (val: string) => void; disabled?: boolean;
+    pregunta: Pregunta; index: number; valor: string; onChange: (val: string) => void; disabled?: boolean; resultado?: any;
 }) {
+    const tieneResultado = !!resultado;
+    const respuestaCorrecta = pregunta.respuesta_correcta || "";
+
     return (
         <div className="space-y-3">
             <p className="font-semibold text-foreground leading-relaxed">{pregunta.enunciado}</p>
             <div className="flex gap-3">
-                {["VERDADERO", "FALSO"].map((op) => (
-                    <label
-                        key={op}
-                        className={cn(
-                            "flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border transition-colors text-sm font-semibold",
-                            disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer",
-                            valor === op
-                                ? "border-primary bg-primary/10"
-                                : "border-border bg-secondary/20 hover:bg-secondary/40"
-                        )}
-                    >
-                        <input
-                            type="radio"
-                            name={`q-${index}`}
-                            value={op}
-                            checked={valor === op}
-                            onChange={(e) => onChange(e.target.value)}
-                            disabled={disabled}
-                            className="hidden"
-                        />
-                        {op}
-                    </label>
-                ))}
+                {["VERDADERO", "FALSO"].map((op) => {
+                    const esSeleccionado = valor === op;
+                    const esCorrecto = op === respuestaCorrecta || op.trim() === respuestaCorrecta.trim();
+
+                    let cardStyle = "border-border bg-secondary/20 hover:bg-secondary/40";
+                    if (tieneResultado) {
+                        if (esCorrecto) {
+                            cardStyle = "border-green-300 bg-green-500/10 text-green-700 dark:text-green-300";
+                        } else if (esSeleccionado && !esCorrecto) {
+                            cardStyle = "border-red-300 bg-red-500/10 text-red-700 dark:text-red-300";
+                        } else {
+                            cardStyle = "border-border bg-secondary/10 opacity-60";
+                        }
+                    } else if (esSeleccionado) {
+                        cardStyle = "border-primary bg-primary/10";
+                    }
+
+                    return (
+                        <label
+                            key={op}
+                            className={cn(
+                                "flex-1 flex flex-col items-center justify-center gap-1 p-3 rounded-xl border transition-colors text-sm font-semibold relative",
+                                disabled ? "cursor-not-allowed" : "cursor-pointer",
+                                cardStyle
+                            )}
+                        >
+                            <input
+                                type="radio"
+                                name={`q-${index}`}
+                                value={op}
+                                checked={esSeleccionado}
+                                onChange={(e) => onChange(e.target.value)}
+                                disabled={disabled}
+                                className="hidden"
+                            />
+                            <span>{op}</span>
+                            {tieneResultado && esCorrecto && (
+                                <span className="text-[10px] font-bold text-green-600 uppercase">
+                                    Correcto
+                                </span>
+                            )}
+                            {tieneResultado && esSeleccionado && !esCorrecto && (
+                                <span className="text-[10px] font-bold text-red-600 uppercase">
+                                    Marcado
+                                </span>
+                            )}
+                        </label>
+                    );
+                })}
             </div>
         </div>
     );
@@ -133,9 +195,9 @@ function PreguntaAbierta({
 }
 
 function PreguntaCard({
-                          pregunta, index, tipo, valor, onChange, disabled,
+                          pregunta, index, tipo, valor, onChange, disabled, resultado,
                       }: {
-    pregunta: Pregunta; index: number; tipo: string; valor: string; onChange: (val: string) => void; disabled?: boolean;
+    pregunta: Pregunta; index: number; tipo: string; valor: string; onChange: (val: string) => void; disabled?: boolean; resultado?: any;
 }) {
     return (
         <motion.div
@@ -154,10 +216,10 @@ function PreguntaCard({
             </div>
 
             {tipo === "OPCION_MULTIPLE" && (
-                <PreguntaMultiple pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} />
+                <PreguntaMultiple pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} resultado={resultado} />
             )}
             {tipo === "VERDADERO_FALSO" && (
-                <PreguntaVF pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} />
+                <PreguntaVF pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} resultado={resultado} />
             )}
             {tipo === "ABIERTA" && (
                 <PreguntaAbierta pregunta={pregunta} valor={valor} onChange={onChange} disabled={disabled} />
@@ -180,42 +242,101 @@ export default function Practice() {
     const [searchParams] = useSearchParams();
     const cantidad = Number(searchParams.get("cantidad") ?? "5");
     const mongoId = searchParams.get("mongoId") ?? "";
+    const tema = searchParams.get("tema") ?? "";
 
-    const {
-        data: evaluacion,
-        isLoading,
-        isError,
-        error,
-    } = useQuery<EvaluacionResponse>({
-        queryKey: ["evaluacion", mongoId, mode, cantidad],
-        queryFn: () => evaluacionApi.generarPreguntas(mongoId, mode, cantidad),
-        enabled: !!mongoId,
-        staleTime: Infinity,
-        gcTime: Infinity,
-        retry: false,
-        refetchOnWindowFocus: false,
-        refetchOnMount: false,
-    });
+    // Estados de carga de datos personalizados para soportar SSE Streaming
+    const [evaluacion, setEvaluacion] = useState<EvaluacionResponse | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isError, setIsError] = useState(false);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [streamText, setStreamText] = useState(""); // Acumula el texto crudo del stream
 
     const preguntas = evaluacion?.preguntas ?? [];
     const evaluacionCompleta = resultados.length === preguntas.length && preguntas.length > 0;
 
-    // Al desmontar el componente, limpiar caché si el examen ya terminó
     useEffect(() => {
-        return () => {
-            if (evaluacionCompleta) {
-                queryClient.removeQueries({
-                    queryKey: ["evaluacion", mongoId, mode, cantidad],
-                });
+        if (!mongoId) {
+            setIsLoading(false);
+            return;
+        }
+
+        setIsLoading(true);
+        setIsError(false);
+        setErrorMsg(null);
+        setStreamText("");
+        setEvaluacion(null);
+
+        let eventSource: EventSource | null = null;
+        let sseCompleted = false;
+
+        // Fallback síncrono si el servidor no soporta SSE Streaming
+        const ejecutarFallback = async () => {
+            console.log("[Practice] Iniciando fallback síncrono...");
+            try {
+                const res = await evaluacionApi.generarPreguntas(mongoId, mode, cantidad, tema);
+                setEvaluacion(res);
+                setIsLoading(false);
+            } catch (err: any) {
+                console.error("[Practice] Error en fallback:", err);
+                setIsError(true);
+                setErrorMsg(
+                    err?.response?.data || 
+                    err?.message || 
+                    "Error al generar las preguntas de evaluación."
+                );
+                setIsLoading(false);
             }
         };
-    }, [evaluacionCompleta]);
+
+        try {
+            const token = localStorage.getItem("token") || "";
+            const url = `http://localhost:8080/api/archivos/stream-tecnica-pdf?mongoId=${encodeURIComponent(
+                mongoId
+            )}&tipo=${mode}&cantidad=${cantidad}${tema ? `&tema=${encodeURIComponent(tema)}` : ""}&token=${token}`;
+
+            eventSource = new EventSource(url, { withCredentials: true });
+
+            eventSource.addEventListener("chunk", (event) => {
+                const chunk = event.data;
+                if (chunk) {
+                    setStreamText((prev) => prev + chunk);
+                }
+            });
+
+            eventSource.addEventListener("result", (event) => {
+                try {
+                    sseCompleted = true;
+                    const finalData = JSON.parse(event.data);
+                    setEvaluacion(finalData);
+                    setIsLoading(false);
+                    eventSource?.close();
+                } catch (err) {
+                    console.error("[Practice] Error parseando datos de result SSE:", err);
+                    ejecutarFallback();
+                    eventSource?.close();
+                }
+            });
+
+            eventSource.onerror = (err) => {
+                console.warn("[Practice] Error en canal SSE (puede que el endpoint no esté expuesto aún):", err);
+                eventSource?.close();
+                if (!sseCompleted) {
+                    ejecutarFallback();
+                }
+            };
+        } catch (e) {
+            console.error("[Practice] Error al instanciar EventSource:", e);
+            ejecutarFallback();
+        }
+
+        return () => {
+            if (eventSource) {
+                eventSource.close();
+            }
+        };
+    }, [mongoId, mode, cantidad, tema]);
 
     const handleVolver = () => {
-        // Limpiar caché siempre al volver — garantiza preguntas frescas la próxima vez
-        queryClient.removeQueries({
-            queryKey: ["evaluacion", mongoId, mode, cantidad],
-        });
         navigate(`/app/curso/${courseId}/semana/${semanaId}`);
     };
 
@@ -238,22 +359,57 @@ export default function Practice() {
 
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 grid place-items-center">
-                    <Loader2 className="w-7 h-7 animate-spin text-primary" />
+            <div className="flex flex-col items-center justify-center py-16 max-w-md mx-auto text-center space-y-8">
+                {/* Cerebro flotante con animación suave */}
+                <motion.div
+                    animate={{
+                        y: [0, -12, 0],
+                    }}
+                    transition={{
+                        duration: 2.5,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                    }}
+                    className="w-20 h-20 rounded-3xl bg-primary-gradient grid place-items-center text-4xl shadow-glow"
+                >
+                    🧠
+                </motion.div>
+                
+                <div className="space-y-3">
+                    <h2 className="font-display font-bold text-2xl md:text-3xl text-balance">
+                        ¡Tu tutora IA está preparando el juego! ✨
+                    </h2>
+                    <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
+                        Leyendo el material y redactando preguntas divertidas para medir tu nivel de aprendizaje.
+                    </p>
                 </div>
-                <div>
-                    <p className="font-display font-bold text-xl">Generando preguntas con IA…</p>
-                    <p className="text-sm text-muted-foreground mt-1">Esto puede tardar unos segundos.</p>
+
+                {/* Barra de progreso animada */}
+                <div className="w-full bg-secondary/50 rounded-full h-2.5 overflow-hidden relative border border-border">
+                    <motion.div
+                        className="bg-primary-gradient h-full rounded-full"
+                        animate={{
+                            width: ["5%", "95%"],
+                        }}
+                        transition={{
+                            duration: 15,
+                            ease: "easeInOut",
+                            repeat: Infinity,
+                        }}
+                    />
+                </div>
+
+                <div className="text-xs font-bold text-primary animate-pulse tracking-wider uppercase">
+                    Generando preguntas... ¡Prepárate!
                 </div>
             </div>
         );
     }
 
     if (isError) {
-        const errorMsg = (error as any)?.response?.data || (error as any)?.message || String(error);
-        const isOverloaded = errorMsg.includes("503") || errorMsg.includes("high demand") || errorMsg.includes("Service Unavailable");
-        const isRateLimited = errorMsg.includes("429") || errorMsg.includes("Too Many Requests") || errorMsg.includes("Quota exceeded");
+        const errorText = errorMsg || "Error desconocido";
+        const isOverloaded = errorText.includes("503") || errorText.includes("high demand") || errorText.includes("Service Unavailable");
+        const isRateLimited = errorText.includes("429") || errorText.includes("Too Many Requests") || errorText.includes("Quota exceeded");
         const isFreeTierIssue = isOverloaded || isRateLimited;
 
         return (
@@ -267,7 +423,7 @@ export default function Practice() {
                         ? (isRateLimited
                             ? "Hemos alcanzado el límite de peticiones rápidas (Cosas de la capa gratuita de Google 😅). Por favor, espera unos 15 segundos y vuelve a intentarlo."
                             : "Los servidores de IA están experimentando una alta demanda en este momento. Por favor, espera un minuto y vuelve a intentarlo.")
-                        : errorMsg}
+                        : errorText}
                 </p>
                 <div className="pt-4">
                     <Link
@@ -305,7 +461,7 @@ export default function Practice() {
 
                 let respuestaEsperada: string;
                 if (mode === "VERDADERO_FALSO" || mode === "OPCION_MULTIPLE") {
-                    respuestaEsperada = p.justificacion_pregunta;
+                    respuestaEsperada = p.respuesta_correcta || p.justificacion_pregunta;
                 } else {
                     // ABIERTA
                     respuestaEsperada = p.justificacion_pregunta;
@@ -408,6 +564,7 @@ export default function Practice() {
                                         setRespuestas((prev) => ({ ...prev, [i]: val }))
                                     }
                                     disabled={inputsBloqueados}
+                                    resultado={resultados[i]}
                                 />
 
                                 {estaEvaluandose && (

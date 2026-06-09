@@ -3,9 +3,9 @@ import { apiClient } from "./client";
 import type { CourseRecord } from "./store";
 
 export const evaluacionApi = {
-    generarPreguntas: (mongoId: string, tipo: string, cantidad: number = 5) =>
+    generarPreguntas: (mongoId: string, tipo: string, cantidad: number = 5, tema?: string) =>
         apiClient.post<any>(
-            `/archivos/una-tecnica-pdf-id?mongoId=${encodeURIComponent(mongoId)}&tipo=${tipo}&cantidad=${cantidad}`,
+            `/archivos/una-tecnica-pdf-id?mongoId=${encodeURIComponent(mongoId)}&tipo=${tipo}&cantidad=${cantidad}${tema ? `&tema=${encodeURIComponent(tema)}` : ""}`,
             null
         ),
 };
