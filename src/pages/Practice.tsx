@@ -12,6 +12,8 @@ interface Pregunta {
     opciones_o_respuesta: string[] | string;
     justificacion_pregunta: string;
     respuesta_correcta?: string;
+    base64_imagen?: string;
+    prompt_imagen?: string;
 }
 
 interface EvaluacionResponse {
@@ -35,6 +37,16 @@ const modeLabels: Record<string, { label: string; icon: React.ReactNode; color: 
     ABIERTA: {
         label: "Pregunta abierta",
         icon: <Brain className="w-4 h-4" />,
+        color: "text-coral-600",
+    },
+    DETECCION_ERRORES: {
+        label: "Detección de errores",
+        icon: <CheckSquare className="w-4 h-4" />,
+        color: "text-lime-600",
+    },
+    VISUAL_QUIZ: {
+        label: "Visual Quiz con IA",
+        icon: <BookOpen className="w-4 h-4" />,
         color: "text-coral-600",
     },
 };
@@ -194,6 +206,120 @@ function PreguntaAbierta({
     );
 }
 
+function PreguntaDeteccionErrores({
+    pregunta, index, valor, onChange, disabled, resultado
+}: {
+    pregunta: Pregunta; index: number; valor: string; onChange: (val: string) => void; disabled?: boolean; resultado?: any;
+}) {
+    // Parse current corrections
+    const correcciones: Record<string, string> = (() => {
+        try {
+            return valor ? JSON.parse(valor) : {};
+        } catch(e) {
+            return {};
+        }
+    })();
+
+    const updateCorreccion = (word: string, corr: string) => {
+        const newCorr = { ...correcciones, [word]: corr };
+        onChange(JSON.stringify(newCorr));
+    };
+
+    const incorrectWords = Array.isArray(pregunta.opciones_o_respuesta)
+        ? pregunta.opciones_o_respuesta
+        : [];
+
+    const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (incorrectWords.length === 0) return <div>{pregunta.enunciado}</div>;
+
+    const regex = new RegExp(`(${incorrectWords.map(escapeRegExp).join('|')})`, 'gi');
+    const parts = pregunta.enunciado.split(regex);
+    const tieneResultado = !!resultado;
+
+    return (
+        <div className="space-y-4">
+            <p className="text-xs font-semibold text-muted-foreground leading-relaxed">
+                Haz clic en las palabras subrayadas en el texto para escribir la corrección adecuada:
+            </p>
+            <div className="p-5 rounded-2xl bg-secondary/15 border border-border/80 text-foreground leading-relaxed text-sm md:text-base font-medium">
+                {parts.map((part, idx) => {
+                    const lowerPart = part.toLowerCase();
+                    const targetWord = incorrectWords.find(w => w.toLowerCase() === lowerPart);
+
+                    if (targetWord) {
+                        const valorCorreccion = correcciones[targetWord] || "";
+                        const tieneCorreccion = valorCorreccion.trim().length > 0;
+                        
+                        let wordStyle = "border-b-2 border-dashed border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 cursor-pointer";
+                        if (tieneResultado) {
+                            wordStyle = "border-b-2 border-dashed border-border opacity-70";
+                        } else if (tieneCorreccion) {
+                            wordStyle = "border-b-2 border-solid border-primary text-primary bg-primary/5";
+                        }
+
+                        return (
+                            <span key={idx} className="relative inline-block mx-1">
+                                {tieneResultado ? (
+                                    <span className={cn("px-1 py-0.5 rounded font-bold", wordStyle)}>
+                                        {part}
+                                    </span>
+                                ) : (
+                                    <input
+                                        type="text"
+                                        disabled={disabled}
+                                        value={valorCorreccion}
+                                        onChange={(e) => updateCorreccion(targetWord, e.target.value)}
+                                        placeholder={part}
+                                        title={`Haz clic para corregir '${part}'`}
+                                        className={cn(
+                                            "px-2 py-0.5 rounded text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition w-32 placeholder:text-amber-700/80 dark:placeholder:text-amber-300/80 placeholder:italic",
+                                            wordStyle
+                                        )}
+                                    />
+                                )}
+                            </span>
+                        );
+                    }
+                    return <span key={idx}>{part}</span>;
+                })}
+            </div>
+
+            {tieneResultado && (
+                <div className="text-xs space-y-2 pt-2 border-t border-border/50">
+                    <p className="font-bold text-muted-foreground">Comparación de tus correcciones:</p>
+                    <ul className="space-y-1">
+                        {incorrectWords.map((word, idx) => {
+                            const corrEstudiante = correcciones[word] || "(No respondido)";
+                            const correctAnswers = (pregunta.respuesta_correcta || "")
+                                .split("|")
+                                .map(s => s.trim());
+                            const respuestaReal = correctAnswers[idx] || "N/A";
+                            return (
+                                <li key={word} className="flex flex-wrap items-center justify-between gap-1.5 font-semibold text-sm border-b border-border/40 pb-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="line-through text-red-500">{word}</span>
+                                        <span className="text-muted-foreground">→</span>
+                                        <span className={cn(
+                                            corrEstudiante === "(No respondido)" 
+                                                ? "text-red-500/80 italic font-normal" 
+                                                : "text-green-600 dark:text-green-400"
+                                        )}>
+                                            {corrEstudiante}
+                                        </span>
+                                    </div>
+                                    <span className="text-xs text-muted-foreground bg-secondary/80 px-2 py-0.5 rounded-lg border border-border/30">
+                                        Respuesta correcta: <span className="font-bold text-foreground">{respuestaReal}</span>
+                                    </span>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+}
+
 function PreguntaCard({
                           pregunta, index, tipo, valor, onChange, disabled, resultado,
                       }: {
@@ -223,6 +349,23 @@ function PreguntaCard({
             )}
             {tipo === "ABIERTA" && (
                 <PreguntaAbierta pregunta={pregunta} valor={valor} onChange={onChange} disabled={disabled} />
+            )}
+            {tipo === "DETECCION_ERRORES" && (
+                <PreguntaDeteccionErrores pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} resultado={resultado} />
+            )}
+            {tipo === "VISUAL_QUIZ" && (
+                <div className="space-y-4">
+                    {pregunta.base64_imagen && (
+                        <div className="rounded-2xl overflow-hidden border border-border bg-muted/20 max-w-lg mx-auto shadow-sm">
+                            <img 
+                                src={`data:image/png;base64,${pregunta.base64_imagen}`} 
+                                alt="Diagrama explicativo generado por IA"
+                                className="w-full h-auto object-cover max-h-[350px]"
+                            />
+                        </div>
+                    )}
+                    <PreguntaMultiple pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} resultado={resultado} />
+                </div>
             )}
         </motion.div>
     );
@@ -461,8 +604,10 @@ export default function Practice() {
                 const respuestaEstudiante = respuestas[index] || "No respondió";
 
                 let respuestaEsperada: string;
-                if (mode === "VERDADERO_FALSO" || mode === "OPCION_MULTIPLE") {
+                if (mode === "VERDADERO_FALSO" || mode === "OPCION_MULTIPLE" || mode === "VISUAL_QUIZ") {
                     respuestaEsperada = p.respuesta_correcta || p.justificacion_pregunta;
+                } else if (mode === "DETECCION_ERRORES") {
+                    respuestaEsperada = p.respuesta_correcta || "";
                 } else {
                     // ABIERTA
                     respuestaEsperada = p.justificacion_pregunta;
