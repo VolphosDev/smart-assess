@@ -52,9 +52,9 @@ const modeLabels: Record<string, { label: string; icon: React.ReactNode; color: 
 };
 
 function PreguntaMultiple({
-                              pregunta, index, valor, onChange, disabled, resultado,
+                              pregunta, index, valor, onChange, disabled, resultado, esVisualQuiz = false
                           }: {
-    pregunta: Pregunta; index: number; valor: string; onChange: (val: string) => void; disabled?: boolean; resultado?: any;
+    pregunta: Pregunta; index: number; valor: string; onChange: (val: string) => void; disabled?: boolean; resultado?: any; esVisualQuiz?: boolean;
 }) {
     const opcionesArray = Array.isArray(pregunta.opciones_o_respuesta)
         ? pregunta.opciones_o_respuesta
@@ -63,6 +63,83 @@ function PreguntaMultiple({
     const tieneResultado = !!resultado;
     const respuestaCorrecta = pregunta.respuesta_correcta || "";
 
+    if (esVisualQuiz) {
+        return (
+            <div className="space-y-4">
+                <p className="font-semibold text-base md:text-lg text-foreground leading-relaxed">
+                    {pregunta.enunciado}
+                </p>
+                <ul className="grid sm:grid-cols-2 gap-3 p-0 m-0">
+                    {opcionesArray.map((op, i) => {
+                        const esSeleccionado = valor === op;
+                        const esCorrecto = op === respuestaCorrecta || op.trim() === respuestaCorrecta.trim();
+                        
+                        const hasLetterPrefix = /^[A-D]\)/.test(op.trim());
+                        const letter = hasLetterPrefix ? op.trim().charAt(0) : String.fromCharCode(65 + i);
+                        const cleanText = hasLetterPrefix ? op.replace(/^[A-D]\)\s*/, "") : op;
+
+                        let cardStyle = "border-border bg-secondary/10 hover:bg-secondary/20 hover:border-primary/20";
+                        let badgeStyle = "bg-secondary/40 text-muted-foreground";
+
+                        if (tieneResultado) {
+                            if (esCorrecto) {
+                                cardStyle = "border-green-300 bg-green-500/10 text-green-700 dark:text-green-300";
+                                badgeStyle = "bg-green-500 text-white";
+                            } else if (esSeleccionado && !esCorrecto) {
+                                cardStyle = "border-red-300 bg-red-500/10 text-red-700 dark:text-red-300";
+                                badgeStyle = "bg-red-500 text-white";
+                            } else {
+                                cardStyle = "border-border bg-secondary/5 opacity-60";
+                                badgeStyle = "bg-secondary/20 text-muted-foreground/50";
+                            }
+                        } else if (esSeleccionado) {
+                            cardStyle = "border-primary bg-primary/5 shadow-soft ring-1 ring-primary/30";
+                            badgeStyle = "bg-primary text-white";
+                        }
+
+                        return (
+                            <li key={i} className="list-none">
+                                <label className={cn(
+                                    "flex items-center gap-3 p-4 rounded-2xl border transition-all text-sm font-medium",
+                                    disabled ? "cursor-not-allowed opacity-80" : "cursor-pointer active:scale-[0.98]",
+                                    cardStyle
+                                )}>
+                                    <input
+                                        type="radio"
+                                        name={`q-${index}`}
+                                        value={op}
+                                        checked={esSeleccionado}
+                                        onChange={(e) => onChange(e.target.value)}
+                                        disabled={disabled}
+                                        className="sr-only"
+                                    />
+                                    <span className={cn(
+                                        "w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center shrink-0 transition-colors duration-200",
+                                        badgeStyle
+                                    )}>
+                                        {letter}
+                                    </span>
+                                    <span className="flex-1 leading-snug">{cleanText}</span>
+                                    {tieneResultado && esCorrecto && (
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-full shrink-0">
+                                            Correcta
+                                        </span>
+                                    )}
+                                    {tieneResultado && esSeleccionado && !esCorrecto && (
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 bg-red-100 dark:bg-red-900/30 px-2 py-0.5 rounded-full shrink-0">
+                                            Tu respuesta
+                                        </span>
+                                    )}
+                                </label>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </div>
+        );
+    }
+
+    // Original list layout for OPCION_MULTIPLE
     return (
         <div className="space-y-3">
             <p className="font-semibold text-foreground leading-relaxed">{pregunta.enunciado}</p>
@@ -354,17 +431,21 @@ function PreguntaCard({
                 <PreguntaDeteccionErrores pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} resultado={resultado} />
             )}
             {tipo === "VISUAL_QUIZ" && (
-                <div className="space-y-4">
+                <div className="grid md:grid-cols-12 gap-6 items-stretch">
                     {pregunta.base64_imagen && (
-                        <div className="rounded-2xl overflow-hidden border border-border bg-muted/20 max-w-lg mx-auto shadow-sm">
-                            <img 
-                                src={`data:image/png;base64,${pregunta.base64_imagen}`} 
-                                alt="Diagrama explicativo generado por IA"
-                                className="w-full h-auto object-cover max-h-[350px]"
-                            />
+                        <div className="md:col-span-5 flex flex-col justify-center">
+                            <div className="rounded-2xl overflow-hidden border border-border bg-secondary/5 shadow-md hover:shadow-lg transition-all duration-300">
+                                <img 
+                                    src={`data:image/png;base64,${pregunta.base64_imagen}`} 
+                                    alt="Diagrama explicativo generado por IA"
+                                    className="w-full h-auto object-contain max-h-[350px] mx-auto md:max-h-[400px]"
+                                />
+                            </div>
                         </div>
                     )}
-                    <PreguntaMultiple pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} resultado={resultado} />
+                    <div className={cn("space-y-4", pregunta.base64_imagen ? "md:col-span-7" : "md:col-span-12")}>
+                        <PreguntaMultiple pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} resultado={resultado} esVisualQuiz={true} />
+                    </div>
                 </div>
             )}
         </motion.div>
