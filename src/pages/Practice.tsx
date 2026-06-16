@@ -501,6 +501,15 @@ export default function Practice() {
     const evaluacionCompleta = finalizado && preguntas.length > 0;
 
     const [imagenesCargadas, setImagenesCargadas] = useState<Record<number, string>>({});
+    const pendingRequests = useRef<Set<number>>(new Set());
+    const isMounted = useRef(true);
+
+    useEffect(() => {
+        isMounted.current = true;
+        return () => {
+            isMounted.current = false;
+        };
+    }, []);
 
     // Cola en segundo plano para precargar ilustraciones de Visual Quiz
     useEffect(() => {
@@ -508,24 +517,27 @@ export default function Practice() {
 
         // Registrar las que ya vienen con base64 de inicio
         preguntas.forEach((p, idx) => {
-            if (p.base64_imagen) {
+            if (p.base64_imagen && !imagenesCargadas[idx]) {
                 setImagenesCargadas(prev => ({ ...prev, [idx]: p.base64_imagen! }));
             }
         });
 
-        let active = true;
         async function prefetchQuizImages() {
             for (let i = 0; i < preguntas.length; i++) {
-                if (!active) break;
+                if (!isMounted.current) break;
                 const p = preguntas[i];
-                if (imagenesCargadas[i] || p.base64_imagen) continue;
+                if (p.base64_imagen) continue;
+                
+                // Si ya solicitamos o estamos solicitando esta imagen, saltar
+                if (pendingRequests.current.has(i)) continue;
 
                 if (p.prompt_imagen) {
+                    pendingRequests.current.add(i); // Registrar la solicitud
                     try {
                         console.log(`[Quiz-Prefetch] Solicitando ilustración ${i + 1}...`);
                         const res = await archivosApi.generarImagen(p.prompt_imagen);
                         const base64Data = res?.data?.base64 || (res as any)?.base64 || (res as any)?.data?.base64;
-                        if (base64Data && active) {
+                        if (base64Data && isMounted.current) {
                             setImagenesCargadas(prev => ({ ...prev, [i]: base64Data }));
                         }
                     } catch (err) {
@@ -536,10 +548,6 @@ export default function Practice() {
         }
 
         prefetchQuizImages();
-
-        return () => {
-            active = false;
-        };
     }, [preguntas, mode]);
 
     useEffect(() => {
