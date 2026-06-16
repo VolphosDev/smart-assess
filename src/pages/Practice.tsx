@@ -387,7 +387,7 @@ function PreguntaDeteccionErrores({
 function PreguntaCard({
                           pregunta, index, tipo, valor, onChange, disabled, resultado, imagenesCargadas,
                       }: {
-    pregunta: Pregunta; index: number; tipo: string; valor: string; onChange: (val: string) => void; disabled?: boolean; resultado?: any; imagenesCargadas: Record<number, string>;
+    pregunta: Pregunta; index: number; tipo: string; valor: string; onChange: (val: string) => void; disabled?: boolean; resultado?: any; imagenesCargadas: Record<string, string>;
 }) {
     if (tipo === "VISUAL_QUIZ") {
         return (
@@ -398,7 +398,7 @@ function PreguntaCard({
                 onChange={onChange}
                 disabled={disabled}
                 resultado={resultado}
-                base64Imagen={imagenesCargadas[index]}
+                base64Imagen={pregunta.prompt_imagen ? imagenesCargadas[pregunta.prompt_imagen] : undefined}
             />
         );
     }
@@ -472,6 +472,10 @@ function parseIncrementalPreguntas(rawJson: string): Pregunta[] {
     return list;
 }
 
+// Module-level cache and locking to prevent redundant requests across mounts and renders
+const quizImageCache = new Map<string, string>();
+const quizPendingRequests = new Set<string>();
+
 export default function Practice() {
     const topRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
@@ -500,8 +504,7 @@ export default function Practice() {
     const preguntas = evaluacion?.preguntas ?? [];
     const evaluacionCompleta = finalizado && preguntas.length > 0;
 
-    const [imagenesCargadas, setImagenesCargadas] = useState<Record<number, string>>({});
-    const pendingRequests = useRef<Set<number>>(new Set());
+    const [imagenesCargadas, setImagenesCargadas] = useState<Record<string, string>>({});
     const isMounted = useRef(true);
 
     useEffect(() => {
@@ -515,10 +518,16 @@ export default function Practice() {
     useEffect(() => {
         if (!preguntas || preguntas.length === 0 || mode !== "VISUAL_QUIZ") return;
 
-        // Registrar las que ya vienen con base64 de inicio
-        preguntas.forEach((p, idx) => {
-            if (p.base64_imagen && !imagenesCargadas[idx]) {
-                setImagenesCargadas(prev => ({ ...prev, [idx]: p.base64_imagen! }));
+        // Registrar las que ya vienen con base64 de inicio o precargadas en cache global
+        preguntas.forEach((p) => {
+            if (p.prompt_imagen) {
+                if (p.base64_imagen && !imagenesCargadas[p.prompt_imagen]) {
+                    setImagenesCargadas(prev => ({ ...prev, [p.prompt_imagen!]: p.base64_imagen! }));
+                    quizImageCache.set(p.prompt_imagen, p.base64_imagen);
+                } else if (quizImageCache.has(p.prompt_imagen) && !imagenesCargadas[p.prompt_imagen]) {
+                    const cachedData = quizImageCache.get(p.prompt_imagen)!;
+                    setImagenesCargadas(prev => ({ ...prev, [p.prompt_imagen!]: cachedData }));
+                }
             }
         });
 
@@ -526,23 +535,27 @@ export default function Practice() {
             for (let i = 0; i < preguntas.length; i++) {
                 if (!isMounted.current) break;
                 const p = preguntas[i];
+                if (!p.prompt_imagen) continue;
                 if (p.base64_imagen) continue;
                 
-                // Si ya solicitamos o estamos solicitando esta imagen, saltar
-                if (pendingRequests.current.has(i)) continue;
+                // Si ya está en caché o en proceso de solicitud, saltar
+                if (quizImageCache.has(p.prompt_imagen) || quizPendingRequests.has(p.prompt_imagen)) {
+                    continue;
+                }
 
-                if (p.prompt_imagen) {
-                    pendingRequests.current.add(i); // Registrar la solicitud
-                    try {
-                        console.log(`[Quiz-Prefetch] Solicitando ilustración ${i + 1}...`);
-                        const res = await archivosApi.generarImagen(p.prompt_imagen);
-                        const base64Data = res?.data?.base64 || (res as any)?.base64 || (res as any)?.data?.base64;
-                        if (base64Data && isMounted.current) {
-                            setImagenesCargadas(prev => ({ ...prev, [i]: base64Data }));
+                quizPendingRequests.add(p.prompt_imagen); // Registrar la solicitud
+                try {
+                    console.log(`[Quiz-Prefetch] Solicitando ilustración ${i + 1} para prompt: ${p.prompt_imagen.substring(0, 45)}...`);
+                    const res = await archivosApi.generarImagen(p.prompt_imagen);
+                    const base64Data = res?.data?.base64 || (res as any)?.base64 || (res as any)?.data?.base64;
+                    if (base64Data) {
+                        quizImageCache.set(p.prompt_imagen, base64Data);
+                        if (isMounted.current) {
+                            setImagenesCargadas(prev => ({ ...prev, [p.prompt_imagen!]: base64Data }));
                         }
-                    } catch (err) {
-                        console.error(`Error cargando imagen de pregunta ${i + 1}:`, err);
                     }
+                } catch (err) {
+                    console.error(`Error cargando imagen de pregunta ${i + 1}:`, err);
                 }
             }
         }
@@ -562,6 +575,7 @@ export default function Practice() {
         setStreamText("");
         setStreamCompleted(false);
         setEvaluacion(null);
+        setImagenesCargadas({});
 
         let eventSource: EventSource | null = null;
         let sseCompleted = false;
