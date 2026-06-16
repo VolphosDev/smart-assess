@@ -57,6 +57,86 @@ const optionColors = [
     },
 ];
 
+function parseIncrementalLeccionYPreguntas(rawJson: string): any {
+    const response: { leccion?: Leccion; preguntas: Pregunta[] } = { preguntas: [] };
+    
+    // Parse leccion topic
+    const temaMatch = rawJson.match(/"tema"\s*:\s*"([^"]+)"/);
+    const temaValue = temaMatch ? temaMatch[1] : "";
+
+    // Parse slides
+    const idxDiapositivas = rawJson.indexOf('"diapositivas"');
+    const diapositivas: Diapositiva[] = [];
+    if (idxDiapositivas !== -1) {
+        const startArrayIdx = rawJson.indexOf('[', idxDiapositivas);
+        if (startArrayIdx !== -1) {
+            const listText = rawJson.substring(startArrayIdx + 1);
+            let depth = 0;
+            let objStart = -1;
+            for (let i = 0; i < listText.length; i++) {
+                const char = listText[i];
+                if (char === '{') {
+                    if (depth === 0) objStart = i;
+                    depth++;
+                } else if (char === '}') {
+                    depth--;
+                    if (depth === 0 && objStart !== -1) {
+                        const candidate = listText.substring(objStart, i + 1);
+                        try {
+                            const parsed = JSON.parse(candidate);
+                            if (parsed && typeof parsed === 'object' && parsed.titulo) {
+                                diapositivas.push(parsed as Diapositiva);
+                            }
+                        } catch (e) {}
+                    }
+                } else if (char === ']' && depth === 0) {
+                    break;
+                }
+            }
+        }
+    }
+    
+    if (diapositivas.length > 0 || temaValue) {
+        response.leccion = {
+            tema: temaValue || "el material de esta semana",
+            diapositivas: diapositivas
+        };
+    }
+
+    // Parse questions
+    const idxPreguntas = rawJson.indexOf('"preguntas"');
+    if (idxPreguntas !== -1) {
+        const startArrayIdx = rawJson.indexOf('[', idxPreguntas);
+        if (startArrayIdx !== -1) {
+            const listText = rawJson.substring(startArrayIdx + 1);
+            let depth = 0;
+            let objStart = -1;
+            for (let i = 0; i < listText.length; i++) {
+                const char = listText[i];
+                if (char === '{') {
+                    if (depth === 0) objStart = i;
+                    depth++;
+                } else if (char === '}') {
+                    depth--;
+                    if (depth === 0 && objStart !== -1) {
+                        const candidate = listText.substring(objStart, i + 1);
+                        try {
+                            const parsed = JSON.parse(candidate);
+                            if (parsed && typeof parsed === 'object' && parsed.enunciado) {
+                                response.preguntas.push(parsed as Pregunta);
+                            }
+                        } catch (e) {}
+                    }
+                } else if (char === ']' && depth === 0) {
+                    break;
+                }
+            }
+        }
+    }
+
+    return response;
+}
+
 export default function VideoTutor() {
     const { courseId = "", semanaId = "" } = useParams();
     const [searchParams] = useSearchParams();
@@ -111,24 +191,87 @@ export default function VideoTutor() {
             return;
         }
 
-        async function obtenerLeccion() {
+        let eventSource: EventSource | null = null;
+        let sseCompleted = false;
+
+        const ejecutarFallback = async () => {
+            console.log("[VideoTutor] Iniciando fallback síncrono...");
             try {
-                setCargando(true);
-                setError("");
-                // Usamos el endpoint de generación de preguntas que ahora incluye la lección de video explicativo
                 const data = await evaluacionApi.generarPreguntas(mongoId, "VIDEO_EXPLICATIVO", totalPreguntas, tema);
-                if (!data) throw new Error("No se recibieron datos de la evaluación.");
-                
                 setEvaluacion(data);
+                setCargando(false);
             } catch (err: any) {
-                console.error(err);
+                console.error("[VideoTutor] Error en fallback:", err);
                 setError(err?.message || "Error al generar la videolección.");
-            } finally {
                 setCargando(false);
             }
+        };
+
+        try {
+            setCargando(true);
+            setError("");
+            const token = localStorage.getItem("token") || "";
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+            const url = `${baseUrl}/archivos/stream-tecnica-pdf?mongoId=${encodeURIComponent(
+                mongoId
+            )}&tipo=VIDEO_EXPLICATIVO&cantidad=${totalPreguntas}${tema ? `&tema=${encodeURIComponent(tema)}` : ""}&token=${token}`;
+
+            eventSource = new EventSource(url, { withCredentials: true });
+            let streamText = "";
+
+            eventSource.addEventListener("chunk", (event) => {
+                const chunk = event.data;
+                if (chunk) {
+                    streamText += chunk;
+                    const parsed = parseIncrementalLeccionYPreguntas(streamText);
+                    if (parsed && parsed.leccion && parsed.leccion.diapositivas.length > 0) {
+                        setEvaluacion((prevEval) => {
+                            if (prevEval && prevEval.preguntas.length >= parsed.preguntas.length && sseCompleted) {
+                                return prevEval;
+                            }
+                            return {
+                                leccion: parsed.leccion,
+                                preguntas: parsed.preguntas,
+                                tipo_pregunta: "VIDEO_EXPLICATIVO",
+                                nivel_bloom: prevEval?.nivel_bloom || "5"
+                            };
+                        });
+                        setCargando(false);
+                    }
+                }
+            });
+
+            eventSource.addEventListener("result", (event) => {
+                try {
+                    sseCompleted = true;
+                    const finalData = JSON.parse(event.data);
+                    setEvaluacion(finalData);
+                    setCargando(false);
+                    eventSource?.close();
+                } catch (err) {
+                    console.error("[VideoTutor] Error parseando datos de result SSE:", err);
+                    ejecutarFallback();
+                    eventSource?.close();
+                }
+            });
+
+            eventSource.onerror = (err) => {
+                console.warn("[VideoTutor] Error en canal SSE (fallback a síncrono):", err);
+                eventSource?.close();
+                if (!sseCompleted) {
+                    ejecutarFallback();
+                }
+            };
+        } catch (e) {
+            console.error("[VideoTutor] Error al instanciar EventSource:", e);
+            ejecutarFallback();
         }
 
-        obtenerLeccion();
+        return () => {
+            if (eventSource) {
+                eventSource.close();
+            }
+        };
     }, [mongoId, totalPreguntas, tema]);
 
     // Cola de precarga en segundo plano para las imágenes del Video Tutor

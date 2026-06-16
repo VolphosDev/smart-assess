@@ -319,6 +319,7 @@ function PreguntaDeteccionErrores({
                             wordStyle = "border-b-2 border-solid border-primary text-primary bg-primary/5";
                         }
 
+                        const widthCh = Math.max(part.length, valorCorreccion.length, 8) + 2;
                         return (
                             <span key={idx} className="relative inline-block mx-1">
                                 {tieneResultado ? (
@@ -332,9 +333,10 @@ function PreguntaDeteccionErrores({
                                         value={valorCorreccion}
                                         onChange={(e) => updateCorreccion(targetWord, e.target.value)}
                                         placeholder={part}
+                                        style={{ width: `${widthCh}ch` }}
                                         title={`Haz clic para corregir '${part}'`}
                                         className={cn(
-                                            "px-2 py-0.5 rounded text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition w-32 placeholder:text-amber-700/80 dark:placeholder:text-amber-300/80 placeholder:italic",
+                                            "px-2 py-0.5 rounded text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition placeholder:text-amber-700/80 dark:placeholder:text-amber-300/80 placeholder:italic",
                                             wordStyle
                                         )}
                                     />
@@ -493,6 +495,7 @@ export default function Practice() {
     const [isError, setIsError] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [streamText, setStreamText] = useState(""); // Acumula el texto crudo del stream
+    const [streamCompleted, setStreamCompleted] = useState(false);
 
     const preguntas = evaluacion?.preguntas ?? [];
     const evaluacionCompleta = finalizado && preguntas.length > 0;
@@ -549,6 +552,7 @@ export default function Practice() {
         setIsError(false);
         setErrorMsg(null);
         setStreamText("");
+        setStreamCompleted(false);
         setEvaluacion(null);
 
         let eventSource: EventSource | null = null;
@@ -561,6 +565,7 @@ export default function Practice() {
                 const res = await evaluacionApi.generarPreguntas(mongoId, mode, cantidad, tema);
                 setEvaluacion(res);
                 setIsLoading(false);
+                setStreamCompleted(true);
             } catch (err: any) {
                 console.error("[Practice] Error en fallback:", err);
                 setIsError(true);
@@ -570,6 +575,7 @@ export default function Practice() {
                     "Error al generar las preguntas de evaluación."
                 );
                 setIsLoading(false);
+                setStreamCompleted(true);
             }
         };
 
@@ -610,6 +616,7 @@ export default function Practice() {
             eventSource.addEventListener("result", (event) => {
                 try {
                     sseCompleted = true;
+                    setStreamCompleted(true);
                     const finalData = JSON.parse(event.data);
                     setEvaluacion(finalData);
                     setIsLoading(false);
@@ -626,6 +633,8 @@ export default function Practice() {
                 eventSource?.close();
                 if (!sseCompleted) {
                     ejecutarFallback();
+                } else {
+                    setStreamCompleted(true);
                 }
             };
         } catch (e) {
@@ -847,6 +856,14 @@ export default function Practice() {
                             </span>
                         )}
                     </div>
+
+                    {/* Banner de Carga en Segundo Plano */}
+                    {preguntas.length > 0 && preguntas.length < cantidad && !streamCompleted && (
+                        <div className="flex items-center gap-2.5 p-4 rounded-2xl bg-primary/5 border border-primary/10 text-primary text-xs font-bold leading-normal animate-pulse shadow-sm">
+                            <Loader2 className="w-4 h-4 animate-spin shrink-0 text-primary" />
+                            <span>El Tutor IA está redactando más preguntas en segundo plano ({preguntas.length} de {cantidad} listas). Puedes empezar a responder las que ya están cargadas.</span>
+                        </div>
+                    )}
                     
                     {/* Progress Bar */}
                     {preguntas.length > 0 && (

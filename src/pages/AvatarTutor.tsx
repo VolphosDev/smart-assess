@@ -638,6 +638,13 @@ export default function AvatarTutor() {
 
     const {hablar, parar} = useTTS();
 
+    // Detener cualquier audio en reproducción al desmontar el componente (cambiar de página o volver al curso)
+    useEffect(() => {
+        return () => {
+            parar();
+        };
+    }, []);
+
     const [sesionFinalizada, setSesionFinalizada] = useState(false);
     const [ultimoAudioBlob, setUltimoAudioBlob] = useState<Blob | null>(null);
     const [ultimaRespuestaTexto, setUltimaRespuestaTexto] = useState("");
@@ -676,6 +683,7 @@ export default function AvatarTutor() {
     };
 
     async function pedirSiguientePregunta(turnoNum: number) {
+        parar(); // Detener cualquier audio que esté sonando antes de pedir la siguiente pregunta
         if (turnoNum > totalPreguntas) {
             setSesionFinalizada(true);
             return;
