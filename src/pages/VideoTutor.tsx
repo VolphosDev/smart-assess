@@ -174,6 +174,15 @@ export default function VideoTutor() {
     const [preguntaEvaluada, setPreguntaEvaluada] = useState<any | null>(null);
 
     const [imagenesCargadas, setImagenesCargadas] = useState<Record<number, string>>({});
+    const pendingRequests = useRef<Set<number>>(new Set());
+    const isMounted = useRef(true);
+
+    useEffect(() => {
+        isMounted.current = true;
+        return () => {
+            isMounted.current = false;
+        };
+    }, []);
 
     const cancelTTS = () => {
         if (utteranceRef.current) {
@@ -282,28 +291,28 @@ export default function VideoTutor() {
         
         // Cargar las base64 iniciales si existen
         slides.forEach((slide, idx) => {
-            if (slide.base64_imagen) {
+            if (slide.base64_imagen && !imagenesCargadas[idx]) {
                 setImagenesCargadas(prev => ({ ...prev, [idx]: slide.base64_imagen! }));
             }
         });
 
         // Cola asíncrona secuencial
-        let active = true;
         async function loadImagesSequentially() {
             for (let i = 0; i < slides.length; i++) {
-                if (!active) break;
+                if (!isMounted.current) break;
                 const slide = slides[i];
+                if (slide.base64_imagen) continue;
                 
-                if (imagenesCargadas[i] || slide.base64_imagen) {
-                    continue;
-                }
+                // Si ya solicitamos o estamos solicitando esta imagen, saltar
+                if (pendingRequests.current.has(i)) continue;
 
                 if (slide.prompt_imagen) {
+                    pendingRequests.current.add(i); // Registrar la solicitud
                     try {
                         console.log(`[VideoTutor-Prefetch] Cargando imagen para diapositiva ${i + 1}...`);
                         const response = await archivosApi.generarImagen(slide.prompt_imagen);
                         const base64Data = response?.data?.base64 || (response as any)?.base64 || (response as any)?.data?.base64;
-                        if (base64Data && active) {
+                        if (base64Data && isMounted.current) {
                             setImagenesCargadas(prev => ({ ...prev, [i]: base64Data }));
                         }
                     } catch (e) {
@@ -314,10 +323,6 @@ export default function VideoTutor() {
         }
 
         loadImagesSequentially();
-
-        return () => {
-            active = false;
-        };
     }, [evaluacion]);
 
     // Limpieza de TTS al desmontar
