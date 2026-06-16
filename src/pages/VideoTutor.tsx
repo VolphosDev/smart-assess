@@ -137,6 +137,10 @@ function parseIncrementalLeccionYPreguntas(rawJson: string): any {
     return response;
 }
 
+// Module-level cache and locking to prevent redundant requests across mounts and renders
+const videoImageCache = new Map<string, string>();
+const videoPendingRequests = new Set<string>();
+
 export default function VideoTutor() {
     const { courseId = "", semanaId = "" } = useParams();
     const [searchParams] = useSearchParams();
@@ -173,8 +177,7 @@ export default function VideoTutor() {
     const [evaluandoExamen, setEvaluandoExamen] = useState(false);
     const [preguntaEvaluada, setPreguntaEvaluada] = useState<any | null>(null);
 
-    const [imagenesCargadas, setImagenesCargadas] = useState<Record<number, string>>({});
-    const pendingRequests = useRef<Set<number>>(new Set());
+    const [imagenesCargadas, setImagenesCargadas] = useState<Record<string, string>>({});
     const isMounted = useRef(true);
 
     useEffect(() => {
@@ -200,6 +203,7 @@ export default function VideoTutor() {
             return;
         }
 
+        setImagenesCargadas({});
         let eventSource: EventSource | null = null;
         let sseCompleted = false;
 
@@ -289,10 +293,16 @@ export default function VideoTutor() {
         
         const slides = evaluacion.leccion.diapositivas;
         
-        // Cargar las base64 iniciales si existen
-        slides.forEach((slide, idx) => {
-            if (slide.base64_imagen && !imagenesCargadas[idx]) {
-                setImagenesCargadas(prev => ({ ...prev, [idx]: slide.base64_imagen! }));
+        // Cargar las base64 iniciales si existen o precargadas en cache global
+        slides.forEach((slide) => {
+            if (slide.prompt_imagen) {
+                if (slide.base64_imagen && !imagenesCargadas[slide.prompt_imagen]) {
+                    setImagenesCargadas(prev => ({ ...prev, [slide.prompt_imagen!]: slide.base64_imagen! }));
+                    videoImageCache.set(slide.prompt_imagen, slide.base64_imagen);
+                } else if (videoImageCache.has(slide.prompt_imagen) && !imagenesCargadas[slide.prompt_imagen]) {
+                    const cachedData = videoImageCache.get(slide.prompt_imagen)!;
+                    setImagenesCargadas(prev => ({ ...prev, [slide.prompt_imagen!]: cachedData }));
+                }
             }
         });
 
@@ -301,23 +311,27 @@ export default function VideoTutor() {
             for (let i = 0; i < slides.length; i++) {
                 if (!isMounted.current) break;
                 const slide = slides[i];
+                if (!slide.prompt_imagen) continue;
                 if (slide.base64_imagen) continue;
                 
-                // Si ya solicitamos o estamos solicitando esta imagen, saltar
-                if (pendingRequests.current.has(i)) continue;
+                // Si ya está en caché o en proceso de solicitud, saltar
+                if (videoImageCache.has(slide.prompt_imagen) || videoPendingRequests.has(slide.prompt_imagen)) {
+                    continue;
+                }
 
-                if (slide.prompt_imagen) {
-                    pendingRequests.current.add(i); // Registrar la solicitud
-                    try {
-                        console.log(`[VideoTutor-Prefetch] Cargando imagen para diapositiva ${i + 1}...`);
-                        const response = await archivosApi.generarImagen(slide.prompt_imagen);
-                        const base64Data = response?.data?.base64 || (response as any)?.base64 || (response as any)?.data?.base64;
-                        if (base64Data && isMounted.current) {
-                            setImagenesCargadas(prev => ({ ...prev, [i]: base64Data }));
+                videoPendingRequests.add(slide.prompt_imagen); // Registrar la solicitud
+                try {
+                    console.log(`[VideoTutor-Prefetch] Cargando imagen para diapositiva ${i + 1}...`);
+                    const response = await archivosApi.generarImagen(slide.prompt_imagen);
+                    const base64Data = response?.data?.base64 || (response as any)?.base64 || (response as any)?.data?.base64;
+                    if (base64Data) {
+                        videoImageCache.set(slide.prompt_imagen, base64Data);
+                        if (isMounted.current) {
+                            setImagenesCargadas(prev => ({ ...prev, [slide.prompt_imagen!]: base64Data }));
                         }
-                    } catch (e) {
-                        console.error(`Error precargando imagen de diapositiva ${i + 1}:`, e);
                     }
+                } catch (e) {
+                    console.error(`Error precargando imagen de diapositiva ${i + 1}:`, e);
                 }
             }
         }
@@ -858,7 +872,8 @@ export default function VideoTutor() {
                             
                             {/* Presenter slide background image (full presentation backdrop) */}
                             {(() => {
-                                const imageToShow = imagenesCargadas[slideIndex] || diapositivas[slideIndex].base64_imagen;
+                                const currentSlide = diapositivas[slideIndex];
+                                const imageToShow = (currentSlide?.prompt_imagen ? imagenesCargadas[currentSlide.prompt_imagen] : undefined) || currentSlide?.base64_imagen;
                                 return (
                                     <div className="absolute inset-0 w-full h-full z-0 overflow-hidden flex flex-col md:flex-row gap-6 p-6 select-none bg-slate-950">
                                         
