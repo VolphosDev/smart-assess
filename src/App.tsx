@@ -18,7 +18,8 @@ import AdminLayout from "./components/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import TeacherWeek from "./pages/teacher/TeacherWeek";
 import CourseStudentsManager from "./pages/teacher/CourseStudentsManager";
-import AvatarTutor from "@/pages/AvatarTutor";
+import AvatarTutor from "./pages/AvatarTutor";
+import VideoTutor from "./pages/VideoTutor";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="curso/:courseId/semana/:semanaId" element={<EvalModeSelect />} />
               <Route path="curso/:courseId/semana/:semanaId/evaluacion/:mode" element={<Practice />} />
               <Route path="curso/:courseId/semana/:semanaId/evaluacion/avatar" element={<AvatarTutor />}/>
+              <Route path="curso/:courseId/semana/:semanaId/evaluacion/video" element={<VideoTutor />}/>
             <Route path="historial" element={<HistoryPage />} />
           </Route>
             <Route path="/docente" element={<TeacherLayout />}>
