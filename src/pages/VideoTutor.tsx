@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Pause, RotateCcw, ArrowRight, Loader2, Award, Star, Check, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, Play, Pause, RotateCcw, ArrowRight, Loader2, Award, Star, Check, X, AlertCircle, Volume2, VolumeX, CheckCircle2, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { evaluacionApi, agentJudgeApi, intentosApi } from "@/api/courses";
+import { evaluacionApi, agentJudgeApi, intentosApi, archivosApi } from "@/api/courses";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +34,29 @@ interface EvaluacionResponse {
     nivel_bloom?: string;
 }
 
+const optionColors = [
+    {
+        bg: "bg-blue-500/10 text-blue-900 border-blue-200 hover:border-blue-400 dark:bg-blue-950/20 dark:text-blue-300 dark:border-blue-900/30",
+        badge: "bg-blue-500 text-white",
+        active: "bg-blue-500 text-white border-transparent shadow-[0_0_15px_rgba(59,130,246,0.25)] ring-2 ring-blue-500/30",
+    },
+    {
+        bg: "bg-violet-500/10 text-violet-900 border-violet-200 hover:border-violet-400 dark:bg-violet-950/20 dark:text-violet-300 dark:border-violet-900/30",
+        badge: "bg-violet-500 text-white",
+        active: "bg-violet-500 text-white border-transparent shadow-[0_0_15px_rgba(139,92,246,0.25)] ring-2 ring-violet-500/30",
+    },
+    {
+        bg: "bg-pink-500/10 text-pink-900 border-pink-200 hover:border-pink-400 dark:bg-pink-950/20 dark:text-pink-300 dark:border-pink-900/30",
+        badge: "bg-pink-500 text-white",
+        active: "bg-pink-500 text-white border-transparent shadow-[0_0_15px_rgba(236,72,153,0.25)] ring-2 ring-pink-500/30",
+    },
+    {
+        bg: "bg-amber-500/10 text-amber-900 border-amber-200 hover:border-amber-400 dark:bg-amber-950/20 dark:text-amber-300 dark:border-amber-900/30",
+        badge: "bg-amber-500 text-white",
+        active: "bg-amber-500 text-white border-transparent shadow-[0_0_15px_rgba(245,158,11,0.25)] ring-2 ring-amber-500/30",
+    },
+];
+
 export default function VideoTutor() {
     const { courseId = "", semanaId = "" } = useParams();
     const [searchParams] = useSearchParams();
@@ -58,6 +81,8 @@ export default function VideoTutor() {
     const [slideIndex, setSlideIndex] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [slideProgress, setSlideProgress] = useState(0);
+    const [playbackRate, setPlaybackRate] = useState(1);
+    const [isMuted, setIsMuted] = useState(false);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
@@ -67,6 +92,16 @@ export default function VideoTutor() {
     const [resultadosQuiz, setResultadosQuiz] = useState<any[]>([]);
     const [evaluandoExamen, setEvaluandoExamen] = useState(false);
     const [preguntaEvaluada, setPreguntaEvaluada] = useState<any | null>(null);
+
+    const [imagenesCargadas, setImagenesCargadas] = useState<Record<number, string>>({});
+
+    const cancelTTS = () => {
+        if (utteranceRef.current) {
+            utteranceRef.current.onend = null;
+            utteranceRef.current.onerror = null;
+        }
+        window.speechSynthesis.cancel();
+    };
 
     // Cargar la videolección al montar
     useEffect(() => {
@@ -95,6 +130,52 @@ export default function VideoTutor() {
 
         obtenerLeccion();
     }, [mongoId, totalPreguntas, tema]);
+
+    // Cola de precarga en segundo plano para las imágenes del Video Tutor
+    useEffect(() => {
+        if (!evaluacion?.leccion?.diapositivas) return;
+        
+        const slides = evaluacion.leccion.diapositivas;
+        
+        // Cargar las base64 iniciales si existen
+        slides.forEach((slide, idx) => {
+            if (slide.base64_imagen) {
+                setImagenesCargadas(prev => ({ ...prev, [idx]: slide.base64_imagen! }));
+            }
+        });
+
+        // Cola asíncrona secuencial
+        let active = true;
+        async function loadImagesSequentially() {
+            for (let i = 0; i < slides.length; i++) {
+                if (!active) break;
+                const slide = slides[i];
+                
+                if (imagenesCargadas[i] || slide.base64_imagen) {
+                    continue;
+                }
+
+                if (slide.prompt_imagen) {
+                    try {
+                        console.log(`[VideoTutor-Prefetch] Cargando imagen para diapositiva ${i + 1}...`);
+                        const response = await archivosApi.generarImagen(slide.prompt_imagen);
+                        const base64Data = response?.data?.base64 || (response as any)?.base64 || (response as any)?.data?.base64;
+                        if (base64Data && active) {
+                            setImagenesCargadas(prev => ({ ...prev, [i]: base64Data }));
+                        }
+                    } catch (e) {
+                        console.error(`Error precargando imagen de diapositiva ${i + 1}:`, e);
+                    }
+                }
+            }
+        }
+
+        loadImagesSequentially();
+
+        return () => {
+            active = false;
+        };
+    }, [evaluacion]);
 
     // Limpieza de TTS al desmontar
     useEffect(() => {
@@ -135,8 +216,8 @@ export default function VideoTutor() {
 
         if (timerRef.current) clearInterval(timerRef.current);
 
-        // Estimación visual de progreso: 15 caracteres por segundo aprox.
-        const charsPerSec = 15;
+        // Estimación visual de progreso: 15 caracteres por segundo aprox. ajustado por la velocidad
+        const charsPerSec = 15 * playbackRate;
         const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
         const totalMs = estimatedSecs * 1000;
         let elapsed = 0;
@@ -148,11 +229,12 @@ export default function VideoTutor() {
         }, 100);
 
         // Configurar síntesis de voz en español
-        window.speechSynthesis.cancel();
+        cancelTTS();
         const utterance = new SpeechSynthesisUtterance(slide.narracion);
         utterance.lang = "es-ES";
-        utterance.rate = 0.95; // Un poco más lento para que sea claro
+        utterance.rate = playbackRate;
         utterance.pitch = 1.0;
+        utterance.volume = isMuted ? 0 : 1;
 
         // Seleccionar una voz española si está disponible
         const voices = window.speechSynthesis.getVoices();
@@ -186,36 +268,245 @@ export default function VideoTutor() {
         window.speechSynthesis.speak(utterance);
     };
 
+    const changePlaybackRate = (rate: number) => {
+        setPlaybackRate(rate);
+        if (isPlaying) {
+            cancelTTS();
+            if (timerRef.current) clearInterval(timerRef.current);
+            
+            const slide = diapositivas[slideIndex];
+            const charsPerSec = 15 * rate;
+            const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+            const totalMs = estimatedSecs * 1000;
+            // Reanudar desde el progreso actual
+            let elapsed = (slideProgress / 100) * totalMs;
+
+            timerRef.current = setInterval(() => {
+                elapsed += 100;
+                const pct = Math.min(100, (elapsed / totalMs) * 100);
+                setSlideProgress(pct);
+            }, 100);
+
+            // Hablar desde la fracción restante
+            const startIndex = Math.floor((slideProgress / 100) * slide.narracion.length);
+            const subText = slide.narracion.substring(startIndex) || slide.narracion;
+
+            const utterance = new SpeechSynthesisUtterance(subText);
+            utterance.lang = "es-ES";
+            utterance.rate = rate;
+            utterance.pitch = 1.0;
+            utterance.volume = isMuted ? 0 : 1;
+
+            const voices = window.speechSynthesis.getVoices();
+            const spanishVoice = voices.find(v => v.lang.startsWith("es"));
+            if (spanishVoice) utterance.voice = spanishVoice;
+
+            utterance.onend = () => {
+                if (timerRef.current) clearInterval(timerRef.current);
+                setSlideProgress(100);
+                setTimeout(() => {
+                    if (slideIndex < diapositivas.length - 1) {
+                        startSlide(slideIndex + 1);
+                    } else {
+                        setIsPlaying(false);
+                        setVideoCompletado(true);
+                        toast.success("¡Has completado la videolección! Iniciemos tu test.");
+                    }
+                }, 800);
+            };
+            
+            utterance.onerror = (e) => {
+                console.warn("TTS Utterance error in change rate:", e);
+                if (timerRef.current) clearInterval(timerRef.current);
+            };
+
+            utteranceRef.current = utterance;
+            window.speechSynthesis.speak(utterance);
+        }
+    };
+
+    const toggleMute = () => {
+        const newMuted = !isMuted;
+        setIsMuted(newMuted);
+        
+        if (isPlaying) {
+            cancelTTS();
+            if (timerRef.current) clearInterval(timerRef.current);
+            
+            const slide = diapositivas[slideIndex];
+            const charsPerSec = 15 * playbackRate;
+            const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+            const totalMs = estimatedSecs * 1000;
+            let elapsed = (slideProgress / 100) * totalMs;
+
+            timerRef.current = setInterval(() => {
+                elapsed += 100;
+                const pct = Math.min(100, (elapsed / totalMs) * 100);
+                setSlideProgress(pct);
+            }, 100);
+
+            const startIndex = Math.floor((slideProgress / 100) * slide.narracion.length);
+            const subText = slide.narracion.substring(startIndex) || slide.narracion;
+
+            const utterance = new SpeechSynthesisUtterance(subText);
+            utterance.lang = "es-ES";
+            utterance.rate = playbackRate;
+            utterance.pitch = 1.0;
+            utterance.volume = newMuted ? 0 : 1;
+
+            const voices = window.speechSynthesis.getVoices();
+            const spanishVoice = voices.find(v => v.lang.startsWith("es"));
+            if (spanishVoice) utterance.voice = spanishVoice;
+
+            utterance.onend = () => {
+                if (timerRef.current) clearInterval(timerRef.current);
+                setSlideProgress(100);
+                setTimeout(() => {
+                    if (slideIndex < diapositivas.length - 1) {
+                        startSlide(slideIndex + 1);
+                    } else {
+                        setIsPlaying(false);
+                        setVideoCompletado(true);
+                        toast.success("¡Has completado la videolección! Iniciemos tu test.");
+                    }
+                }, 800);
+            };
+            
+            utterance.onerror = (e) => {
+                console.warn("TTS Utterance error in mute:", e);
+                if (timerRef.current) clearInterval(timerRef.current);
+            };
+
+            utteranceRef.current = utterance;
+            window.speechSynthesis.speak(utterance);
+        }
+    };
+
+    const handleSeekBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const width = rect.width;
+        const percentage = (clickX / width) * 100;
+        setSlideProgress(percentage);
+        
+        if (isPlaying) {
+            cancelTTS();
+            if (timerRef.current) clearInterval(timerRef.current);
+            
+            const slide = diapositivas[slideIndex];
+            const charsPerSec = 15 * playbackRate;
+            const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+            const totalMs = estimatedSecs * 1000;
+            let elapsed = (percentage / 100) * totalMs;
+            
+            timerRef.current = setInterval(() => {
+                elapsed += 100;
+                const pct = Math.min(100, (elapsed / totalMs) * 100);
+                setSlideProgress(pct);
+            }, 100);
+            
+            const startIndex = Math.floor((percentage / 100) * slide.narracion.length);
+            const subText = slide.narracion.substring(startIndex) || slide.narracion;
+            
+            const utterance = new SpeechSynthesisUtterance(subText);
+            utterance.lang = "es-ES";
+            utterance.rate = playbackRate;
+            utterance.pitch = 1.0;
+            utterance.volume = isMuted ? 0 : 1;
+            
+            const voices = window.speechSynthesis.getVoices();
+            const spanishVoice = voices.find(v => v.lang.startsWith("es"));
+            if (spanishVoice) utterance.voice = spanishVoice;
+            
+            utterance.onend = () => {
+                if (timerRef.current) clearInterval(timerRef.current);
+                setSlideProgress(100);
+                setTimeout(() => {
+                    if (slideIndex < diapositivas.length - 1) {
+                        startSlide(slideIndex + 1);
+                    } else {
+                        setIsPlaying(false);
+                        setVideoCompletado(true);
+                        toast.success("¡Has completado la videolección! Iniciemos tu test.");
+                    }
+                }, 800);
+            };
+            
+            utterance.onerror = (e) => {
+                console.warn("TTS Utterance error in seek:", e);
+                if (timerRef.current) clearInterval(timerRef.current);
+            };
+
+            utteranceRef.current = utterance;
+            window.speechSynthesis.speak(utterance);
+        } else {
+            setSlideProgress(percentage);
+        }
+    };
+
     const togglePlayPause = () => {
         if (isPlaying) {
-            window.speechSynthesis.pause();
+            cancelTTS();
             if (timerRef.current) clearInterval(timerRef.current);
             setIsPlaying(false);
         } else {
-            if (window.speechSynthesis.paused) {
-                window.speechSynthesis.resume();
-                setIsPlaying(true);
+            // Reanudar barra de progreso e iniciar TTS desde la fracción restante
+            const slide = diapositivas[slideIndex];
+            const charsPerSec = 15 * playbackRate;
+            const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+            const totalMs = estimatedSecs * 1000;
+            
+            setIsPlaying(true);
+            
+            let elapsed = (slideProgress / 100) * totalMs;
+            if (timerRef.current) clearInterval(timerRef.current);
 
-                // Reanudar barra de progreso
-                const slide = diapositivas[slideIndex];
-                const charsPerSec = 15;
-                const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
-                const totalMs = estimatedSecs * 1000;
-                let elapsed = (slideProgress / 100) * totalMs;
+            timerRef.current = setInterval(() => {
+                elapsed += 100;
+                const pct = Math.min(100, (elapsed / totalMs) * 100);
+                setSlideProgress(pct);
+            }, 100);
 
-                timerRef.current = setInterval(() => {
-                    elapsed += 100;
-                    const pct = Math.min(100, (elapsed / totalMs) * 100);
-                    setSlideProgress(pct);
-                }, 100);
-            } else {
-                startSlide(slideIndex);
-            }
+            // Hablar desde la fracción restante
+            const startIndex = Math.floor((slideProgress / 100) * slide.narracion.length);
+            const subText = slide.narracion.substring(startIndex) || slide.narracion;
+
+            const utterance = new SpeechSynthesisUtterance(subText);
+            utterance.lang = "es-ES";
+            utterance.rate = playbackRate;
+            utterance.pitch = 1.0;
+            utterance.volume = isMuted ? 0 : 1;
+
+            const voices = window.speechSynthesis.getVoices();
+            const spanishVoice = voices.find(v => v.lang.startsWith("es"));
+            if (spanishVoice) utterance.voice = spanishVoice;
+
+            utterance.onend = () => {
+                if (timerRef.current) clearInterval(timerRef.current);
+                setSlideProgress(100);
+                setTimeout(() => {
+                    if (slideIndex < diapositivas.length - 1) {
+                        startSlide(slideIndex + 1);
+                    } else {
+                        setIsPlaying(false);
+                        setVideoCompletado(true);
+                        toast.success("¡Has completado la videolección! Iniciemos tu test.");
+                    }
+                }, 800);
+            };
+            
+            utterance.onerror = (e) => {
+                console.warn("TTS Utterance error in toggle play:", e);
+                if (timerRef.current) clearInterval(timerRef.current);
+            };
+
+            utteranceRef.current = utterance;
+            window.speechSynthesis.speak(utterance);
         }
     };
 
     const handleNextSlide = () => {
-        window.speechSynthesis.cancel();
+        cancelTTS();
         if (timerRef.current) clearInterval(timerRef.current);
 
         if (slideIndex < diapositivas.length - 1) {
@@ -228,7 +519,7 @@ export default function VideoTutor() {
     };
 
     const handlePrevSlide = () => {
-        window.speechSynthesis.cancel();
+        cancelTTS();
         if (timerRef.current) clearInterval(timerRef.current);
 
         if (slideIndex > 0) {
@@ -239,7 +530,7 @@ export default function VideoTutor() {
     };
 
     const saltarVideo = () => {
-        window.speechSynthesis.cancel();
+        cancelTTS();
         if (timerRef.current) clearInterval(timerRef.current);
         setIsPlaying(false);
         setVideoCompletado(true);
@@ -370,7 +661,7 @@ export default function VideoTutor() {
         <div className="max-w-4xl mx-auto space-y-6">
             <Link
                 to={`/app/curso/${courseId}/semana/${semanaId}`}
-                onClick={() => window.speechSynthesis.cancel()}
+                onClick={() => cancelTTS()}
                 className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
             >
                 <ArrowLeft className="w-4 h-4" /> Volver a modalidades
@@ -410,159 +701,132 @@ export default function VideoTutor() {
             {/* ESTADO 2: REPRODUCTOR DE VIDEO SIMULADO */}
             {sesionIniciada && !videoCompletado && (
                 <div className="space-y-6">
-                    {/* Contenedor Principal del Video */}
-                    <div className="relative aspect-video rounded-3xl overflow-hidden bg-slate-950 border border-slate-800 shadow-2xl flex flex-col justify-between p-8 text-white select-none">
-                        
-                        {/* Soft Blur Glow Shapes en el fondo para estética premium */}
-                        <div className="absolute top-1/4 left-1/4 w-72 h-72 rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
-                        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 rounded-full bg-violet-600/10 blur-[100px] pointer-events-none" />
+                    {/* Contenedor Principal del Video con Ambient Glow */}
+                    <div className="relative group">
+                        {/* Ambient Glow */}
+                        <div className="absolute -inset-1 rounded-[32px] bg-gradient-to-r from-primary via-violet-600 to-indigo-500 opacity-15 blur-2xl group-hover:opacity-25 transition duration-1000 pointer-events-none" />
 
-                        {/* Top: Header de la diapositiva */}
-                        <div className="flex justify-between items-center z-10">
-                            <span className="text-xs font-bold uppercase tracking-wider text-primary bg-primary/20 px-3 py-1 rounded-full border border-primary/20">
-                                Lección: {diapositivas[slideIndex].titulo.split(".")[0] || "Slide"} de {diapositivas.length}
-                            </span>
+                        <div className="relative aspect-video rounded-3xl overflow-hidden bg-slate-950 border border-slate-800/80 shadow-2xl flex flex-col justify-between p-8 text-white select-none">
                             
-                            {/* Visualizador de voz animado */}
-                            <div className="flex items-center gap-1.5 bg-black/45 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/5">
-                                <span className="text-[10px] uppercase font-bold text-slate-300">ARIA Hablando</span>
-                                <div className="flex items-center gap-0.5 h-3.5 w-6">
-                                    {[...Array(5)].map((_, i) => (
-                                        <motion.div
-                                            key={i}
-                                            className="w-0.5 bg-primary rounded-full"
-                                            animate={isPlaying ? {
-                                                height: [3, 14, 3],
-                                                transition: {
-                                                    repeat: Infinity,
-                                                    duration: 0.6 + i * 0.12,
-                                                    ease: "easeInOut"
-                                                }
-                                            } : {
-                                                height: 3
-                                            }}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Center: Contenido de la Diapositiva Animada */}
-                        <div className="my-auto z-10 w-full max-w-3xl mx-auto py-2">
-                            <AnimatePresence mode="wait">
-                                <motion.div
-                                    key={slideIndex}
-                                    initial={{ opacity: 0, y: 15 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -15 }}
-                                    transition={{ duration: 0.4 }}
-                                    className="w-full"
-                                >
-                                    {diapositivas[slideIndex].base64_imagen ? (
-                                        <div className="grid md:grid-cols-12 gap-6 items-center">
-                                            {/* Left Column: Text Content (Col-span 7) */}
-                                            <div className="md:col-span-7 space-y-4 text-left">
-                                                <h2 className="font-display font-bold text-xl md:text-2xl text-balance bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
-                                                    {diapositivas[slideIndex].titulo}
-                                                </h2>
-                                                
-                                                <div className="space-y-2">
-                                                    {diapositivas[slideIndex].puntos_clave.map((punto, i) => (
-                                                        <motion.div
-                                                            key={punto}
-                                                            initial={{ opacity: 0, x: -10 }}
-                                                            animate={{ opacity: 1, x: 0 }}
-                                                            transition={{ delay: 0.15 + i * 0.1 }}
-                                                            className="flex items-start gap-2.5 bg-white/5 border border-white/5 backdrop-blur-md rounded-xl px-4 py-2 hover:bg-white/10 transition-colors"
-                                                        >
-                                                            <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center border border-primary/20 text-primary shrink-0 mt-0.5">
-                                                                <Check className="w-3 h-3" />
-                                                            </div>
-                                                            <span className="text-xs font-semibold text-slate-200">{punto}</span>
-                                                        </motion.div>
-                                                    ))}
+                            {/* Presenter slide background image (full presentation backdrop) */}
+                            {(() => {
+                                const imageToShow = imagenesCargadas[slideIndex] || diapositivas[slideIndex].base64_imagen;
+                                return (
+                                    <div className="absolute inset-0 w-full h-full z-0 overflow-hidden flex flex-col md:flex-row gap-6 p-6 select-none bg-slate-950">
+                                        
+                                        {/* Left Side: Frame for the Illustration itself (Centerpiece) */}
+                                        <div className="flex-1 flex flex-col justify-center items-center relative z-10 h-full">
+                                            {imageToShow ? (
+                                                <div className="relative w-full h-full max-h-[90%] rounded-2xl overflow-hidden border border-white/10 bg-slate-900/40 p-2 flex items-center justify-center shadow-lg transition-all duration-300">
+                                                    <span className="absolute top-2.5 left-2.5 bg-primary/95 text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full z-15 shadow-sm select-none">
+                                                        Ilustración del Tutor
+                                                    </span>
+                                                    <img 
+                                                        src={`data:image/png;base64,${imageToShow}`} 
+                                                        alt="Ilustración explicativa de la lección"
+                                                        className="max-w-full max-h-full object-contain rounded-xl shadow-md transition-transform duration-300"
+                                                    />
                                                 </div>
-
-                                                {diapositivas[slideIndex].ejemplo && (
-                                                    <motion.div
-                                                        initial={{ opacity: 0, y: 10 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        transition={{ delay: 0.4 }}
-                                                        className="p-3 bg-primary/10 border border-primary/20 rounded-xl text-left"
-                                                    >
-                                                        <p className="text-[10px] font-extrabold uppercase tracking-wider text-primary mb-0.5 flex items-center gap-1">
-                                                            💡 Ejemplo práctico
+                                            ) : (
+                                                <div className="w-full h-full max-h-[90%] flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-slate-900/60 backdrop-blur-md p-6 text-center space-y-4">
+                                                    <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                                                    <div className="space-y-1.5">
+                                                        <h3 className="font-display font-black text-sm text-white">
+                                                            Diseñando ilustración de apoyo...
+                                                        </h3>
+                                                        <p className="text-[10px] text-slate-300 max-w-xs leading-relaxed mx-auto">
+                                                            El Tutor IA está componiendo los elementos visuales de la escena explicativa. Sigue escuchando la narración.
                                                         </p>
-                                                        <p className="text-xs text-slate-300 leading-relaxed font-semibold">
-                                                            {diapositivas[slideIndex].ejemplo}
-                                                        </p>
-                                                    </motion.div>
-                                                )}
-                                            </div>
-
-                                            {/* Right Column: Illustration (Col-span 5) */}
-                                            <motion.div
-                                                initial={{ opacity: 0, scale: 0.95 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                transition={{ delay: 0.3 }}
-                                                className="md:col-span-5 rounded-2xl overflow-hidden border border-white/10 bg-white/5 p-1 shadow-2xl aspect-square flex items-center justify-center max-w-[240px] mx-auto w-full"
-                                            >
-                                                <img 
-                                                    src={`data:image/png;base64,${diapositivas[slideIndex].base64_imagen}`} 
-                                                    alt="Ilustración explicativa"
-                                                    className="w-full h-full object-cover rounded-xl hover:scale-105 transition-transform duration-300"
-                                                />
-                                            </motion.div>
-                                        </div>
-                                    ) : (
-                                        <div className="max-w-xl mx-auto text-center space-y-5">
-                                            <h2 className="font-display font-bold text-2xl md:text-3xl text-balance bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
-                                                {diapositivas[slideIndex].titulo}
-                                            </h2>
-                                            
-                                            <div className="flex flex-col items-center justify-center gap-2 max-w-md mx-auto">
-                                                {diapositivas[slideIndex].puntos_clave.map((punto, i) => (
-                                                    <motion.div
-                                                        key={punto}
-                                                        initial={{ opacity: 0, scale: 0.95 }}
-                                                        animate={{ opacity: 1, scale: 1 }}
-                                                        transition={{ delay: 0.2 + i * 0.15 }}
-                                                        className="w-full flex items-center gap-3 bg-white/5 border border-white/10 backdrop-blur-md rounded-xl px-5 py-2.5 hover:bg-white/10 transition-colors"
-                                                    >
-                                                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center border border-primary/20 text-primary shrink-0">
-                                                            <Check className="w-3.5 h-3.5" />
-                                                        </div>
-                                                        <span className="text-xs font-semibold text-slate-200 text-left">{punto}</span>
-                                                    </motion.div>
-                                                ))}
-                                            </div>
-
-                                            {diapositivas[slideIndex].ejemplo && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: 10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ delay: 0.4 }}
-                                                    className="p-3 bg-primary/10 border border-primary/20 rounded-xl text-left max-w-md mx-auto"
-                                                >
-                                                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-primary mb-0.5 flex items-center gap-1">
-                                                        💡 Ejemplo práctico
-                                                    </p>
-                                                    <p className="text-xs text-slate-300 leading-relaxed font-semibold">
-                                                        {diapositivas[slideIndex].ejemplo}
-                                                    </p>
-                                                </motion.div>
+                                                    </div>
+                                                    <div className="w-24 bg-white/10 rounded-full h-1 overflow-hidden relative border border-white/5">
+                                                        <div className="bg-primary h-1 rounded-full animate-pulse w-full" />
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
-                                    )}
-                                </motion.div>
-                            </AnimatePresence>
-                        </div>
 
-                        {/* Bottom: Subtítulos de Narración (Lo que lee la voz) */}
-                        <div className="z-10 mt-auto bg-black/60 border border-white/10 backdrop-blur-md rounded-2xl p-4 text-center max-w-2xl mx-auto shadow-inner">
-                            <p className="text-xs md:text-sm font-medium leading-relaxed text-slate-300 italic">
-                                "{diapositivas[slideIndex].narracion}"
-                            </p>
+                                        {/* Right Side: Information Pane (Title, Key Points, Practical Example) */}
+                                        <div className="w-full md:w-[320px] flex flex-col justify-between relative z-10 h-full py-1.5 text-left pointer-events-auto">
+                                            <div className="space-y-4">
+                                                {/* Header info */}
+                                                <div className="space-y-1">
+                                                    <span className="text-[8px] font-black uppercase tracking-widest text-primary bg-primary/15 border border-primary/20 backdrop-blur-md px-2 py-0.5 rounded-full w-fit">
+                                                        🎬 Diapositiva {slideIndex + 1}
+                                                    </span>
+                                                    <h2 className="font-display font-black text-sm md:text-base text-white leading-tight">
+                                                        {diapositivas[slideIndex].titulo}
+                                                    </h2>
+                                                </div>
+
+                                                {/* Puntos clave */}
+                                                <div className="space-y-2">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Conceptos Clave</span>
+                                                    <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1">
+                                                        {diapositivas[slideIndex].puntos_clave.map((punto, i) => (
+                                                            <div key={i} className="flex gap-2 items-start bg-slate-900/50 border border-white/5 rounded-xl p-2.5">
+                                                                <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                                                                <p className="text-[11px] font-semibold text-slate-200 leading-snug">{punto}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Ejemplo práctico al fondo */}
+                                            {diapositivas[slideIndex].ejemplo && (
+                                                <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 mt-4 text-left">
+                                                    <span className="text-[8px] font-black uppercase tracking-wider text-primary mb-1 block">💡 Ejemplo Práctico</span>
+                                                    <p className="text-[11px] text-slate-200 leading-normal font-semibold">
+                                                        {diapositivas[slideIndex].ejemplo}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Top HUD elements */}
+                            <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-30 pointer-events-none">
+                                <div className="flex flex-col gap-1.5 pointer-events-auto opacity-0 w-0 h-0 overflow-hidden">
+                                    {/* Mantenemos el componente para no alterar enlaces pero oculto, ya que todo el contenido está en el panel derecho */}
+                                    <h2>{diapositivas[slideIndex].titulo}</h2>
+                                </div>
+                                
+                                {/* Dynamic voice waveform status */}
+                                <div className="flex items-center gap-2 bg-black/40 border border-white/5 backdrop-blur-md px-3 py-1.5 rounded-2xl pointer-events-auto shadow-md ml-auto">
+                                    <span className="text-[9px] uppercase font-bold tracking-wider text-slate-300">
+                                        {isPlaying ? (isMuted ? "Audio Muted" : "ARIA Narrando") : "Pausado"}
+                                    </span>
+                                    <div className="flex items-center gap-0.5 h-3 w-5">
+                                        {[...Array(5)].map((_, i) => (
+                                            <motion.div
+                                                key={i}
+                                                className={cn(
+                                                    "w-0.5 rounded-full bg-primary",
+                                                    isMuted ? "bg-red-500" : "bg-primary"
+                                                )}
+                                                animate={isPlaying && !isMuted ? {
+                                                    height: [2, 10, 2],
+                                                    transition: {
+                                                        repeat: Infinity,
+                                                        duration: 0.4 + i * 0.1,
+                                                        ease: "easeInOut"
+                                                    }
+                                                } : {
+                                                    height: 2
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Interactive screen play listener */}
+                            <div 
+                                onClick={togglePlayPause}
+                                className="absolute inset-0 bg-transparent z-20 cursor-pointer"
+                            />
                         </div>
                     </div>
 
@@ -570,33 +834,63 @@ export default function VideoTutor() {
                     <div className="bg-card border border-border rounded-3xl p-5 shadow-soft space-y-4">
                         
                         {/* Barra de progreso de lectura de la diapositiva */}
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-[10px] font-bold uppercase text-muted-foreground">
-                                <span>Progreso diapositiva</span>
+                        <div className="space-y-1.5">
+                            <div className="flex justify-between text-[10px] font-black uppercase text-muted-foreground tracking-wider">
+                                <span>Progreso de Lección</span>
                                 <span>{Math.round(slideProgress)}%</span>
                             </div>
-                            <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                            <div 
+                                onClick={handleSeekBarClick}
+                                className="w-full h-2.5 bg-secondary hover:h-3 rounded-full overflow-hidden cursor-pointer relative group transition-all"
+                                title="Haz clic para retroceder o avanzar en la narración"
+                            >
                                 <motion.div
                                     className="h-full bg-primary-gradient"
                                     animate={{ width: `${slideProgress}%` }}
                                     transition={{ ease: "linear", duration: 0.1 }}
                                 />
+                                <div className="absolute top-0 bottom-0 right-0 left-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </div>
                         </div>
 
                         {/* Botones de Control */}
-                        <div className="flex items-center justify-between gap-4">
-                            <button
-                                onClick={saltarVideo}
-                                className="text-xs font-bold text-muted-foreground hover:text-foreground hover:underline border border-transparent hover:border-border px-3 py-2 rounded-xl transition-all"
-                            >
-                                Saltar lección e ir al test ➔
-                            </button>
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                            
+                            {/* Left Controls: Audio and Speed */}
+                            <div className="flex items-center gap-3">
+                                {/* Mute Button */}
+                                <button
+                                    onClick={toggleMute}
+                                    className="w-10 h-10 rounded-xl border border-border bg-card hover:bg-secondary flex items-center justify-center text-foreground transition-all active:scale-95 shadow-sm"
+                                    title={isMuted ? "Activar audio" : "Silenciar"}
+                                >
+                                    {isMuted ? <VolumeX className="w-4 h-4 text-red-500" /> : <Volume2 className="w-4 h-4 text-primary" />}
+                                </button>
 
+                                {/* Playback Rate Selector */}
+                                <div className="flex items-center gap-1 border border-border bg-card rounded-xl p-1 shadow-sm">
+                                    {[0.75, 1, 1.25, 1.5].map((rate) => (
+                                        <button
+                                            key={rate}
+                                            onClick={() => changePlaybackRate(rate)}
+                                            className={cn(
+                                                "px-2.5 py-1 text-[10px] font-black rounded-lg transition-all",
+                                                playbackRate === rate 
+                                                    ? "bg-primary text-white shadow-sm" 
+                                                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                                            )}
+                                        >
+                                            {rate}x
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Center Controls: Playback buttons */}
                             <div className="flex items-center gap-3">
                                 <button
                                     onClick={handlePrevSlide}
-                                    className="w-10 h-10 rounded-full border border-border bg-card hover:bg-secondary flex items-center justify-center text-foreground transition-all"
+                                    className="w-10 h-10 rounded-full border border-border bg-card hover:bg-secondary flex items-center justify-center text-foreground transition-all shadow-sm active:scale-90"
                                     title="Diapositiva anterior"
                                 >
                                     <RotateCcw className="w-4 h-4" />
@@ -605,23 +899,34 @@ export default function VideoTutor() {
                                 <button
                                     onClick={togglePlayPause}
                                     className="w-14 h-14 rounded-full bg-primary-gradient text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all"
-                                    title={isPlaying ? "Pausar narración" : "Reproducir narración"}
+                                    title={isPlaying ? "Pausar" : "Reproducir"}
                                 >
                                     {isPlaying ? <Pause className="w-6 h-6 fill-white" /> : <Play className="w-6 h-6 fill-white ml-0.5" />}
                                 </button>
 
                                 <button
                                     onClick={handleNextSlide}
-                                    className="w-10 h-10 rounded-full border border-border bg-card hover:bg-secondary flex items-center justify-center text-foreground transition-all animate-pulse"
+                                    className="w-10 h-10 rounded-full border border-border bg-card hover:bg-secondary flex items-center justify-center text-foreground transition-all shadow-sm active:scale-90"
                                     title="Siguiente diapositiva"
                                 >
                                     <ArrowRight className="w-4 h-4" />
                                 </button>
                             </div>
 
-                            <span className="text-xs font-bold text-muted-foreground">
-                                Diapositiva {slideIndex + 1} de {diapositivas.length}
-                            </span>
+                            {/* Right Controls: Skipping and count */}
+                            <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                                <button
+                                    onClick={saltarVideo}
+                                    className="text-[11px] font-bold text-muted-foreground hover:text-primary hover:underline border border-transparent hover:border-border/65 px-3 py-2 rounded-xl transition-all"
+                                >
+                                    Omitir lección e ir al test ➔
+                                </button>
+
+                                <span className="text-xs font-black text-muted-foreground bg-secondary/50 px-3 py-1.5 rounded-xl border border-border">
+                                    {slideIndex + 1} / {diapositivas.length}
+                                </span>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -653,46 +958,85 @@ export default function VideoTutor() {
                         </h3>
 
                         {/* Opciones */}
-                        <div className="grid gap-3">
-                            {(Array.isArray(preguntas[currentQuestionIdx].opciones_o_respuesta)
-                                ? (preguntas[currentQuestionIdx].opciones_o_respuesta as string[])
-                                : (preguntas[currentQuestionIdx].opciones_o_respuesta as string).split(" | ")
-                            ).map((opcion) => {
-                                const esSeleccionado = respuestas[currentQuestionIdx] === opcion;
-                                const respondida = !!preguntaEvaluada;
-                                const esCorrecta = opcion.trim() === preguntas[currentQuestionIdx].respuesta_correcta?.trim();
-                                
-                                let cardStyle = "border-border hover:bg-secondary/40 bg-secondary/10";
-                                if (esSeleccionado) {
-                                    cardStyle = "border-primary bg-primary/5";
-                                }
-                                if (respondida) {
-                                    if (esCorrecta) {
-                                        cardStyle = "border-green-300 dark:border-green-700 bg-green-500/10 text-green-700 dark:text-green-300";
-                                    } else if (esSeleccionado && !esCorrecta) {
-                                        cardStyle = "border-red-300 dark:border-red-700 bg-red-500/10 text-red-700 dark:text-red-300";
-                                    } else {
-                                        cardStyle = "border-border bg-secondary/5 opacity-50";
-                                    }
-                                }
+                        <div className="w-full">
+                            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-0 m-0">
+                                {(Array.isArray(preguntas[currentQuestionIdx].opciones_o_respuesta)
+                                    ? (preguntas[currentQuestionIdx].opciones_o_respuesta as string[])
+                                    : (preguntas[currentQuestionIdx].opciones_o_respuesta as string).split(" | ")
+                                ).map((opcion, i) => {
+                                    const esSeleccionado = respuestas[currentQuestionIdx] === opcion;
+                                    const respondida = !!preguntaEvaluada;
+                                    const esCorrecta = opcion.trim() === preguntas[currentQuestionIdx].respuesta_correcta?.trim();
+                                    
+                                    const hasLetterPrefix = /^[A-D]\)/.test(opcion.trim());
+                                    const cleanText = hasLetterPrefix ? opcion.replace(/^[A-D]\)\s*/, "") : opcion;
 
-                                return (
-                                    <button
-                                        key={opcion}
-                                        onClick={() => handleOptionSelect(opcion)}
-                                        disabled={respondida || evaluandoExamen}
-                                        className={cn(
-                                            "w-full text-left p-4 rounded-2xl border text-sm font-semibold transition-all flex items-start gap-3 justify-between",
-                                            !respondida && "hover:border-primary/50",
-                                            cardStyle
-                                        )}
-                                    >
-                                        <span>{opcion}</span>
-                                        {respondida && esCorrecta && <Check className="w-5 h-5 text-green-500 shrink-0" />}
-                                        {respondida && esSeleccionado && !esCorrecta && <X className="w-5 h-5 text-red-500 shrink-0" />}
-                                    </button>
-                                );
-                            })}
+                                    const colors = optionColors[i % 4];
+                                    const letter = String.fromCharCode(65 + i);
+
+                                    let cardStyle = cn(
+                                        "border bg-card text-left",
+                                        respondida ? "cursor-not-allowed" : "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-transform duration-200",
+                                        colors.bg
+                                    );
+                                    let badgeStyle = colors.badge;
+                                    let rightIcon = null;
+
+                                    if (respondida) {
+                                        if (esCorrecta) {
+                                            cardStyle = "border-emerald-500/80 bg-emerald-50 text-emerald-950 dark:bg-emerald-950/30 dark:text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.15)] scale-[1.01] text-left";
+                                            badgeStyle = "bg-emerald-500 text-white font-bold border-transparent";
+                                            rightIcon = <CheckCircle2 className="w-5.5 h-5.5 text-emerald-500 shrink-0" />;
+                                        } else if (esSeleccionado && !esCorrecta) {
+                                            cardStyle = "border-destructive/80 bg-destructive/5 text-destructive dark:bg-red-950/20 dark:text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.15)] text-left";
+                                            badgeStyle = "bg-destructive text-white font-bold border-transparent";
+                                            rightIcon = <XCircle className="w-5.5 h-5.5 text-destructive shrink-0" />;
+                                        } else {
+                                            cardStyle = "border-border/50 bg-muted/10 opacity-30 select-none scale-[0.98] text-left";
+                                            badgeStyle = "bg-muted text-muted-foreground/40 border-border/20";
+                                        }
+                                    } else if (esSeleccionado) {
+                                        cardStyle = colors.active;
+                                    }
+
+                                    return (
+                                        <li key={opcion} className="list-none relative">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOptionSelect(opcion)}
+                                                disabled={respondida || evaluandoExamen}
+                                                className={cn(
+                                                    "w-full relative flex items-center gap-4 p-5 pt-8 pb-5 rounded-2xl border transition-all text-sm font-semibold shadow-sm min-h-[76px]",
+                                                    cardStyle
+                                                )}
+                                            >
+                                                {/* Academic letter choice badge (A, B, C, D) */}
+                                                <span className={cn(
+                                                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-transparent shadow-xs transition-all duration-200 font-display font-black text-lg",
+                                                    badgeStyle
+                                                )}>
+                                                    {letter}
+                                                </span>
+
+                                                <span className="flex-1 leading-snug break-words pr-2">{cleanText}</span>
+                                                {rightIcon}
+
+                                                {/* Badges de corrección absolutos para evitar romper la cuadrícula y superponerse */}
+                                                {respondida && esCorrecta && (
+                                                    <span className="absolute top-2.5 right-3 text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-0.5 rounded-full select-none border border-emerald-200/50">
+                                                        ✓ Correcta
+                                                    </span>
+                                                )}
+                                                {respondida && esSeleccionado && !esCorrecta && (
+                                                    <span className="absolute top-2.5 right-3 text-[9px] font-black uppercase tracking-wider text-destructive bg-destructive/10 dark:bg-red-950/40 px-2 py-0.5 rounded-full select-none border border-destructive/20">
+                                                        ✗ Tu Selección
+                                                    </span>
+                                                )}
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
                         </div>
 
                         {/* Feedback Detallado de la IA */}

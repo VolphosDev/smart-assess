@@ -92,6 +92,8 @@ export const archivosApi = {
         return await res.text();
     },
 
+    generarImagen: (prompt: string) =>
+        apiClient.get<{ base64: string }>(`/archivos/generar-imagen?prompt=${encodeURIComponent(prompt)}`),
 };
 export interface EvaluarRespuestaRequest {
     pregunta: string;
