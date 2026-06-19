@@ -1,11 +1,9 @@
-import { useParams, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Clock, Loader2, Eye, Lock } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { semanasApi } from "@/api/courses.ts";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
+import { useEvalModeSelect } from "../presentation/hooks/useEvalModeSelect";
 
 const evalModes = [
     {
@@ -88,16 +86,16 @@ const colorMap = {
 } as const;
 
 export default function EvalModeSelect() {
-    const { courseId = "", semanaId: week = "" } = useParams();
-    const [cantidad, setCantidad] = useState(5);
-
-    const [selectedFile, setSelectedFile] = useState<{ id: string, name: string } | null>(null);
-
-    const { data: semana, isLoading } = useQuery({
-        queryKey: ["semana", week],
-        queryFn: () => semanasApi.get(week),
-        enabled: !!week,
-    });
+    const {
+        courseId,
+        semanaId: week,
+        cantidad,
+        setCantidad,
+        selectedFile,
+        setSelectedFile,
+        semana,
+        isLoading,
+    } = useEvalModeSelect();
 
     if (isLoading) {
         return (
@@ -142,7 +140,6 @@ export default function EvalModeSelect() {
                         : "Material de la semana"}
                 </h1>
 
-                {/* Botón por cada documento disponible */}
                 {materiales.length > 0 && (
                     <div className="flex flex-wrap justify-center gap-2">
                         {materiales.map((mat: any, idx: number) =>
@@ -179,7 +176,6 @@ export default function EvalModeSelect() {
                 )}
             </header>
 
-            {/* Lógica de bloqueo de la semana */}
             {materiales.length === 0 ? (
                 <div className="bg-card border border-dashed border-border rounded-3xl p-10 text-center">
                     <p className="text-muted-foreground">
@@ -198,7 +194,6 @@ export default function EvalModeSelect() {
                 </div>
             ) : (
                 <>
-                    {/* Selector de cantidad */}
                     <div className="flex items-center justify-center gap-3">
                         <span className="text-sm font-semibold text-muted-foreground">
                             Cantidad de preguntas:
@@ -221,7 +216,6 @@ export default function EvalModeSelect() {
                         </div>
                     </div>
 
-                    {/* Cards de modalidad */}
                     <div className="grid sm:grid-cols-2 gap-5">
                         {evalModes.map((m, i) => {
                             const cardContent = (
@@ -288,8 +282,8 @@ export default function EvalModeSelect() {
                                         <Link
                                             to={`/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${materiales[0]?.mongoId ?? ""}&tema=${encodeURIComponent(
                                                 (materiales[0]?.nombreArchivo || "")
-                                                    .replace(/\.[^/.]+$/, "") // Quitar extensión
-                                                    .replace(/[-_]/g, " ")     // Limpiar guiones
+                                                    .replace(/\.[^/.]+$/, "")
+                                                    .replace(/[-_]/g, " ")
                                                     .trim()
                                             )}`}
                                         >
