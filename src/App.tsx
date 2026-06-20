@@ -20,6 +20,7 @@ import TeacherWeek from "./pages/teacher/TeacherWeek";
 import CourseStudentsManager from "./pages/teacher/CourseStudentsManager";
 import AvatarTutor from "./pages/AvatarTutor";
 import VideoTutor from "./pages/VideoTutor";
+import AdaptivePractice from "./pages/AdaptivePractice";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="curso/:courseId/semana/:semanaId/evaluacion/:mode" element={<Practice />} />
               <Route path="curso/:courseId/semana/:semanaId/evaluacion/avatar" element={<AvatarTutor />}/>
               <Route path="curso/:courseId/semana/:semanaId/evaluacion/video" element={<VideoTutor />}/>
+              <Route path="curso/:courseId/semana/:semanaId/evaluacion/adaptativa" element={<AdaptivePractice />} />
             <Route path="historial" element={<HistoryPage />} />
           </Route>
             <Route path="/docente" element={<TeacherLayout />}>

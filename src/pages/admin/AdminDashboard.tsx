@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { UserPlus, Trash2, Users, GraduationCap, BookOpenCheck, Loader2 } from "lucide-react";
+import { UserPlus, Trash2, Users, GraduationCap, BookOpenCheck, Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { usersApi } from "@/api";
+import { intentosApi } from "@/api/courses";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -27,6 +28,66 @@ export default function AdminDashboard() {
             return response.data || response;
         },
     });
+
+    const downloadGlobalCSV = async () => {
+        try {
+            toast.loading("Generando reporte global...");
+            const data = await intentosApi.todos();
+            toast.dismiss();
+            if (!data || data.length === 0) {
+                toast.error("No hay notas registradas en el sistema");
+                return;
+            }
+
+            const headers = ["ID Intento", "Alumno", "Correo", "Curso", "Semana", "Tecnica", "Nota", "Fecha"];
+            const rows = data.map((i: any) => {
+                let tecnicaLabel = i.tecnica || "Práctica";
+                switch (tecnicaLabel.toLowerCase()) {
+                    case "opcion_multiple": tecnicaLabel = "Opción múltiple"; break;
+                    case "verdadero_falso": tecnicaLabel = "Verdadero / Falso"; break;
+                    case "abierta": tecnicaLabel = "Pregunta abierta"; break;
+                    case "deteccion_errores": tecnicaLabel = "Detección de errores"; break;
+                    case "visual_quiz": tecnicaLabel = "Visual Quiz"; break;
+                    case "avatar": tecnicaLabel = "Avatar Tutor"; break;
+                    case "video": tecnicaLabel = "Video Tutor"; break;
+                    case "adaptativa": tecnicaLabel = "Evaluación Recomendadora"; break;
+                }
+                return [
+                    i.id,
+                    i.alumno,
+                    i.correo,
+                    i.curso,
+                    i.semana,
+                    tecnicaLabel,
+                    i.nota,
+                    new Date(i.fecha).toLocaleString()
+                ];
+            });
+
+            const csvRows = [
+                headers.join(","),
+                ...rows.map((row: any) => row.map((val: any) => {
+                    const stringVal = val === null || val === undefined ? "" : String(val);
+                    const escaped = stringVal.replace(/"/g, '""');
+                    return `"${escaped}"`;
+                }).join(","))
+            ];
+            const csvContent = csvRows.join("\n");
+            const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Reporte_Global_Notas_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.success("Reporte global descargado correctamente");
+        } catch (err: any) {
+            toast.dismiss();
+            toast.error("Error al descargar el reporte global: " + (err.message || err));
+        }
+    };
 
     // Filtramos por los roles que devuelve Java (STUDENT y TEACHER)
     const students = users.filter((u: any) => u.rol === "STUDENT");
@@ -108,14 +169,24 @@ export default function AdminDashboard() {
             >
                 <div className="absolute -right-10 -top-10 text-[10rem] opacity-20 select-none">🛡️</div>
                 <span className="inline-block px-3 py-1 rounded-full bg-background/20 text-xs font-bold uppercase tracking-wider mb-3">
-          Panel administrador
-        </span>
-                <h1 className="font-display text-4xl md:text-5xl font-bold mb-2 max-w-2xl">
-                    Gestiona cuentas de alumnos y docentes
-                </h1>
-                <p className="opacity-90 max-w-xl">
-                    Registra nuevas cuentas y asígnales una contraseña temporal.
-                </p>
+                    Panel administrador
+                </span>
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 relative z-10">
+                    <div>
+                        <h1 className="font-display text-4xl md:text-5xl font-bold mb-2 max-w-2xl">
+                            Gestiona cuentas de alumnos y docentes
+                        </h1>
+                        <p className="opacity-90 max-w-xl">
+                            Registra nuevas cuentas y asígnales una contraseña temporal.
+                        </p>
+                    </div>
+                    <Button
+                        onClick={downloadGlobalCSV}
+                        className="bg-white/20 hover:bg-white/30 border border-white/40 text-white font-bold rounded-xl backdrop-blur-sm px-5 py-2.5 flex items-center gap-2 shrink-0 active:scale-95 transition-all w-full md:w-auto"
+                    >
+                        <Download className="w-4.5 h-4.5" /> Descargar Notas
+                    </Button>
+                </div>
             </motion.section>
 
             {/* Stats */}

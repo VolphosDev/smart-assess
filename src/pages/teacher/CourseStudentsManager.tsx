@@ -10,7 +10,7 @@ import { ArrowLeft, Users, UserPlus, UserMinus, Loader2, Mail } from "lucide-rea
 export default function CourseStudentsManager() {
     const { courseId = "" } = useParams();
     const queryClient = useQueryClient();
-    const [newStudentId, setNewStudentId] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
 
     // 1. Obtener la lista de alumnos
     const { data: alumnos = [], isLoading } = useQuery({
@@ -19,11 +19,15 @@ export default function CourseStudentsManager() {
         enabled: !!courseId,
     });
 
+    const { data: searchResults = [], isLoading: isSearching } = useQuery({
+        queryKey: ["buscarEstudiantes", searchTerm],
+        queryFn: () => coursesApi.buscarEstudiantes(searchTerm),
+    });
+
     const enrollMutation = useMutation({
         mutationFn: (studentId: string) => coursesApi.addStudent(courseId, studentId),
         onSuccess: () => {
             toast.success("Alumno matriculado exitosamente");
-            setNewStudentId("");
             queryClient.invalidateQueries({ queryKey: ["courseStudents", courseId] });
         },
         onError: (error: any) => {
@@ -49,12 +53,6 @@ export default function CourseStudentsManager() {
             toast.error(errorMessage);
         },
     });
-
-    const handleEnroll = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newStudentId.trim()) return;
-        enrollMutation.mutate(newStudentId);
-    };
 
     if (isLoading) {
         return (
@@ -159,7 +157,7 @@ export default function CourseStudentsManager() {
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="bg-card border border-border rounded-3xl p-6 shadow-soft space-y-4"
+                    className="bg-card border border-border rounded-3xl p-6 shadow-soft space-y-4 font-semibold"
                 >
                     <div className="flex items-center gap-3 text-primary mb-2">
                         <div className="p-2 bg-primary/10 rounded-xl">
@@ -168,30 +166,55 @@ export default function CourseStudentsManager() {
                         <h3 className="font-display font-bold text-lg">Matricular</h3>
                     </div>
 
-                    <p className="text-sm text-muted-foreground">
-                        Ingresa el ID del estudiante para añadirlo al curso.
+                    <p className="text-xs text-muted-foreground leading-normal">
+                        Busca al estudiante por su nombre para añadirlo al curso.
                     </p>
 
-                    <form onSubmit={handleEnroll} className="space-y-3 pt-2">
+                    <div className="space-y-3 pt-2">
                         <input
-                            type="number"
-                            placeholder="Ej. 1042"
-                            value={newStudentId}
-                            onChange={(e) => setNewStudentId(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary focus:outline-none transition-all"
-                            required
+                            type="text"
+                            placeholder="Buscar alumno por nombre..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl border border-border bg-background focus:ring-2 focus:ring-primary focus:outline-none transition-all text-xs"
                         />
-                        <Button
-                            type="submit"
-                            className="w-full rounded-xl bg-primary-gradient font-bold"
-                            disabled={enrollMutation.isPending || !newStudentId}
-                        >
-                            {enrollMutation.isPending ? (
-                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                            ) : null}
-                            Añadir al curso
-                        </Button>
-                    </form>
+
+                        {isSearching ? (
+                            <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+                        ) : searchResults.length > 0 ? (
+                            <div className="max-h-[300px] overflow-y-auto space-y-2 border border-border rounded-2xl p-2 bg-muted/20">
+                                {searchResults.map((estudiante: any) => {
+                                    const yaMatriculado = alumnos.some((a: any) => String(a.id) === String(estudiante.id));
+                                    return (
+                                        <div key={estudiante.id} className="flex items-center justify-between p-2 rounded-xl bg-card border border-border/60 hover:bg-muted/40 transition text-xs">
+                                            <div className="min-w-0 pr-2">
+                                                <p className="font-bold text-foreground truncate">{estudiante.nombre}</p>
+                                                <p className="text-muted-foreground text-[10px] truncate">{estudiante.correo}</p>
+                                            </div>
+                                            {yaMatriculado ? (
+                                                <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold rounded-lg uppercase tracking-wider text-[9px] shrink-0">
+                                                    Matriculado
+                                                </span>
+                                            ) : (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => enrollMutation.mutate(String(estudiante.id))}
+                                                    disabled={enrollMutation.isPending}
+                                                    className="rounded-lg bg-primary h-7 px-3 text-[11px] font-bold text-white shrink-0"
+                                                >
+                                                    Añadir
+                                                </Button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : searchTerm.trim() !== "" ? (
+                            <p className="text-center py-4 text-xs text-muted-foreground font-semibold">No se encontraron alumnos.</p>
+                        ) : (
+                            <p className="text-center py-4 text-xs text-muted-foreground/60 font-medium">Escribe el nombre del alumno para buscar.</p>
+                        )}
+                    </div>
                 </motion.section>
 
             </div>

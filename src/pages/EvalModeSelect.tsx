@@ -79,6 +79,29 @@ const evalModes = [
     },
 ];
 
+const isModeRecommended = (modeId: string, recs: string[]): boolean => {
+    if (modeId === "adaptativa") return true; // Always unlocked
+    const text = recs.join(" ").toLowerCase();
+    switch (modeId) {
+        case "avatar":
+            return text.includes("avatar") || text.includes("aria") || text.includes("hablar") || text.includes("convers");
+        case "video":
+            return text.includes("video") || text.includes("explicativo") || text.includes("lección") || text.includes("narrac");
+        case "OPCION_MULTIPLE":
+            return text.includes("opción") || text.includes("alternativa") || text.includes("cuestionario") || text.includes("quiz") || text.includes("múltiple");
+        case "VERDADERO_FALSO":
+            return text.includes("verdadero") || text.includes("falso");
+        case "ABIERTA":
+            return text.includes("abierta") || text.includes("desarrollo") || text.includes("redacc");
+        case "DETECCION_ERRORES":
+            return text.includes("detección") || text.includes("error") || text.includes("correg");
+        case "VISUAL_QUIZ":
+            return text.includes("visual") || text.includes("imagen") || text.includes("diagrama") || text.includes("gráfico");
+        default:
+            return false;
+    }
+};
+
 const colorMap = {
     primary: "bg-primary-gradient",
     lime: "bg-lime-gradient",
@@ -99,6 +122,9 @@ export default function EvalModeSelect() {
     } = useEvalModeSelect();
 
     const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const savedRecsRaw = localStorage.getItem(`semantika.recomendaciones.${user?.id}.${week}`);
+    const completedAdaptive = !!savedRecsRaw;
+    const recommendations = savedRecsRaw ? JSON.parse(savedRecsRaw) : [];
 
     const [showTestingMenu, setShowTestingMenu] = useState(false);
     const [ignorarBloqueo, setIgnorarBloqueo] = useState(() => {
@@ -106,6 +132,12 @@ export default function EvalModeSelect() {
     });
     const [ignorarContinuar, setIgnorarContinuar] = useState(() => {
         return localStorage.getItem("semantika.testing_ignorar_continuar") === "true";
+    });
+    const [ignorarRecomendados, setIgnorarRecomendados] = useState(() => {
+        return localStorage.getItem("semantika.testing_ignorar_recomendados") === "true";
+    });
+    const [ignorarObligacionPracticas, setIgnorarObligacionPracticas] = useState(() => {
+        return localStorage.getItem("semantika.testing_ignorar_obligacion_practicas") === "true";
     });
 
     const toggleIgnorarBloqueo = () => {
@@ -119,6 +151,27 @@ export default function EvalModeSelect() {
         setIgnorarContinuar(newValue);
         localStorage.setItem("semantika.testing_ignorar_continuar", String(newValue));
     };
+
+    const toggleIgnorarRecomendados = () => {
+        const newValue = !ignorarRecomendados;
+        setIgnorarRecomendados(newValue);
+        localStorage.setItem("semantika.testing_ignorar_recomendados", String(newValue));
+    };
+
+    const toggleIgnorarObligacionPracticas = () => {
+        const newValue = !ignorarObligacionPracticas;
+        setIgnorarObligacionPracticas(newValue);
+        localStorage.setItem("semantika.testing_ignorar_obligacion_practicas", String(newValue));
+    };
+
+    // Calculate if all recommended modes are completed
+    const recommendedModeIds = evalModes
+        .filter(m => m.id !== "adaptativa" && isModeRecommended(m.id, recommendations))
+        .map(m => m.id);
+
+    const allRecommendedCompleted = recommendedModeIds.length > 0 && recommendedModeIds.every(modeId => {
+        return localStorage.getItem(`semantika.completed_mode.${user.id}.${week}.${modeId}`) === "true";
+    });
 
     // Buscar si hay alguna evaluación incompleta para este usuario, curso y semana
     const unfinishedKeys = Object.keys(localStorage).filter(key =>
@@ -229,6 +282,54 @@ export default function EvalModeSelect() {
                                     />
                                 </button>
                             </div>
+
+                            {/* Ignorar Recomendados */}
+                            <div className="flex items-center justify-between gap-4 pt-2 border-t border-border/50">
+                                <div className="space-y-0.5">
+                                    <span className="text-xs font-bold block">Ignorar recomendados</span>
+                                    <span className="text-[10px] text-muted-foreground leading-normal block">
+                                        Habilita todos los métodos sin importar la recomendación.
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={toggleIgnorarRecomendados}
+                                    className={cn(
+                                        "w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 cursor-pointer",
+                                        ignorarRecomendados ? "bg-amber-500" : "bg-muted"
+                                    )}
+                                >
+                                    <div
+                                        className={cn(
+                                            "bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200",
+                                            ignorarRecomendados ? "translate-x-6" : "translate-x-0"
+                                        )}
+                                    />
+                                </button>
+                            </div>
+
+                            {/* Ignorar Obligación de Prácticas */}
+                            <div className="flex items-center justify-between gap-4 pt-2 border-t border-border/50">
+                                <div className="space-y-0.5">
+                                    <span className="text-xs font-bold block">Ignorar obligación</span>
+                                    <span className="text-[10px] text-muted-foreground leading-normal block">
+                                        Permite volver a evaluar sin completar las recomendadas.
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={toggleIgnorarObligacionPracticas}
+                                    className={cn(
+                                        "w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 cursor-pointer",
+                                        ignorarObligacionPracticas ? "bg-amber-500" : "bg-muted"
+                                    )}
+                                >
+                                    <div
+                                        className={cn(
+                                            "bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200",
+                                            ignorarObligacionPracticas ? "translate-x-6" : "translate-x-0"
+                                        )}
+                                    />
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -301,6 +402,111 @@ export default function EvalModeSelect() {
                 </div>
             ) : (
                 <>
+                    {/* Banner de Evaluación Recomendadora */}
+                    <div className="mb-8">
+                        {!completedAdaptive ? (
+                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-soft">
+                                <div className="flex items-start gap-4 text-left">
+                                    <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white grid place-items-center text-2xl shadow-soft shrink-0 animate-pulse">
+                                        🧠
+                                    </div>
+                                    <div className="space-y-1">
+                                        <h3 className="font-display font-black text-lg text-foreground">Evaluación Recomendadora (Pendiente)</h3>
+                                        <p className="text-xs text-muted-foreground leading-normal max-w-xl font-semibold">
+                                            Completa esta evaluación inicial para que el comité de agentes IA diagnostique tu perfil y te recomiende los mejores métodos de retroalimentación de la semana.
+                                        </p>
+                                    </div>
+                                </div>
+                                <Link
+                                    to={`/app/curso/${courseId}/semana/${week}/evaluacion/adaptativa`}
+                                    className="px-6 py-3 rounded-xl bg-amber-500 text-white font-extrabold text-xs tracking-wider shadow-md hover:bg-amber-600 transition-all shrink-0 active:scale-95 text-center w-full md:w-auto cursor-pointer"
+                                >
+                                    Realizar Diagnóstico
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="bg-violet-500/5 border border-violet-500/20 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-soft">
+                                <div className="flex items-start gap-4 text-left flex-1">
+                                    <div className="w-12 h-12 rounded-2xl bg-primary-gradient text-white grid place-items-center text-2xl shadow-soft shrink-0">
+                                        🧠
+                                    </div>
+                                    <div className="space-y-2 flex-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h3 className="font-display font-black text-lg text-foreground">Evaluación Recomendadora</h3>
+                                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase">
+                                                Nivel: {user.nivelConocimiento || "PRINCIPIANTE"}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground leading-normal max-w-xl font-semibold">
+                                            ¡Diagnóstico completado! El comité de agentes te recomienda utilizar los métodos indicados abajo con la etiqueta <span className="text-emerald-600 dark:text-emerald-400 font-black">Recomendado</span>.
+                                        </p>
+                                        {recommendations.length > 0 && (
+                                             <div className="bg-background/40 border border-border/60 rounded-2xl p-4 mt-2 grid md:grid-cols-2 gap-4">
+                                                 <div>
+                                                     <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-wider mb-1.5">Recomendaciones del Comité:</h4>
+                                                     <ul className="space-y-1">
+                                                         {recommendations.slice(0, 3).map((rec: string, index: number) => (
+                                                             <li key={index} className="text-[11px] text-muted-foreground font-bold list-disc list-inside leading-normal text-balance">
+                                                                 {rec}
+                                                             </li>
+                                                         ))}
+                                                     </ul>
+                                                 </div>
+                                                 <div className="border-t md:border-t-0 md:border-l border-border/60 pt-2.5 md:pt-0 md:pl-4">
+                                                     <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-wider mb-1.5">Progreso de Prácticas Recomendadas:</h4>
+                                                     <div className="space-y-1.5">
+                                                         {evalModes.filter(m => m.id !== "adaptativa" && isModeRecommended(m.id, recommendations)).map((m) => {
+                                                             const isDone = localStorage.getItem(`semantika.completed_mode.${user.id}.${week}.${m.id}`) === "true";
+                                                             return (
+                                                                 <div key={m.id} className="flex items-center gap-2 text-[11px] font-bold">
+                                                                     <span className={cn(
+                                                                         "w-4.5 h-4.5 rounded-full flex items-center justify-center border text-[10px] font-black shrink-0 transition-all",
+                                                                         isDone ? "bg-emerald-500 border-emerald-600 text-white" : "bg-muted border-border text-muted-foreground"
+                                                                     )}>
+                                                                         {isDone ? "✓" : "○"}
+                                                                     </span>
+                                                                     <span className={cn(
+                                                                         "leading-tight transition-all",
+                                                                         isDone ? "text-muted-foreground line-through opacity-60" : "text-foreground"
+                                                                     )}>
+                                                                         {m.title}
+                                                                     </span>
+                                                                 </div>
+                                                             );
+                                                         })}
+                                                     </div>
+                                                 </div>
+                                             </div>
+                                        )}
+                                     </div>
+                                 </div>
+                                 <div className="flex flex-col gap-1.5 shrink-0 w-full md:w-auto items-center justify-center">
+                                     {(!allRecommendedCompleted && !ignorarObligacionPracticas) ? (
+                                         <button
+                                             disabled
+                                             className="px-5 py-2.5 rounded-xl border border-border bg-secondary/20 text-muted-foreground font-bold text-xs tracking-wider transition-all text-center cursor-not-allowed opacity-50 flex items-center gap-1.5"
+                                             title="Completa todas las prácticas recomendadas de la semana para desbloquear"
+                                         >
+                                             <Lock className="w-3.5 h-3.5" /> Volver a evaluar
+                                         </button>
+                                     ) : (
+                                         <Link
+                                             to={`/app/curso/${courseId}/semana/${week}/evaluacion/adaptativa`}
+                                             className="px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-black text-xs tracking-wider transition-all text-center active:scale-95 cursor-pointer shadow-md shadow-violet-500/20 hover:shadow-lg hover:shadow-violet-500/30"
+                                         >
+                                             Volver a evaluar
+                                         </Link>
+                                     )}
+                                     {!allRecommendedCompleted && !ignorarObligacionPracticas && (
+                                         <span className="text-[10px] text-muted-foreground/80 font-bold max-w-[150px] text-center leading-normal">
+                                             Completa las prácticas recomendadas para reevaluarte.
+                                         </span>
+                                     )}
+                                 </div>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="flex items-center justify-center gap-3">
                         <span className="text-sm font-semibold text-muted-foreground">
                             Cantidad de preguntas:
@@ -327,19 +533,41 @@ export default function EvalModeSelect() {
                         {evalModes.map((m, i) => {
                             const isUnfinished = m.id === unfinishedMode;
                             const isBlockedByOtherUnfinished = !ignorarBloqueo && unfinishedMode !== null && !isUnfinished;
-                            const isDisabled = m.disabled || isBlockedByOtherUnfinished;
+                            
+                            // Adaptive restrictions
+                            const isRecommended = isModeRecommended(m.id, recommendations);
+                            const isLockedByAdaptive = !ignorarBloqueo && !ignorarRecomendados && (
+                                (!completedAdaptive && m.id !== "adaptativa") ||
+                                (completedAdaptive && m.id !== "adaptativa" && !isRecommended)
+                            );
+
+                            const isDisabled = m.disabled || isBlockedByOtherUnfinished || isLockedByAdaptive;
 
                             const cardContent = (
                                 <div
                                     className={cn(
-                                        "group block bg-card border rounded-3xl p-6 shadow-soft h-full transition-all",
+                                        "group block bg-card border rounded-3xl p-6 shadow-soft h-full transition-all relative overflow-hidden",
                                         isDisabled
-                                            ? "border-border opacity-50 grayscale cursor-not-allowed"
+                                            ? "border-border opacity-50 grayscale cursor-not-allowed bg-secondary/5"
                                             : isUnfinished
                                                 ? "border-amber-500/50 shadow-glow bg-amber-500/5 hover:-translate-y-1 cursor-pointer"
-                                                : "border-border hover:-translate-y-1 cursor-pointer"
+                                                : m.id === "adaptativa" && !completedAdaptive
+                                                    ? "border-primary/50 shadow-glow bg-primary/5 animate-pulse hover:-translate-y-1 cursor-pointer"
+                                                    : "border-border hover:-translate-y-1 cursor-pointer"
                                     )}
                                 >
+                                    {completedAdaptive && isRecommended && m.id !== "adaptativa" && (
+                                        <div className="absolute top-3 right-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
+                                            ✨ Recomendado
+                                        </div>
+                                    )}
+                                    
+                                    {isLockedByAdaptive && (
+                                        <div className="absolute top-3 right-3 bg-destructive/15 border border-destructive/30 text-destructive text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
+                                            {completedAdaptive ? "🔒 No Recomendado" : "🔒 Completar Adaptativa"}
+                                        </div>
+                                    )}
+
                                     <div
                                         className={cn(
                                             "w-16 h-16 rounded-2xl grid place-items-center text-3xl shadow-soft mb-4",
@@ -399,9 +627,26 @@ export default function EvalModeSelect() {
                                                 Prueba en curso pendiente
                                             </span>
                                         )}
+                                        {isLockedByAdaptive && (
+                                            <span className="text-xs font-semibold text-muted-foreground/60">
+                                                {completedAdaptive ? "No recomendado" : "Requiere adaptativa primero"}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             );
+
+                            const getTargetUrl = () => {
+                                if (m.id === "adaptativa" || m.id === "avatar" || m.id === "video") {
+                                    return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}`;
+                                }
+                                return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${materiales[0]?.mongoId ?? ""}&tema=${encodeURIComponent(
+                                    (materiales[0]?.nombreArchivo || "")
+                                        .replace(/\.[^/.]+$/, "")
+                                        .replace(/[-_]/g, " ")
+                                        .trim()
+                                )}`;
+                            };
 
                             return (
                                 <motion.div
@@ -413,14 +658,7 @@ export default function EvalModeSelect() {
                                     {isDisabled ? (
                                         <div>{cardContent}</div>
                                     ) : (
-                                        <Link
-                                            to={`/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${materiales[0]?.mongoId ?? ""}&tema=${encodeURIComponent(
-                                                (materiales[0]?.nombreArchivo || "")
-                                                    .replace(/\.[^/.]+$/, "")
-                                                    .replace(/[-_]/g, " ")
-                                                    .trim()
-                                            )}`}
-                                        >
+                                        <Link to={getTargetUrl()}>
                                             {cardContent}
                                         </Link>
                                     )}

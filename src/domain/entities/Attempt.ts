@@ -9,6 +9,7 @@ export interface SaveAttemptRequest {
   usuarioId: number | string;
   semanaId: number | string;
   notaFinal: number;
+  tecnica?: string;
   respuestas: AttemptAnswer[];
 }
 
@@ -19,6 +20,8 @@ export interface AttemptRecord {
   cursoEmoji: string;
   nota: number;
   fecha: string;
+  tecnica?: string;
+  attemptNumber?: number;
   respuestas: {
     pregunta: string;
     respuesta: string;

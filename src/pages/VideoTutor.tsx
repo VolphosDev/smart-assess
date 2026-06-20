@@ -773,9 +773,11 @@ export default function VideoTutor() {
                 usuarioId: Number(user.id),
                 semanaId: semanaId,
                 notaFinal: Number(finalScore.toFixed(2)),
+                tecnica: "video",
                 respuestas: respuestasDetalle
             });
 
+            localStorage.setItem(`semantika.completed_mode.${user.id}.${semanaId}.video`, "true");
             setExamenCompletado(true);
             toast.success("¡Tu videolección y test han sido guardados exitosamente!");
         } catch (err) {

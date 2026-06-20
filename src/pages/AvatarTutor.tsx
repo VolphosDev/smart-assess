@@ -1149,10 +1149,12 @@ export default function AvatarTutor() {
                 usuarioId: Number(user.id),
                 semanaId: semanaId,
                 notaFinal: Number(notaCalculada.toFixed(2)),
+                tecnica: "avatar",
                 respuestas: respuestasDetalle
             });
 
             toast.success("¡Sesión guardada en tu historial!");
+            localStorage.setItem(`semantika.completed_mode.${user.id}.${semanaId}.avatar`, "true");
             localStorage.removeItem(storageKey);
             setSesionFinalizada(true);
         } catch (err: any) {

@@ -407,9 +407,11 @@ export function usePractice() {
                 usuarioId: Number(user.id),
                 semanaId: semanaId,
                 notaFinal: Number(notaCalculada.toFixed(2)),
+                tecnica: mode,
                 respuestas: respuestasDetalle
             });
 
+            localStorage.setItem(`semantika.completed_mode.${user.id}.${semanaId}.${mode}`, "true");
             toast.success("¡Examen calificado y guardado en tu historial!");
             setFinalizado(true);
 
