@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Sparkles, ArrowRight } from "lucide-react";
@@ -16,6 +16,26 @@ export default function Index() {
     const [isLoading, setIsLoading] = useState(false);
 
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        const userStr = localStorage.getItem("user");
+        if (token && userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                const userRole = user.role?.toLowerCase();
+                if (userRole === "student") {
+                    navigate("/app");
+                } else if (userRole === "teacher") {
+                    navigate("/docente");
+                } else if (userRole === "admin") {
+                    navigate("/admin");
+                }
+            } catch (e) {
+                console.error("Error parsing user from localStorage", e);
+            }
+        }
+    }, [navigate]);
 
     const submit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -62,7 +82,7 @@ export default function Index() {
                         Plataforma educativa para docentes y alumnos. Practica oralmente, recibe retroalimentación inmediata y sigue tu progreso semana a semana.
                     </p>
                 </div>
-                <div className="relative text-sm opacity-80">© 2026 Vocali · Educación generativa</div>
+                <div className="relative text-sm opacity-80">© 2026 Semantika · Educación generativa</div>
             </div>
 
             {/* Right: login */}
@@ -76,7 +96,7 @@ export default function Index() {
             <span className="grid place-items-center w-10 h-10 rounded-2xl bg-primary-gradient text-primary-foreground shadow-glow">
               <Sparkles className="w-5 h-5" />
             </span>
-                        Vocali
+                        Semantika
                     </div>
 
                     <h2 className="font-display text-3xl font-bold mb-2">Bienvenido de vuelta</h2>

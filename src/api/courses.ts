@@ -33,6 +33,8 @@ export const coursesApi = {
 
     students: (courseId: string | number) =>
         apiClient.get<any[]>(`/cursos/${courseId}/alumnos`),
+    buscarEstudiantes: (nombre: string) =>
+        apiClient.get<any[]>(`/cursos/estudiantes/buscar?nombre=${encodeURIComponent(nombre)}`),
     update: (courseId: string | number, data: any) =>
         apiClient.put<any>(`/cursos/${courseId}`, data),
     delete: (courseId: string | number) =>
@@ -66,8 +68,10 @@ export const intentosApi = {
     guardar: (data: any) => apiClient.post('/intentos/guardar', data),
     misIntentos: (usuarioId: number) =>
         apiClient.get<any[]>(`/intentos/mis-intentos/${usuarioId}`),
-    porSemana: (semanaId: number) =>
+    porSemana: (semanaId: number | string) =>
         apiClient.get<any[]>(`/intentos/semana/${semanaId}`),
+    todos: () =>
+        apiClient.get<any[]>('/intentos/todos'),
 };
 
 export const archivosApi = {
@@ -122,4 +126,30 @@ export const agentJudgeApi = {
     evaluarRespuesta: (data: EvaluarRespuestaRequest) =>
         // Usamos apiClient como en las demás rutas
         apiClient.post<EvaluarRespuestaResponse>('/agent-judge/evaluar-respuesta', data),
+};
+
+export interface GuardarIntentoAdaptativoRequest {
+    usuarioId: number;
+    semanaId: string;
+    notaFinal: number;
+    tiempoEmpleadoSegundos: number;
+    numeroIntentos: number;
+    tipoEvaluacion: string;
+    respuestas: Array<{
+        preguntaTexto: string;
+        tipoPregunta: string;
+        respuestaEstudiante: string;
+        esCorrecta: boolean;
+    }>;
+}
+
+export const adaptiveApi = {
+    getEvaluacion: (usuarioId: number | string, semanaId: string) =>
+        apiClient.get<any>(`/adaptive/evaluacion?usuarioId=${usuarioId}&semanaId=${semanaId}`),
+    
+    guardarIntento: (data: GuardarIntentoAdaptativoRequest) =>
+        apiClient.post<any>('/adaptive/guardar', data),
+
+    getMaterialesRecomendados: (usuarioId: number | string, semanaId: string) =>
+        apiClient.get<any[]>(`/adaptive/materiales-recomendados?usuarioId=${usuarioId}&semanaId=${semanaId}`),
 };

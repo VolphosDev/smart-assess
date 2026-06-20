@@ -1,8 +1,8 @@
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Upload, Trash2, FileText, BookOpen, Loader2, Eye,EyeOff } from "lucide-react";
+import { ArrowLeft, Upload, Trash2, FileText, BookOpen, Loader2, Eye, EyeOff, Download } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { semanasApi } from "@/api/courses.ts";
+import { semanasApi, intentosApi } from "@/api/courses.ts";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useRef, useState } from "react";
@@ -18,6 +18,12 @@ export default function TeacherWeek() {
     const { data: semana, isLoading } = useQuery({
         queryKey: ["semana", semanaId],
         queryFn: () => semanasApi.get(semanaId),
+        enabled: !!semanaId,
+    });
+
+    const { data: intentos = [], isLoading: loadingIntentos } = useQuery({
+        queryKey: ["semana-intentos", semanaId],
+        queryFn: () => intentosApi.porSemana(semanaId),
         enabled: !!semanaId,
     });
 
@@ -72,6 +78,56 @@ export default function TeacherWeek() {
             uploadMutation.mutate(files);
         }
         e.target.value = "";
+    };
+
+    const handleDownloadCSV = () => {
+        if (!intentos || intentos.length === 0) {
+            toast.error("No hay notas registradas para descargar");
+            return;
+        }
+
+        const headers = ["ID Intento", "Alumno", "Correo", "Tecnica", "Nota", "Fecha"];
+        const rows = intentos.map((i: any) => {
+            let tecnicaLabel = i.tecnica || "Práctica";
+            switch (tecnicaLabel.toLowerCase()) {
+                case "opcion_multiple": tecnicaLabel = "Opción múltiple"; break;
+                case "verdadero_falso": tecnicaLabel = "Verdadero / Falso"; break;
+                case "abierta": tecnicaLabel = "Pregunta abierta"; break;
+                case "deteccion_errores": tecnicaLabel = "Detección de errores"; break;
+                case "visual_quiz": tecnicaLabel = "Visual Quiz"; break;
+                case "avatar": tecnicaLabel = "Avatar Tutor"; break;
+                case "video": tecnicaLabel = "Video Tutor"; break;
+                case "adaptativa": tecnicaLabel = "Evaluación Recomendadora"; break;
+            }
+            return [
+                i.id,
+                i.alumno,
+                i.correo,
+                tecnicaLabel,
+                i.nota,
+                new Date(i.fecha).toLocaleString()
+            ];
+        });
+
+        const csvRows = [
+            headers.join(","),
+            ...rows.map((row: any) => row.map((val: any) => {
+                const stringVal = val === null || val === undefined ? "" : String(val);
+                const escaped = stringVal.replace(/"/g, '""');
+                return `"${escaped}"`;
+            }).join(","))
+        ];
+        const csvContent = csvRows.join("\n");
+        const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Notas_${semana?.numSem || "Semana"}_Curso_${courseId}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Archivo descargado exitosamente");
     };
 
     if (isLoading) {
@@ -239,6 +295,85 @@ export default function TeacherWeek() {
                         </p>
                     </div>
                 </div>
+            </motion.section>
+
+            {/* Notas de Estudiantes */}
+            <motion.section
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-card border border-border rounded-3xl p-6 shadow-soft space-y-5"
+            >
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="font-display font-bold text-xl">Notas de avance de alumnos</h2>
+                        <p className="text-xs text-muted-foreground mt-0.5">Historial de intentos realizados esta semana</p>
+                    </div>
+                    <Button
+                        size="sm"
+                        onClick={handleDownloadCSV}
+                        className="rounded-xl bg-lime-gradient hover:opacity-90 active:scale-95 transition-all text-white font-bold"
+                        disabled={intentos.length === 0}
+                    >
+                        <Download className="w-4 h-4 mr-1" /> Descargar Notas
+                    </Button>
+                </div>
+
+                {loadingIntentos ? (
+                    <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+                ) : intentos.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead>
+                                <tr className="border-b border-border text-xs text-muted-foreground uppercase font-semibold">
+                                    <th className="py-3 px-2">Alumno</th>
+                                    <th className="py-3 px-2">Correo</th>
+                                    <th className="py-3 px-2">Técnica</th>
+                                    <th className="py-3 px-2 text-center">Nota</th>
+                                    <th className="py-3 px-2 text-right">Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {intentos.map((i: any) => {
+                                    let tecnicaLabel = i.tecnica || "Práctica";
+                                    switch (tecnicaLabel.toLowerCase()) {
+                                        case "opcion_multiple": tecnicaLabel = "Opción múltiple"; break;
+                                        case "verdadero_falso": tecnicaLabel = "Verdadero / Falso"; break;
+                                        case "abierta": tecnicaLabel = "Pregunta abierta"; break;
+                                        case "deteccion_errores": tecnicaLabel = "Detección de errores"; break;
+                                        case "visual_quiz": tecnicaLabel = "Visual Quiz"; break;
+                                        case "avatar": tecnicaLabel = "Avatar Tutor"; break;
+                                        case "video": tecnicaLabel = "Video Tutor"; break;
+                                        case "adaptativa": tecnicaLabel = "Evaluación Recomendadora"; break;
+                                    }
+                                    return (
+                                        <tr key={i.id} className="hover:bg-muted/30 transition-colors">
+                                            <td className="py-3.5 px-2 font-semibold text-foreground">{i.alumno}</td>
+                                            <td className="py-3.5 px-2 text-muted-foreground">{i.correo}</td>
+                                            <td className="py-3.5 px-2 text-xs font-bold">
+                                                <span className="bg-secondary/60 text-secondary-foreground px-2.5 py-1 rounded-full border border-border/40">
+                                                    {tecnicaLabel}
+                                                </span>
+                                            </td>
+                                            <td className="py-3.5 px-2 text-center">
+                                                <span className={`px-2.5 py-1 rounded-full font-bold ${i.nota >= 17 ? "bg-green-100 text-green-800" : i.nota >= 14 ? "bg-primary/10 text-primary" : "bg-red-100 text-red-800"}`}>
+                                                    {i.nota}/20
+                                                </span>
+                                            </td>
+                                            <td className="py-3.5 px-2 text-right text-xs text-muted-foreground">
+                                                {new Date(i.fecha).toLocaleDateString("es-PE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-sm text-muted-foreground border-2 border-dashed border-border rounded-2xl">
+                        Aún ningún alumno ha completado evaluaciones esta semana.
+                    </div>
+                )}
             </motion.section>
 
             {/* 4. INYECTAMOS EL NUEVO MODAL AQUÍ */}

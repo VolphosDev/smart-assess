@@ -18,8 +18,13 @@ export default function AdminLayout() {
           </span>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate("/")}
-              className="hidden sm:inline-flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+              type="button"
+              onClick={() => {
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                navigate("/");
+              }}
+              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
             >
               <LogOut className="w-4 h-4" /> Salir
             </button>

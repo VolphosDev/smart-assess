@@ -19,7 +19,34 @@ export default function HistoryPage() {
         ? (intentos.reduce((a: number, b: any) => a + b.nota, 0) / intentos.length).toFixed(1)
         : "0.0";
 
-    const data = [...intentos].reverse().map((h: any) => ({
+    const getTecnicaLabel = (tecnica: string) => {
+        if (!tecnica) return "Práctica";
+        switch (tecnica.toLowerCase()) {
+            case "opcion_multiple": return "Opción múltiple";
+            case "verdadero_falso": return "Verdadero / Falso";
+            case "abierta": return "Pregunta abierta";
+            case "deteccion_errores": return "Detección de errores";
+            case "visual_quiz": return "Visual Quiz";
+            case "avatar": return "Avatar Tutor";
+            case "video": return "Video Tutor";
+            case "adaptativa": return "Evaluación Recomendadora";
+            default: return tecnica;
+        }
+    };
+
+    const sortedChronological = [...intentos].reverse();
+    const counters: Record<string, number> = {};
+    const processedChronological = sortedChronological.map((h: any) => {
+        const key = `${h.cursoNombre}_${h.semana}_${h.tecnica || "PRAC"}`;
+        counters[key] = (counters[key] || 0) + 1;
+        return {
+            ...h,
+            attemptNumber: counters[key]
+        };
+    });
+    const intentosProcesados = [...processedChronological].reverse();
+
+    const data = processedChronological.map((h: any) => ({
         name: `Sem ${h.semana}`,
         score: h.nota,
     }));
@@ -69,7 +96,7 @@ export default function HistoryPage() {
                     <h3 className="font-display font-bold text-xl">Intentos recientes</h3>
                 </div>
                 <ul className="divide-y divide-border">
-                    {intentos.map((h: any, i: number) => (
+                    {intentosProcesados.map((h: any, i: number) => (
                         <motion.li key={h.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
                                    transition={{ delay: i * 0.04 }}
                                    className="flex items-center gap-4 p-5 hover:bg-muted/40 transition cursor-pointer"
@@ -80,7 +107,7 @@ export default function HistoryPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="font-bold truncate">
-                                    {h.cursoNombre} · {h.semana}
+                                    {h.cursoNombre} · {h.semana} · {getTecnicaLabel(h.tecnica)} (Intento #{h.attemptNumber})
                                 </div>
                                 <div className="text-sm text-muted-foreground">
                                     {new Date(h.fecha).toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" })}
@@ -117,7 +144,9 @@ export default function HistoryPage() {
                                 </h3>
                                 <span className="font-bold text-primary text-lg shrink-0">{intentoAbierto.nota}/20</span>
                             </div>
-                            <p className="text-sm text-muted-foreground font-semibold">{intentoAbierto.semana}</p>
+                            <p className="text-sm text-muted-foreground font-semibold">
+                                {intentoAbierto.semana} · {getTecnicaLabel(intentoAbierto.tecnica)} (Intento #{intentoAbierto.attemptNumber})
+                            </p>
                         </div>
                         <ul className="space-y-3">
                             {intentoAbierto.respuestas.map((r: any, i: number) => (
