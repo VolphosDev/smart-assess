@@ -13,7 +13,7 @@ export default function AppLayout() {
     <div className="min-h-screen bg-background bg-mesh">
       <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/70 border-b border-border/60">
         <div className="container flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 font-display font-bold text-xl">
+          <Link to="/app" className="flex items-center gap-2 font-display font-bold text-xl">
             <span className="grid place-items-center w-9 h-9 rounded-2xl bg-primary-gradient text-primary-foreground shadow-glow">
               <Sparkles className="w-5 h-5" />
             </span>

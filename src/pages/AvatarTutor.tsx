@@ -408,6 +408,7 @@ function useAudioRecorder(onAudioReady: (blob: Blob) => void, onError?: (msg: st
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
     const streamRef = useRef<MediaStream | null>(null);
+    const startTimeRef = useRef<number>(0);
     const [escuchando, setEscuchando] = useState(false);
 
     const [supported] = useState(() => {
@@ -449,7 +450,11 @@ function useAudioRecorder(onAudioReady: (blob: Blob) => void, onError?: (msg: st
 
             recorder.onstop = () => {
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                if (audioBlob.size > 0) {
+                const duration = Date.now() - startTimeRef.current;
+                
+                if (duration < 1500) {
+                    onError?.("La grabación es demasiado corta. Por favor, habla un poco más.");
+                } else if (audioBlob.size > 0) {
                     onAudioReady(audioBlob);
                 } else {
                     onError?.("No se grabó ningún audio. Intenta de nuevo.");
@@ -463,6 +468,7 @@ function useAudioRecorder(onAudioReady: (blob: Blob) => void, onError?: (msg: st
             };
 
             recorder.start();
+            startTimeRef.current = Date.now();
             setEscuchando(true);
             console.log("🟢 Grabación iniciada con MediaRecorder");
         } catch (error: any) {
@@ -597,13 +603,74 @@ export default function AvatarTutor() {
     const mongoId = searchParams.get("mongoId") ?? "";
     const tema = searchParams.get("tema") ?? "el material de esta semana";
 
-    const [sesionIniciada, setSesionIniciada] = useState(false);
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const storageKey = `semantika.unfinished_attempt.${user.id}.${courseId}.${semanaId}.avatar`;
 
-    const [estado, setEstado] = useState<EstadoAvatar>("idle");
-    const [turno, setTurno] = useState(1);
-    const [historial, setHistorial] = useState<TurnData[]>([]);
-    const [turnoActual, setTurnoActual] = useState<TurnData | null>(null);
-    const [feedback, setFeedback] = useState("");
+    // Si está activada la opción de pruebas para ignorar la continuación, limpiamos el intento guardado
+    if (localStorage.getItem("semantika.testing_ignorar_continuar") === "true") {
+        localStorage.removeItem(storageKey);
+    }
+
+    const [sesionIniciada, setSesionIniciada] = useState(() => {
+        const saved = localStorage.getItem(storageKey);
+        return !!saved;
+    });
+
+    const [estado, setEstado] = useState<EstadoAvatar>(() => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                const data = JSON.parse(saved);
+                return data.estado || "idle";
+            }
+        } catch (e) {}
+        return "idle";
+    });
+
+    const [turno, setTurno] = useState(() => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                const data = JSON.parse(saved);
+                return data.turno || 1;
+            }
+        } catch (e) {}
+        return 1;
+    });
+
+    const [historial, setHistorial] = useState<TurnData[]>(() => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                const data = JSON.parse(saved);
+                return data.historial || [];
+            }
+        } catch (e) {}
+        return [];
+    });
+
+    const [turnoActual, setTurnoActual] = useState<TurnData | null>(() => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                const data = JSON.parse(saved);
+                return data.turnoActual || null;
+            }
+        } catch (e) {}
+        return null;
+    });
+
+    const [feedback, setFeedback] = useState(() => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                const data = JSON.parse(saved);
+                return data.feedback || "";
+            }
+        } catch (e) {}
+        return "";
+    });
+
     const [cargando, setCargando] = useState(false);
     const [error, setErrorState] = useState("");
     const setError = (rawMsg: string) => {
@@ -631,12 +698,38 @@ export default function AvatarTutor() {
             setErrorState(rawMsg);
         }
     };
-    const [turnoListo, setTurnoListo] = useState(false);
+
+    const [turnoListo, setTurnoListo] = useState(() => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                const data = JSON.parse(saved);
+                return data.turnoListo || false;
+            }
+        } catch (e) {}
+        return false;
+    });
 
     const [modoTexto, setModoTexto] = useState(false);
     const [textoEscrito, setTextoEscrito] = useState("");
 
     const {hablar, parar} = useTTS();
+
+    // Guardar estado inacabado en localStorage
+    useEffect(() => {
+        if (sesionIniciada && !cargando) {
+            const data = {
+                turno,
+                historial,
+                turnoActual,
+                feedback,
+                estado: estado === "pensando" || estado === "hablando" ? "esperando" : estado, // evitar quedar en un estado transitorio al recargar
+                turnoListo,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(storageKey, JSON.stringify(data));
+        }
+    }, [turno, historial, turnoActual, feedback, estado, turnoListo, sesionIniciada]);
 
     // Detener cualquier audio en reproducción al desmontar el componente (cambiar de página o volver al curso)
     useEffect(() => {
@@ -704,7 +797,12 @@ export default function AvatarTutor() {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${localStorage.getItem("token")}`,
                 },
-                body: JSON.stringify({tema, mongoId, turno: turnoNum}),
+                body: JSON.stringify({
+                    tema,
+                    mongoId,
+                    turno: turnoNum,
+                    preguntasEvitar: historial.map(h => h.pregunta)
+                }),
             });
             if (!res.ok) {
                 let errorMsg = `Error del servidor: HTTP ${res.status}`;
@@ -1049,12 +1147,13 @@ export default function AvatarTutor() {
 
             await intentosApi.guardar({
                 usuarioId: Number(user.id),
-                semanaId: Number(semanaId),
+                semanaId: semanaId,
                 notaFinal: Number(notaCalculada.toFixed(2)),
                 respuestas: respuestasDetalle
             });
 
             toast.success("¡Sesión guardada en tu historial!");
+            localStorage.removeItem(storageKey);
             setSesionFinalizada(true);
         } catch (err: any) {
             console.error("Error al guardar el intento:", err);
@@ -1183,6 +1282,26 @@ export default function AvatarTutor() {
                 </span>
                 <h1 className="font-display text-3xl font-bold">{tema}</h1>
             </header>
+
+            {/* Error container placed higher up for absolute visibility */}
+            <AnimatePresence>
+                {error && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="flex flex-col items-center gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-2xl shadow-sm"
+                    >
+                        <p className="text-center text-sm text-destructive font-semibold">{error}</p>
+                        <button
+                            onClick={reintentarUltimoIntento}
+                            className="px-5 py-2 rounded-xl bg-destructive text-white text-xs font-bold shadow hover:bg-destructive/90 transition-all"
+                        >
+                            Reintentar acción
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Avatar */}
             <div className="flex flex-col items-center gap-2">
@@ -1446,17 +1565,6 @@ export default function AvatarTutor() {
                 </div>
             )}
 
-            {error && (
-                <div className="flex flex-col items-center gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-2xl">
-                    <p className="text-center text-sm text-destructive font-semibold">{error}</p>
-                    <button
-                        onClick={reintentarUltimoIntento}
-                        className="px-5 py-2 rounded-xl bg-destructive text-white text-xs font-bold shadow hover:bg-destructive/90 transition-all"
-                    >
-                        Reintentar acción
-                    </button>
-                </div>
-            )}
         </div>
     );
 }

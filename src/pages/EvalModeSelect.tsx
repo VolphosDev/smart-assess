@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Clock, Loader2, Eye, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Loader2, Eye, Lock, FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import { useEvalModeSelect } from "../presentation/hooks/useEvalModeSelect";
@@ -97,6 +98,38 @@ export default function EvalModeSelect() {
         isLoading,
     } = useEvalModeSelect();
 
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+    const [showTestingMenu, setShowTestingMenu] = useState(false);
+    const [ignorarBloqueo, setIgnorarBloqueo] = useState(() => {
+        return localStorage.getItem("semantika.testing_ignorar_bloqueo") === "true";
+    });
+    const [ignorarContinuar, setIgnorarContinuar] = useState(() => {
+        return localStorage.getItem("semantika.testing_ignorar_continuar") === "true";
+    });
+
+    const toggleIgnorarBloqueo = () => {
+        const newValue = !ignorarBloqueo;
+        setIgnorarBloqueo(newValue);
+        localStorage.setItem("semantika.testing_ignorar_bloqueo", String(newValue));
+    };
+
+    const toggleIgnorarContinuar = () => {
+        const newValue = !ignorarContinuar;
+        setIgnorarContinuar(newValue);
+        localStorage.setItem("semantika.testing_ignorar_continuar", String(newValue));
+    };
+
+    // Buscar si hay alguna evaluación incompleta para este usuario, curso y semana
+    const unfinishedKeys = Object.keys(localStorage).filter(key =>
+        key.startsWith(`semantika.unfinished_attempt.${user.id}.${courseId}.${week}.`)
+    );
+    let unfinishedMode: string | null = null;
+    if (!ignorarContinuar && unfinishedKeys.length > 0) {
+        const parts = unfinishedKeys[0].split(".");
+        unfinishedMode = parts[parts.length - 1];
+    }
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-20">
@@ -120,12 +153,86 @@ export default function EvalModeSelect() {
 
     return (
         <div className="space-y-8 max-w-5xl mx-auto">
-            <Link
-                to={`/app/curso/${courseId}`}
-                className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
-            >
-                <ArrowLeft className="w-4 h-4" /> Volver al curso
-            </Link>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+                <Link
+                    to={`/app/curso/${courseId}`}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
+                >
+                    <ArrowLeft className="w-4 h-4" /> Volver al curso
+                </Link>
+
+                <div className="relative">
+                    <button
+                        onClick={() => setShowTestingMenu(!showTestingMenu)}
+                        className={cn(
+                            "inline-flex items-center gap-2 px-4 py-2 rounded-2xl border text-xs font-bold transition-all shadow-soft cursor-pointer",
+                            showTestingMenu
+                                ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 font-extrabold"
+                                : "bg-card border-border hover:bg-secondary/40 text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        <FlaskConical className="w-4.5 h-4.5" />
+                        Herramientas de Test
+                    </button>
+
+                    {showTestingMenu && (
+                        <div className="absolute right-0 mt-2 w-72 bg-card border border-border rounded-3xl p-5 shadow-soft z-50 space-y-4 animate-fade-in text-left">
+                            <div className="flex items-center gap-2 pb-2 border-b border-border">
+                                <FlaskConical className="w-4.5 h-4.5 text-amber-500" />
+                                <h4 className="font-display font-bold text-sm">Pruebas & Configuración</h4>
+                            </div>
+                            
+                            {/* Ignorar Bloqueo */}
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="space-y-0.5">
+                                    <span className="text-xs font-bold block">Ignorar bloqueo</span>
+                                    <span className="text-[10px] text-muted-foreground leading-normal block">
+                                        Permite acceder a otros modos aun con exámenes activos.
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={toggleIgnorarBloqueo}
+                                    className={cn(
+                                        "w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 cursor-pointer",
+                                        ignorarBloqueo ? "bg-amber-500" : "bg-muted"
+                                    )}
+                                >
+                                    <div
+                                        className={cn(
+                                            "bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200",
+                                            ignorarBloqueo ? "translate-x-6" : "translate-x-0"
+                                        )}
+                                    />
+                                </button>
+                            </div>
+
+                            {/* Ignorar Continuar */}
+                            <div className="flex items-center justify-between gap-4 pt-2 border-t border-border/50">
+                                <div className="space-y-0.5">
+                                    <span className="text-xs font-bold block">Ignorar "continuar"</span>
+                                    <span className="text-[10px] text-muted-foreground leading-normal block">
+                                        Fuerza la generación de preguntas desde 0.
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={toggleIgnorarContinuar}
+                                    className={cn(
+                                        "w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 cursor-pointer",
+                                        ignorarContinuar ? "bg-amber-500" : "bg-muted"
+                                    )}
+                                >
+                                    <div
+                                        className={cn(
+                                            "bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200",
+                                            ignorarContinuar ? "translate-x-6" : "translate-x-0"
+                                        )}
+                                    />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
 
             <header className="text-center space-y-3">
                 <span className="inline-block px-3 py-1 rounded-full bg-secondary/40 text-xs font-bold uppercase tracking-wider">
@@ -218,13 +325,19 @@ export default function EvalModeSelect() {
 
                     <div className="grid sm:grid-cols-2 gap-5">
                         {evalModes.map((m, i) => {
+                            const isUnfinished = m.id === unfinishedMode;
+                            const isBlockedByOtherUnfinished = !ignorarBloqueo && unfinishedMode !== null && !isUnfinished;
+                            const isDisabled = m.disabled || isBlockedByOtherUnfinished;
+
                             const cardContent = (
                                 <div
                                     className={cn(
                                         "group block bg-card border rounded-3xl p-6 shadow-soft h-full transition-all",
-                                        m.disabled
+                                        isDisabled
                                             ? "border-border opacity-50 grayscale cursor-not-allowed"
-                                            : "border-border hover:-translate-y-1 cursor-pointer"
+                                            : isUnfinished
+                                                ? "border-amber-500/50 shadow-glow bg-amber-500/5 hover:-translate-y-1 cursor-pointer"
+                                                : "border-border hover:-translate-y-1 cursor-pointer"
                                     )}
                                 >
                                     <div
@@ -241,6 +354,16 @@ export default function EvalModeSelect() {
                                         {m.disabled && (
                                             <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
                                                 Pronto
+                                            </span>
+                                        )}
+                                        {isBlockedByOtherUnfinished && (
+                                            <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
+                                                Bloqueado
+                                            </span>
+                                        )}
+                                        {isUnfinished && (
+                                            <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold uppercase tracking-wider animate-pulse flex items-center gap-1 shadow-glow-sm">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" /> Continuar
                                             </span>
                                         )}
                                     </div>
@@ -260,9 +383,20 @@ export default function EvalModeSelect() {
                                         <span className="text-xs font-bold text-muted-foreground inline-flex items-center gap-1.5">
                                             <Clock className="w-3.5 h-3.5" /> {m.duration}
                                         </span>
-                                        {!m.disabled && (
-                                            <span className="text-sm font-bold text-primary inline-flex items-center gap-1 group-hover:gap-2 transition-all">
-                                                Empezar <ArrowRight className="w-4 h-4" />
+                                        {!isDisabled && (
+                                            isUnfinished ? (
+                                                <span className="text-sm font-bold text-amber-500 inline-flex items-center gap-1 group-hover:gap-2 transition-all animate-pulse">
+                                                    Continuar examen <ArrowRight className="w-4 h-4" />
+                                                </span>
+                                            ) : (
+                                                <span className="text-sm font-bold text-primary inline-flex items-center gap-1 group-hover:gap-2 transition-all">
+                                                    Empezar <ArrowRight className="w-4 h-4" />
+                                                </span>
+                                            )
+                                        )}
+                                        {isBlockedByOtherUnfinished && (
+                                            <span className="text-xs font-semibold text-muted-foreground/60">
+                                                Prueba en curso pendiente
                                             </span>
                                         )}
                                     </div>
@@ -276,7 +410,7 @@ export default function EvalModeSelect() {
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: i * 0.06 }}
                                 >
-                                    {m.disabled ? (
+                                    {isDisabled ? (
                                         <div>{cardContent}</div>
                                     ) : (
                                         <Link

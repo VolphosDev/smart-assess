@@ -771,7 +771,7 @@ export default function VideoTutor() {
 
             await intentosApi.guardar({
                 usuarioId: Number(user.id),
-                semanaId: Number(semanaId),
+                semanaId: semanaId,
                 notaFinal: Number(finalScore.toFixed(2)),
                 respuestas: respuestasDetalle
             });

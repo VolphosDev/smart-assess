@@ -83,70 +83,90 @@ export default function Course() {
                 )}
 
                 <ul className="space-y-3">
-                    {weeks.map((w: any, i: number) => (
-                        <motion.li
-                            key={w.id}
-                            initial={{ opacity: 0, x: -8 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                        >
-                            <div className="group flex items-center gap-5 bg-card border border-border rounded-3xl p-5 shadow-soft transition-all hover:-translate-y-0.5">
+                    {weeks.map((w: any, i: number) => {
+                        const user = JSON.parse(localStorage.getItem("user") || "{}");
+                        const unfinishedKeys = Object.keys(localStorage).filter(key =>
+                            key.startsWith(`semantika.unfinished_attempt.${user.id}.${courseId}.${w.id}.`)
+                        );
+                        const hasUnfinished = unfinishedKeys.length > 0;
 
-                                <div className="w-14 h-14 rounded-2xl grid place-items-center font-display font-bold text-xl shadow-soft shrink-0 bg-primary-gradient text-primary-foreground">
-                                    {i + 1}
-                                </div>
+                        return (
+                            <motion.li
+                                key={w.id}
+                                initial={{ opacity: 0, x: -8 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.05 }}
+                            >
+                                <div className="group flex items-center gap-5 bg-card border border-border rounded-3xl p-5 shadow-soft transition-all hover:-translate-y-0.5">
 
-                                <div className="flex-1 min-w-0">
-                                    <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                                        {w.numSem}
-                                    </span>
+                                    <div className="w-14 h-14 rounded-2xl grid place-items-center font-display font-bold text-xl shadow-soft shrink-0 bg-primary-gradient text-primary-foreground">
+                                        {i + 1}
+                                    </div>
 
-                                    {/* Lógica de los materiales modificada para manejar la visibilidad */}
-                                    {w.materiales && w.materiales.length > 0 ? (
-                                        w.materiales[0].visible ? (
-                                            <button
-                                                onClick={() => openPreview(w.materiales[0].mongoId, w.materiales[0].nombreArchivo)}
-                                                className="font-display font-bold text-lg leading-tight truncate flex items-center gap-2 hover:text-primary transition-colors text-left w-full mt-1"
-                                                title="Ver documento"
-                                            >
-                                                <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                                                <span className="truncate hover:underline">
-                                                    {w.materiales.length === 1
-                                                        ? w.materiales[0].nombreArchivo
-                                                        : `${w.materiales.length} archivos subidos`}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                                                {w.numSem}
+                                            </span>
+                                            {hasUnfinished && (
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 text-[10px] font-extrabold uppercase tracking-wider animate-pulse shadow-glow-sm">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> En curso
                                                 </span>
-                                            </button>
+                                            )}
+                                        </div>
+
+                                        {/* Lógica de los materiales modificada para manejar la visibilidad */}
+                                        {w.materiales && w.materiales.length > 0 ? (
+                                            w.materiales[0].visible ? (
+                                                <button
+                                                    onClick={() => openPreview(w.materiales[0].mongoId, w.materiales[0].nombreArchivo)}
+                                                    className="font-display font-bold text-lg leading-tight truncate flex items-center gap-2 hover:text-primary transition-colors text-left w-full mt-1"
+                                                    title="Ver documento"
+                                                >
+                                                    <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                                                    <span className="truncate hover:underline">
+                                                        {w.materiales.length === 1
+                                                            ? w.materiales[0].nombreArchivo
+                                                            : `${w.materiales.length} archivos subidos`}
+                                                    </span>
+                                                </button>
+                                            ) : (
+                                                <div className="font-display font-bold text-lg leading-tight truncate flex items-center gap-2 text-muted-foreground/50 text-left w-full mt-1 cursor-not-allowed" title="El profesor ocultó este material">
+                                                    <Lock className="w-4 h-4 shrink-0" />
+                                                    <span className="truncate">
+                                                        {w.materiales.length === 1
+                                                            ? w.materiales[0].nombreArchivo
+                                                            : `${w.materiales.length} archivos subidos`}
+                                                    </span>
+                                                </div>
+                                            )
                                         ) : (
-                                            <div className="font-display font-bold text-lg leading-tight truncate flex items-center gap-2 text-muted-foreground/50 text-left w-full mt-1 cursor-not-allowed" title="El profesor ocultó este material">
-                                                <Lock className="w-4 h-4 shrink-0" />
-                                                <span className="truncate">
-                                                    {w.materiales.length === 1
-                                                        ? w.materiales[0].nombreArchivo
-                                                        : `${w.materiales.length} archivos subidos`}
-                                                </span>
-                                            </div>
-                                        )
-                                    ) : (
-                                        <h3 className="font-display font-bold text-lg leading-tight truncate text-muted-foreground mt-1">
-                                            Sin material aún
-                                        </h3>
-                                    )}
+                                            <h3 className="font-display font-bold text-lg leading-tight truncate text-muted-foreground mt-1">
+                                                Sin material aún
+                                            </h3>
+                                        )}
 
-                                    <p className="text-sm text-muted-foreground mt-1">
-                                        {w.totalPreguntas ?? 0} preguntas disponibles
-                                    </p>
+                                        <p className="text-sm text-muted-foreground mt-1">
+                                            {w.totalPreguntas ?? 0} preguntas disponibles
+                                        </p>
+                                    </div>
+
+                                    {/* El enlace a la vista de la semana se mantiene solo en el botón de Evaluarme */}
+                                    <Link
+                                        to={`/app/curso/${courseId}/semana/${w.id}`}
+                                        className={cn(
+                                            "hidden sm:flex items-center gap-2 font-semibold text-sm shrink-0 px-4 py-2 rounded-xl transition-all",
+                                            hasUnfinished
+                                                ? "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border border-amber-500/20 animate-pulse shadow-glow-sm"
+                                                : "text-primary hover:bg-primary/10 transition-colors"
+                                        )}
+                                    >
+                                        <PlayCircle className="w-5 h-5" /> {hasUnfinished ? "Continuar prueba" : "Evaluarme"} <ArrowRight className="w-4 h-4" />
+                                    </Link>
                                 </div>
-
-                                {/* El enlace a la vista de la semana se mantiene solo en el botón de Evaluarme */}
-                                <Link
-                                    to={`/app/curso/${courseId}/semana/${w.id}`}
-                                    className="hidden sm:flex items-center gap-2 text-primary font-semibold text-sm shrink-0 px-4 py-2 rounded-xl hover:bg-primary/10 transition-colors"
-                                >
-                                    <PlayCircle className="w-5 h-5" /> Evaluarme <ArrowRight className="w-4 h-4" />
-                                </Link>
-                            </div>
-                        </motion.li>
-                    ))}
+                            </motion.li>
+                        );
+                    })}
                 </ul>
             </section>
 

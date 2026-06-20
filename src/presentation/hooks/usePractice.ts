@@ -31,18 +31,92 @@ export function usePractice() {
     const mongoId = searchParams.get("mongoId") ?? "";
     const tema = searchParams.get("tema") ?? "";
 
-    const [respuestas, setRespuestas] = useState<Record<number, string>>({});
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const storageKey = `semantika.unfinished_attempt.${user.id}.${courseId}.${semanaId}.${mode}`;
+
+    // Si está activada la opción de pruebas para ignorar la continuación, limpiamos el intento guardado
+    if (localStorage.getItem("semantika.testing_ignorar_continuar") === "true") {
+        localStorage.removeItem(storageKey);
+    }
+
+    const [respuestas, setRespuestas] = useState<Record<number, string>>(() => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                const data = JSON.parse(saved);
+                return data.respuestas || {};
+            }
+        } catch (e) {
+            console.error("Error restoring respuestas", e);
+        }
+        return {};
+    });
+
     const [evaluando, setEvaluando] = useState(false);
-    const [resultados, setResultados] = useState<any[]>([]);
-    const [currentSlide, setCurrentSlide] = useState(0);
+
+    const [resultados, setResultados] = useState<any[]>(() => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                const data = JSON.parse(saved);
+                return data.resultados || [];
+            }
+        } catch (e) {
+            console.error("Error restoring resultados", e);
+        }
+        return [];
+    });
+
+    const [currentSlide, setCurrentSlide] = useState<number>(() => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                const data = JSON.parse(saved);
+                return data.currentSlide || 0;
+            }
+        } catch (e) {
+            console.error("Error restoring currentSlide", e);
+        }
+        return 0;
+    });
+
     const [finalizado, setFinalizado] = useState(false);
 
     // Streaming & Load state
-    const [evaluacion, setEvaluacion] = useState<EvaluationResponse | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [evaluacion, setEvaluacion] = useState<EvaluationResponse | null>(() => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) {
+                const data = JSON.parse(saved);
+                return data.evaluacion || null;
+            }
+        } catch (e) {
+            console.error("Error restoring evaluacion", e);
+        }
+        return null;
+    });
+
+    const [isLoading, setIsLoading] = useState(() => {
+        try {
+            if (localStorage.getItem(storageKey)) {
+                return false;
+            }
+        } catch (e) {}
+        return true;
+    });
+
     const [isError, setIsError] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [streamCompleted, setStreamCompleted] = useState(false);
+
+    const [streamCompleted, setStreamCompleted] = useState(() => {
+        try {
+            if (localStorage.getItem(storageKey)) {
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    });
+
     const [imagenesCargadas, setImagenesCargadas] = useState<Record<string, string>>({});
 
     const preguntas = evaluacion?.preguntas ?? [];
@@ -146,6 +220,13 @@ export function usePractice() {
             return;
         }
 
+        // If we already have the evaluation restored from localStorage, DO NOT fetch it again!
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const key = `semantika.unfinished_attempt.${user.id}.${courseId}.${semanaId}.${mode}`;
+        if (localStorage.getItem(key)) {
+            return;
+        }
+
         setIsLoading(true);
         setIsError(false);
         setErrorMsg(null);
@@ -228,7 +309,36 @@ export function usePractice() {
         };
     }, [mongoId, mode, cantidad, tema]);
 
+    // Guardar estado inacabado en localStorage
+    useEffect(() => {
+        if (!finalizado && evaluacion && preguntas.length > 0) {
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+            if (user.id) {
+                const key = `semantika.unfinished_attempt.${user.id}.${courseId}.${semanaId}.${mode}`;
+                const data = {
+                    courseId,
+                    semanaId,
+                    mode,
+                    cantidad,
+                    mongoId,
+                    tema,
+                    evaluacion,
+                    respuestas,
+                    resultados,
+                    currentSlide,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(key, JSON.stringify(data));
+            }
+        }
+    }, [finalizado, evaluacion, respuestas, resultados, currentSlide, courseId, semanaId, mode, cantidad, mongoId, tema, preguntas]);
+
     const handleVolver = () => {
+        if (finalizado) {
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+            const key = `semantika.unfinished_attempt.${user.id}.${courseId}.${semanaId}.${mode}`;
+            localStorage.removeItem(key);
+        }
         navigate(`/app/curso/${courseId}/semana/${semanaId}`);
     };
 
@@ -295,17 +405,26 @@ export function usePractice() {
 
             await saveAttemptUseCase.execute({
                 usuarioId: Number(user.id),
-                semanaId: Number(semanaId),
+                semanaId: semanaId,
                 notaFinal: Number(notaCalculada.toFixed(2)),
                 respuestas: respuestasDetalle
             });
 
             toast.success("¡Examen calificado y guardado en tu historial!");
             setFinalizado(true);
+
+            // Eliminar el intento inacabado de localStorage al finalizar con éxito
+            const key = `semantika.unfinished_attempt.${user.id}.${courseId}.${semanaId}.${mode}`;
+            localStorage.removeItem(key);
         } catch (e) {
             console.error("Error while saving test attempt:", e);
             toast.error("Hubo un error al guardar el intento en el historial.");
             setFinalizado(true);
+
+            // Eliminar el intento inacabado de localStorage también en caso de error en el guardado
+            const user = JSON.parse(localStorage.getItem("user") || "{}");
+            const key = `semantika.unfinished_attempt.${user.id}.${courseId}.${semanaId}.${mode}`;
+            localStorage.removeItem(key);
         } finally {
             setEvaluando(false);
         }
