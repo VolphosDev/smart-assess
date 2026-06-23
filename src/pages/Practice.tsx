@@ -35,6 +35,30 @@ const modeLabels: Record<string, { label: string; icon: React.ReactNode; color: 
     },
 };
 
+const getBloomLevelLabel = (level: string | number) => {
+    if (!level) return "No especificado";
+    const clean = level.toString().trim().toLowerCase();
+    if (clean === "1" || clean.includes("recordar") || clean.includes("conocimiento")) {
+        return "Recordar (Conocimiento)";
+    }
+    if (clean === "2" || clean.includes("comprender") || clean.includes("comprension")) {
+        return "Comprender (Comprensión)";
+    }
+    if (clean === "3" || clean.includes("aplicar") || clean.includes("aplicacion")) {
+        return "Aplicar (Aplicación)";
+    }
+    if (clean === "4" || clean.includes("analizar") || clean.includes("analisis")) {
+        return "Analizar (Análisis)";
+    }
+    if (clean === "5" || clean.includes("evaluar") || clean.includes("evaluacion")) {
+        return "Evaluar (Evaluación)";
+    }
+    if (clean === "6" || clean.includes("crear") || clean.includes("sintesis")) {
+        return "Crear (Síntesis)";
+    }
+    return level;
+};
+
 export default function Practice() {
     const topRef = useRef<HTMLDivElement>(null);
     const {
@@ -129,7 +153,7 @@ export default function Practice() {
                         </div>
                         {evaluacion?.nivel_bloom && (
                             <span className="text-xs font-semibold text-muted-foreground bg-muted px-2.5 py-1 rounded-lg">
-                                Nivel Bloom: <span className="font-bold text-foreground">{evaluacion.nivel_bloom}</span>
+                                Nivel Bloom: <span className="font-bold text-foreground">{getBloomLevelLabel(evaluacion.nivel_bloom)}</span>
                             </span>
                         )}
                     </div>
@@ -295,7 +319,14 @@ export default function Practice() {
                     <div className="flex items-center justify-between border-b border-border pb-4">
                         <div>
                             <h2 className="font-display text-2xl font-bold">Evaluación Completada</h2>
-                            <p className="text-sm text-muted-foreground font-semibold">Revisión de tu desempeño con el Tutor IA</p>
+                            <p className="text-sm text-muted-foreground font-semibold flex items-center gap-2">
+                                Revisión de tu desempeño con el Tutor IA
+                                {evaluacion?.nivel_bloom && (
+                                    <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+                                        Nivel Bloom: {getBloomLevelLabel(evaluacion.nivel_bloom)}
+                                    </span>
+                                )}
+                            </p>
                         </div>
                         <div className="text-3xl font-black text-primary bg-primary/5 border border-primary/20 px-5 py-2.5 rounded-2xl shadow-sm">{notaTotal} / 20</div>
                     </div>

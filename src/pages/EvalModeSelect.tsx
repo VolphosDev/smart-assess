@@ -533,8 +533,6 @@ export default function EvalModeSelect() {
                         {evalModes.map((m, i) => {
                             const isUnfinished = m.id === unfinishedMode;
                             const isBlockedByOtherUnfinished = !ignorarBloqueo && unfinishedMode !== null && !isUnfinished;
-                            
-                            // Adaptive restrictions
                             const isRecommended = isModeRecommended(m.id, recommendations);
                             const isLockedByAdaptive = !ignorarBloqueo && !ignorarRecomendados && (
                                 (!completedAdaptive && m.id !== "adaptativa") ||

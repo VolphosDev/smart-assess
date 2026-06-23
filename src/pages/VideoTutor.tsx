@@ -57,6 +57,30 @@ const optionColors = [
     },
 ];
 
+const getBloomLevelLabel = (level: string | number) => {
+    if (!level) return "No especificado";
+    const clean = level.toString().trim().toLowerCase();
+    if (clean === "1" || clean.includes("recordar") || clean.includes("conocimiento")) {
+        return "Recordar (Conocimiento)";
+    }
+    if (clean === "2" || clean.includes("comprender") || clean.includes("comprension")) {
+        return "Comprender (Comprensión)";
+    }
+    if (clean === "3" || clean.includes("aplicar") || clean.includes("aplicacion")) {
+        return "Aplicar (Aplicación)";
+    }
+    if (clean === "4" || clean.includes("analizar") || clean.includes("analisis")) {
+        return "Analizar (Análisis)";
+    }
+    if (clean === "5" || clean.includes("evaluar") || clean.includes("evaluacion")) {
+        return "Evaluar (Evaluación)";
+    }
+    if (clean === "6" || clean.includes("crear") || clean.includes("sintesis")) {
+        return "Crear (Síntesis)";
+    }
+    return level;
+};
+
 function parseIncrementalLeccionYPreguntas(rawJson: string): any {
     const response: { leccion?: Leccion; preguntas: Pregunta[] } = { preguntas: [] };
     
@@ -1103,8 +1127,13 @@ export default function VideoTutor() {
                     {/* Indicador de progreso del Quiz */}
                     <div className="bg-card border border-border rounded-3xl p-5 shadow-soft flex items-center justify-between gap-4">
                         <div className="space-y-1 flex-1">
-                            <div className="flex justify-between text-xs font-bold uppercase text-muted-foreground">
+                            <div className="flex justify-between text-xs font-bold uppercase text-muted-foreground flex-wrap gap-2">
                                 <span>Cuestionario de control</span>
+                                {evaluacion?.nivel_bloom && (
+                                    <span className="text-primary font-bold normal-case">
+                                        Nivel Bloom: {getBloomLevelLabel(evaluacion.nivel_bloom)}
+                                    </span>
+                                )}
                                 <span>Pregunta {currentQuestionIdx + 1} de {preguntas.length}</span>
                             </div>
                             <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
@@ -1264,8 +1293,13 @@ export default function VideoTutor() {
                     
                     <div className="space-y-2">
                         <h2 className="font-display font-bold text-2xl">¡Evaluación Completada!</h2>
-                        <p className="text-sm text-muted-foreground">
-                            Has finalizado de ver la videolección de <strong>"{tema}"</strong> y respondiste el test de comprensión.
+                        <p className="text-sm text-muted-foreground flex items-center justify-center gap-2 flex-wrap">
+                            <span>Has finalizado de ver la videolección de <strong>"{tema}"</strong> y respondiste el test de comprensión.</span>
+                            {evaluacion?.nivel_bloom && (
+                                <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
+                                    Nivel Bloom: {getBloomLevelLabel(evaluacion.nivel_bloom)}
+                                </span>
+                            )}
                         </p>
                     </div>
 
