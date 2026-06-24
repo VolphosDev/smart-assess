@@ -4,11 +4,12 @@ import {ArrowLeft, ArrowRight, PlayCircle, Sparkles, BookOpen, FileText, Users} 
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { coursesApi } from "@/api";
+import { getCourseIcon } from "@/lib/icon-mapper";
 
 const colorMap = {
-    primary: "bg-primary-gradient",
-    lime: "bg-lime-gradient",
-    coral: "bg-coral-gradient",
+    primary: "bg-indigo-600",
+    lime: "bg-emerald-600",
+    coral: "bg-rose-600",
 } as const;
 
 export default function TeacherCourse() {
@@ -57,18 +58,20 @@ export default function TeacherCourse() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={cn(
-                    "rounded-[2rem] p-8 text-primary-foreground shadow-glow relative overflow-hidden",
+                    "rounded-xl p-8 text-primary-foreground shadow-sm relative overflow-hidden",
                     colorMap[course.color as keyof typeof colorMap] ?? "bg-primary-gradient"
                 )}
             >
-                <div className="absolute -right-6 -top-6 text-[10rem] opacity-20 select-none">{course.emoji}</div>
-                <span className="inline-block px-3 py-1 rounded-full bg-background/20 text-xs font-bold uppercase tracking-wider mb-3">
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-[0.25] select-none text-white pointer-events-none">
+                    {getCourseIcon(course.emoji, "w-36 h-36 md:w-40 md:h-40")}
+                </div>
+                <span className="inline-block px-3 py-1 rounded-lg bg-white/10 text-xs font-semibold uppercase tracking-wider mb-3">
                     Curso · Semestre 2026-1
                 </span>
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 relative z-10">
                     <div>
                         <h1 className="font-display text-4xl md:text-5xl font-bold mb-3 max-w-2xl">{course.name}</h1>
-                        <p className="opacity-90 max-w-xl">
+                        <p className="opacity-90 max-w-xl text-sm">
                             {weeks.length} semanas · {course.studentCount ?? 0} alumnos matriculados
                         </p>
                     </div>
@@ -76,7 +79,7 @@ export default function TeacherCourse() {
                     {/* Botón para ir a gestionar alumnos */}
                     <Link
                         to={`/docente/curso/${courseId}/alumnos`}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-background/20 hover:bg-background/30 border border-white/70 transition-colors text-white font-bold rounded-xl backdrop-blur-sm shrink-0"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 border border-white/40 transition-all text-white font-semibold rounded-lg shrink-0"
                     >
                         <Users className="w-4 h-4" /> Gestionar clase
                     </Link>
@@ -102,9 +105,12 @@ export default function TeacherCourse() {
                         >
                             <Link
                                 to={`/docente/curso/${courseId}/semana/${w.id}`}
-                                className="group flex items-center gap-5 bg-card border border-border rounded-3xl p-5 shadow-soft transition-all hover:-translate-y-0.5"
+                                className="group flex items-center gap-5 bg-card border border-border rounded-xl p-5 shadow-xs transition-all hover:-translate-y-0.5"
                             >
-                                <div className="w-14 h-14 rounded-2xl grid place-items-center font-display font-bold text-xl shadow-soft shrink-0 bg-primary-gradient text-primary-foreground">
+                                <div className={cn(
+                                    "w-12 h-12 rounded-lg grid place-items-center font-display font-bold text-lg shrink-0 text-white",
+                                    course.color === "lime" ? "bg-emerald-600" : course.color === "coral" ? "bg-rose-600" : "bg-indigo-600"
+                                )}>
                                     {i + 1}
                                 </div>
 
@@ -134,7 +140,10 @@ export default function TeacherCourse() {
                                     </div>
                                 </div>
 
-                                <div className="hidden sm:flex items-center gap-2 text-primary font-semibold text-sm shrink-0">
+                                <div className={cn(
+                                    "hidden sm:flex items-center gap-2 font-semibold text-sm shrink-0",
+                                    course.color === "lime" ? "text-emerald-600" : course.color === "coral" ? "text-rose-600" : "text-indigo-600"
+                                )}>
                                     Gestionar <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
                                 </div>
                             </Link>
@@ -143,16 +152,16 @@ export default function TeacherCourse() {
                 </ul>
 
                 {!isLoading && weeks.length === 0 && (
-                    <div className="bg-card border border-dashed border-border rounded-3xl p-10 text-center">
-                        <p className="text-muted-foreground">Este curso no tiene semanas registradas aún.</p>
+                    <div className="bg-card border border-dashed border-border rounded-xl p-10 text-center">
+                        <p className="text-muted-foreground text-sm">Este curso no tiene semanas registradas aún.</p>
                     </div>
                 )}
             </section>
 
             {/* Tip */}
-            <section className="bg-card border border-border rounded-3xl p-6 shadow-soft flex flex-col md:flex-row items-center gap-5">
-                <div className="w-14 h-14 rounded-2xl bg-primary-gradient grid place-items-center text-primary-foreground shadow-glow shrink-0">
-                    <Sparkles className="w-6 h-6" />
+            <section className="bg-card border border-border rounded-xl p-6 shadow-xs flex flex-col md:flex-row items-center gap-5">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 grid place-items-center text-primary shrink-0">
+                    <Sparkles className="w-5 h-5" />
                 </div>
                 <div className="flex-1 text-center md:text-left">
                     <h3 className="font-display font-bold text-lg">Sube el material de cada semana</h3>

@@ -12,5 +12,8 @@ export const authApi = {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         return apiClient.post<{ ok: true }>(API_ENDPOINTS.logout);
-    }
+    },
+
+    registrarConsentimiento: (version = "v1.0") =>
+        apiClient.post<{ ok: boolean }>("/auth/consent", { version })
 };

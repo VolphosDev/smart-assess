@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { coursesApi } from "@/api";
 import { useState } from "react";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
+import { getCourseIcon } from "@/lib/icon-mapper";
 
 const colorMap = {
     primary: "bg-primary-gradient",
@@ -59,14 +60,16 @@ export default function Course() {
             <motion.section
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={cn("rounded-[2rem] p-8 text-primary-foreground shadow-glow relative overflow-hidden", colorMap[course.color as keyof typeof colorMap] ?? "bg-primary-gradient")}
+                className={cn("rounded-xl p-8 text-primary-foreground shadow-sm relative overflow-hidden", colorMap[course.color as keyof typeof colorMap] ?? "bg-primary-gradient")}
             >
-                <div className="absolute -right-6 -top-6 text-[10rem] opacity-20 select-none">{course.emoji}</div>
-                <span className="inline-block px-3 py-1 rounded-full bg-background/20 text-xs font-bold uppercase tracking-wider mb-3">
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-[0.25] select-none text-white pointer-events-none">
+                    {getCourseIcon(course.emoji, "w-36 h-36 md:w-40 md:h-40")}
+                </div>
+                <span className="inline-block px-3 py-1 rounded-lg bg-white/10 text-xs font-semibold uppercase tracking-wider mb-3">
                     Curso · Semestre 2026-1
                 </span>
                 <h1 className="font-display text-4xl md:text-5xl font-bold mb-3 max-w-2xl">{course.name}</h1>
-                <p className="opacity-90 max-w-xl mb-5">
+                <p className="opacity-90 max-w-xl mb-5 text-sm">
                     {weeks.length} semanas
                 </p>
             </motion.section>
@@ -97,9 +100,12 @@ export default function Course() {
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: i * 0.05 }}
                             >
-                                <div className="group flex items-center gap-5 bg-card border border-border rounded-3xl p-5 shadow-soft transition-all hover:-translate-y-0.5">
+                                <div className="group flex items-center gap-5 bg-card border border-border/80 rounded-xl p-5 shadow-xs transition-all hover:-translate-y-0.5">
 
-                                    <div className="w-14 h-14 rounded-2xl grid place-items-center font-display font-bold text-xl shadow-soft shrink-0 bg-primary-gradient text-primary-foreground">
+                                    <div className={cn(
+                                        "w-12 h-12 rounded-lg grid place-items-center font-display font-bold text-lg shrink-0 text-white",
+                                        course.color === "lime" ? "bg-emerald-600" : course.color === "coral" ? "bg-rose-600" : "bg-indigo-600"
+                                    )}>
                                         {i + 1}
                                     </div>
 
@@ -109,7 +115,7 @@ export default function Course() {
                                                 {w.numSem}
                                             </span>
                                             {hasUnfinished && (
-                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 text-[10px] font-extrabold uppercase tracking-wider animate-pulse shadow-glow-sm">
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-600 text-[10px] font-extrabold uppercase tracking-wider animate-pulse shadow-sm">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> En curso
                                                 </span>
                                             )}
@@ -155,13 +161,17 @@ export default function Course() {
                                     <Link
                                         to={`/app/curso/${courseId}/semana/${w.id}`}
                                         className={cn(
-                                            "hidden sm:flex items-center gap-2 font-semibold text-sm shrink-0 px-4 py-2 rounded-xl transition-all",
+                                            "hidden sm:flex items-center gap-2 font-semibold text-xs shrink-0 px-4 py-2 rounded-lg transition-all border border-transparent",
                                             hasUnfinished
-                                                ? "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border border-amber-500/20 animate-pulse shadow-glow-sm"
-                                                : "text-primary hover:bg-primary/10 transition-colors"
+                                                ? "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-amber-500/20 animate-pulse shadow-xs"
+                                                : course.color === "lime"
+                                                    ? "text-emerald-600 hover:bg-emerald-600/5 hover:border-emerald-600/10"
+                                                    : course.color === "coral"
+                                                        ? "text-rose-600 hover:bg-rose-600/5 hover:border-rose-600/10"
+                                                        : "text-indigo-600 hover:bg-indigo-600/5 hover:border-indigo-600/10"
                                         )}
                                     >
-                                        <PlayCircle className="w-5 h-5" /> {hasUnfinished ? "Continuar prueba" : "Evaluarme"} <ArrowRight className="w-4 h-4" />
+                                        <PlayCircle className="w-4 h-4" /> {hasUnfinished ? "Continuar prueba" : "Evaluarme"} <ArrowRight className="w-3.5 h-3.5" />
                                     </Link>
                                 </div>
                             </motion.li>
@@ -170,9 +180,9 @@ export default function Course() {
                 </ul>
             </section>
 
-            <section className="bg-card border border-border rounded-3xl p-6 shadow-soft flex flex-col md:flex-row items-center gap-5">
-                <div className="w-14 h-14 rounded-2xl bg-primary-gradient grid place-items-center text-primary-foreground shadow-glow shrink-0">
-                    <Sparkles className="w-6 h-6" />
+            <section className="bg-card border border-border rounded-xl p-6 shadow-xs flex flex-col md:flex-row items-center gap-5">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 grid place-items-center text-primary shrink-0">
+                    <Sparkles className="w-5 h-5" />
                 </div>
                 <div className="flex-1 text-center md:text-left">
                     <h3 className="font-display font-bold text-lg">¿No sabes por dónde empezar?</h3>

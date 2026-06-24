@@ -1,6 +1,6 @@
 import {useState, useEffect, useRef} from "react";
 import {useParams, useSearchParams, Link} from "react-router-dom";
-import {ArrowLeft, Mic, MicOff} from "lucide-react";
+import {ArrowLeft, Mic, MicOff, Volume2} from "lucide-react";
 import {motion, AnimatePresence} from "framer-motion";
 import {intentosApi} from "@/api/courses";
 import {toast} from "sonner";
@@ -1124,6 +1124,29 @@ export default function AvatarTutor() {
         }
     }
 
+    const repetirTexto = () => {
+        if (!turnoActual) return;
+        let textoARepetir = "";
+        if (turnoListo && feedback) {
+            textoARepetir = feedback.replace(/\[PUNTUACION:\s*\d+\]/i, "").trim();
+        } else {
+            textoARepetir = turnoActual.pregunta;
+        }
+
+        if (textoARepetir) {
+            setEstado("hablando");
+            hablar(textoARepetir, () => {
+                if (turnoListo && feedback) {
+                    const match = feedback.match(/\[PUNTUACION:\s*(\d+)\]/i);
+                    const puntuacion = match ? parseInt(match[1], 10) : undefined;
+                    setEstado(detectarVeredicto(feedback, puntuacion));
+                } else {
+                    setEstado("esperando");
+                }
+            });
+        }
+    };
+
     async function guardarIntento() {
         setCargando(true);
         setError("");
@@ -1352,11 +1375,20 @@ export default function AvatarTutor() {
                                 initial={{opacity: 0, y: 10}}
                                 animate={{opacity: 1, y: 0}}
                                 exit={{opacity: 0, y: -10}}
-                                className="bg-card border border-border rounded-2xl p-5 space-y-2"
+                                className="bg-card border border-border rounded-2xl p-5 space-y-2 text-left"
                             >
-                                <span className="text-xs font-bold text-muted-foreground uppercase">
-                                    ARIA pregunta:
-                                </span>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-muted-foreground uppercase">
+                                        ARIA pregunta:
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={repetirTexto}
+                                        className="h-7 px-2.5 text-xs font-semibold rounded-lg flex items-center gap-1 text-primary bg-primary/5 hover:bg-primary/10 border border-primary/15 transition-all"
+                                    >
+                                        <Volume2 className="w-3.5 h-3.5" /> Repetir voz
+                                    </button>
+                                </div>
                                 <p className="font-semibold text-lg leading-relaxed">
                                     {turnoActual.pregunta}
                                 </p>
@@ -1386,24 +1418,33 @@ export default function AvatarTutor() {
                                         <span className="text-xs font-bold text-primary uppercase">
                                             ARIA responde:
                                         </span>
-                                        {puntuacionActual !== undefined && (
-                                            <div className="flex items-center gap-1.5 bg-primary/10 px-2 py-0.5 rounded-full text-xs font-bold text-primary">
-                                                <span>Fundamentación:</span>
-                                                <div className="flex">
-                                                    {[...Array(4)].map((_, idx) => (
-                                                        <span 
-                                                            key={idx} 
-                                                            className={cn(
-                                                                "text-sm", 
-                                                                idx < puntuacionActual ? "text-amber-500" : "text-muted-foreground/30"
-                                                            )}
-                                                        >
-                                                            ★
-                                                        </span>
-                                                    ))}
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={repetirTexto}
+                                                className="h-7 px-2 text-[10px] font-semibold rounded-lg flex items-center gap-1 text-primary bg-primary/5 hover:bg-primary/10 border border-primary/15 transition-all"
+                                            >
+                                                <Volume2 className="w-3.5 h-3.5" /> Repetir voz
+                                            </button>
+                                            {puntuacionActual !== undefined && (
+                                                <div className="flex items-center gap-1.5 bg-primary/10 px-2 py-0.5 rounded-full text-xs font-bold text-primary">
+                                                    <span>Fundamentación:</span>
+                                                    <div className="flex">
+                                                        {[...Array(4)].map((_, idx) => (
+                                                            <span 
+                                                                key={idx} 
+                                                                className={cn(
+                                                                    "text-sm", 
+                                                                    idx < puntuacionActual ? "text-amber-500" : "text-muted-foreground/30"
+                                                                )}
+                                                            >
+                                                                ★
+                                                            </span>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
                                     <p className="text-sm leading-relaxed">{feedback.replace(/\[PUNTUACION:\s*\d+\]/i, "").trim()}</p>
                                 </motion.div>

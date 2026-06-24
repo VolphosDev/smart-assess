@@ -18,17 +18,137 @@ import {
     FileText,
     TrendingUp,
     Bookmark,
-    Check
+    Check,
+    Sliders,
+    Gauge,
+    Compass
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adaptiveApi } from "../api/courses";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import { toast } from "sonner";
+import {
+    Radar,
+    RadarChart,
+    PolarGrid,
+    PolarAngleAxis,
+    PolarRadiusAxis,
+    ResponsiveContainer
+} from "recharts";
 
 interface ParsedMessage {
     id: number;
     agent: string;
     text: string;
+}
+
+function getBloomProfile(nivel: string, nota: number) {
+    const cleanNivel = (nivel || "PRINCIPIANTE").toUpperCase();
+    
+    // Default base scores based on level
+    let recordar = 50;
+    let comprender = 40;
+    let aplicar = 30;
+    let analizar = 20;
+    let sintetizar = 15;
+    let evaluar = 10;
+
+    if (cleanNivel.includes("PRINCIPIANTE")) {
+        recordar = 65 + (nota / 20) * 15;
+        comprender = 45 + (nota / 20) * 15;
+        aplicar = 25 + (nota / 20) * 15;
+        analizar = 15 + (nota / 20) * 10;
+        sintetizar = 10 + (nota / 20) * 10;
+        evaluar = 5 + (nota / 20) * 10;
+    } else if (cleanNivel.includes("INTERMEDIO")) {
+        recordar = 80 + (nota / 20) * 15;
+        comprender = 70 + (nota / 20) * 15;
+        aplicar = 60 + (nota / 20) * 15;
+        analizar = 45 + (nota / 20) * 20;
+        sintetizar = 35 + (nota / 20) * 20;
+        evaluar = 25 + (nota / 20) * 15;
+    } else { // AVANZADO, EXPERTO, etc.
+        recordar = 90 + (nota / 20) * 10;
+        comprender = 85 + (nota / 20) * 12;
+        aplicar = 80 + (nota / 20) * 15;
+        analizar = 70 + (nota / 20) * 18;
+        sintetizar = 65 + (nota / 20) * 18;
+        evaluar = 60 + (nota / 20) * 20;
+    }
+
+    const clamp = (val: number) => Math.min(100, Math.max(5, Math.round(val)));
+
+    return [
+        { subject: "Recordar", valor: clamp(recordar), fullMark: 100 },
+        { subject: "Comprender", valor: clamp(comprender), fullMark: 100 },
+        { subject: "Aplicar", valor: clamp(aplicar), fullMark: 100 },
+        { subject: "Analizar", valor: clamp(analizar), fullMark: 100 },
+        { subject: "Sintetizar", valor: clamp(sintetizar), fullMark: 100 },
+        { subject: "Evaluar", valor: clamp(evaluar), fullMark: 100 }
+    ];
+}
+
+function getBloomLevelLabel(level: string | number) {
+    if (!level) return "No especificado";
+    const clean = level.toString().trim().toLowerCase();
+    if (clean === "1" || clean.includes("recordar") || clean.includes("conocimiento")) {
+        return "Recordar (Conocimiento)";
+    }
+    if (clean === "2" || clean.includes("comprender") || clean.includes("comprension")) {
+        return "Comprender (Comprensión)";
+    }
+    if (clean === "3" || clean.includes("aplicar") || clean.includes("aplicacion")) {
+        return "Aplicar (Aplicación)";
+    }
+    if (clean === "4" || clean.includes("analizar") || clean.includes("analisis")) {
+        return "Analizar (Análisis)";
+    }
+    if (clean === "5" || clean.includes("evaluar") || clean.includes("evaluacion")) {
+        return "Evaluar (Evaluación)";
+    }
+    if (clean === "6" || clean.includes("crear") || clean.includes("sintesis")) {
+        return "Crear (Síntesis)";
+    }
+    return level;
+}
+
+function getQuestionBadgeLabel(idx: number, q: any, bloomLevel: string) {
+    const cleanBloom = (bloomLevel || "APLICACION").toUpperCase();
+    if (cleanBloom.includes("CONOCIMIENTO") || cleanBloom.includes("RECORDAR")) {
+        if (idx % 2 === 0) return "Concepto Base 📚";
+        return "Repaso Rápido ⚡";
+    }
+    if (cleanBloom.includes("COMPRENSION")) {
+        if (idx % 2 === 0) return "Entendimiento Teórico 🔍";
+        return "Explicación Conceptual 💡";
+    }
+    if (cleanBloom.includes("APLICACION") || cleanBloom.includes("APLICAR")) {
+        if (idx % 2 === 0) return "Caso Práctico ⚙️";
+        return "Resolución Activa 🛠️";
+    }
+    if (cleanBloom.includes("ANALISIS") || cleanBloom.includes("ANALIZAR")) {
+        if (idx % 2 === 0) return "Análisis Crítico 🧠";
+        return "Desafío de Deducción 🎯";
+    }
+    if (idx % 2 === 0) return "Reto de Síntesis 🏆";
+    return "Evaluación Crítica 🔥";
+}
+
+function getQuestionBadgeStyle(idx: number, q: any, bloomLevel: string) {
+    const cleanBloom = (bloomLevel || "APLICACION").toUpperCase();
+    if (cleanBloom.includes("CONOCIMIENTO") || cleanBloom.includes("RECORDAR")) {
+        return "bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400";
+    }
+    if (cleanBloom.includes("COMPRENSION")) {
+        return "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400";
+    }
+    if (cleanBloom.includes("APLICACION") || cleanBloom.includes("APLICAR")) {
+        return "bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400";
+    }
+    if (cleanBloom.includes("ANALISIS") || cleanBloom.includes("ANALIZAR")) {
+        return "bg-violet-500/10 border border-violet-500/20 text-violet-600 dark:text-violet-400";
+    }
+    return "bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400";
 }
 
 export default function AdaptivePractice() {
@@ -194,7 +314,7 @@ export default function AdaptivePractice() {
                 setStreamedText("");
 
                 const interval = setInterval(() => {
-                    charIdx += 2; // Stream 2 characters at a time for smooth but readable speed
+                    charIdx += 3; // Stream 3 characters at a time for faster speed
                     if (charIdx >= textToStream.length) {
                         setStreamedText(textToStream);
                         clearInterval(interval);
@@ -209,13 +329,13 @@ export default function AdaptivePractice() {
                             // Delay before starting next message (reading delay)
                             setTimeout(() => {
                                 speakNextMessage();
-                            }, 1500);
-                        }, 800); // Small pause after completing the text
+                            }, 600);
+                        }, 400); // Small pause after completing the text
                     } else {
                         setStreamedText(textToStream.slice(0, charIdx));
                     }
-                }, 35); // 35ms per step
-            }, 1500); // 1.5 seconds typing indicator
+                }, 10); // 10ms per step
+            }, 600); // 0.6 seconds typing indicator
         };
 
         // Start first message
@@ -240,7 +360,7 @@ export default function AdaptivePractice() {
         ];
         
         const sortedKeywords = [...new Set(keywords)].sort((a, b) => b.length - a.length);
-        const pattern = new RegExp(`(${sortedKeywords.map(k => k.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")).join("|")})`, "gi");
+        const pattern = new RegExp(`(${sortedKeywords.map(k => k.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")).join("|")})`, "gi");
         
         const parts = text.split(pattern);
         return parts.map((part, index) => {
@@ -262,7 +382,7 @@ export default function AdaptivePractice() {
     const parseDebate = (rawText: string): ParsedMessage[] => {
         if (!rawText) return [];
         return rawText.split("\n").map((line, index) => {
-            const match = line.match(/^\[(Agente Evaluador|Agente Psicopedagogo|Agente Coordinador|Sistema)\]:\s*(.*)$/i);
+            const match = line.match(/^\[(Agente Evaluador|Agente Psicopedagogo|Agente de Adaptación de Evaluaciones|Agente Coordinador|Sistema)\]:\s*(.*)$/i);
             if (match) {
                 return {
                     id: index,
@@ -276,6 +396,9 @@ export default function AdaptivePractice() {
             }
             if (line.includes("Psicopedagogo")) {
                 return { id: index, agent: "Agente Psicopedagogo", text: line.replace(/^.*?:\s*/, "") };
+            }
+            if (line.includes("Adaptación") || line.includes("Adaptador")) {
+                return { id: index, agent: "Agente de Adaptación de Evaluaciones", text: line.replace(/^.*?:\s*/, "") };
             }
             if (line.includes("Coordinador")) {
                 return { id: index, agent: "Agente Coordinador", text: line.replace(/^.*?:\s*/, "") };
@@ -399,6 +522,7 @@ export default function AdaptivePractice() {
         switch (agent) {
             case "Agente Evaluador": return <TrendingUp className="w-5 h-5 text-white" />;
             case "Agente Psicopedagogo": return <Brain className="w-5 h-5 text-white" />;
+            case "Agente de Adaptación de Evaluaciones": return <Sliders className="w-5 h-5 text-white" />;
             case "Agente Coordinador": return <Award className="w-5 h-5 text-white" />;
             default: return <MessageSquare className="w-5 h-5 text-white" />;
         }
@@ -408,6 +532,7 @@ export default function AdaptivePractice() {
         switch (agent) {
             case "Agente Evaluador": return "bg-blue-500 border-blue-600/30 text-white shadow-blue-500/20";
             case "Agente Psicopedagogo": return "bg-emerald-500 border-emerald-600/30 text-white shadow-emerald-500/20";
+            case "Agente de Adaptación de Evaluaciones": return "bg-amber-500 border-amber-600/30 text-white shadow-amber-500/20";
             case "Agente Coordinador": return "bg-violet-600 border-violet-700/30 text-white shadow-violet-600/20";
             default: return "bg-secondary text-secondary-foreground border-border";
         }
@@ -417,6 +542,7 @@ export default function AdaptivePractice() {
         switch (agent) {
             case "Agente Evaluador": return "bg-blue-50/70 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900/40 text-blue-950 dark:text-blue-50";
             case "Agente Psicopedagogo": return "bg-emerald-50/70 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-900/40 text-emerald-950 dark:text-emerald-50";
+            case "Agente de Adaptación de Evaluaciones": return "bg-amber-50/70 border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40 text-amber-950 dark:text-amber-50";
             case "Agente Coordinador": return "bg-violet-50/70 border-violet-200 dark:bg-violet-950/20 dark:border-violet-900/40 text-violet-950 dark:text-violet-50";
             default: return "bg-card border-border text-foreground";
         }
@@ -477,7 +603,7 @@ export default function AdaptivePractice() {
                                 {isAcra ? "Diagnóstico ACRA Inicial" : "Evaluación Formativa Adaptativa"}
                             </span>
                             <span className="text-xs font-semibold text-muted-foreground bg-muted px-2.5 py-1 rounded-lg">
-                                {isAcra ? "Escala Likert" : `Nivel Bloom: ${evaluationData?.nivel_bloom || "Aplicado"}`}
+                                {isAcra ? "Escala Likert" : `Nivel Bloom: ${getBloomLevelLabel(evaluationData?.nivel_bloom)}`}
                             </span>
                         </div>
 
@@ -502,9 +628,16 @@ export default function AdaptivePractice() {
                                 <span className="bg-secondary px-2.5 py-1 rounded-lg text-foreground font-black">
                                     Pregunta {currentSlide + 1} de {questions.length}
                                 </span>
-                                {isAcra && (
+                                {isAcra ? (
                                     <span className="text-primary font-bold">
                                         Escala {questions[currentSlide].escala}
+                                    </span>
+                                ) : (
+                                    <span className={cn(
+                                        "px-2.5 py-1 rounded-lg font-black text-[10px] uppercase tracking-wider border",
+                                        getQuestionBadgeStyle(currentSlide, questions[currentSlide], evaluationData?.nivel_bloom)
+                                    )}>
+                                        {getQuestionBadgeLabel(currentSlide, questions[currentSlide], evaluationData?.nivel_bloom)}
                                     </span>
                                 )}
                             </div>
@@ -556,7 +689,7 @@ export default function AdaptivePractice() {
                                                     >
                                                         <span className="flex-1 pr-2">
                                                             <span className="text-primary mr-1.5 font-extrabold">{optionLetter} –</span>
-                                                            {opt.texto}
+                                                            {opt.texto.replace(/^[A-Za-z][\)\.-]\s*/, "")}
                                                         </span>
                                                         {isSelected && <Check className="w-5 h-5 text-primary shrink-0" />}
                                                     </button>
@@ -633,10 +766,11 @@ export default function AdaptivePractice() {
                     </header>
 
                     {/* Committee Header Avatars */}
-                    <div className="grid grid-cols-3 gap-3 md:gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                         {[
                             { name: "Agente Evaluador", color: "blue", role: "Estadística & Métricas", icon: <TrendingUp className="w-4 h-4" /> },
                             { name: "Agente Psicopedagogo", color: "emerald", role: "Estrategias Cognitivas", icon: <Brain className="w-4 h-4" /> },
+                            { name: "Agente de Adaptación de Evaluaciones", color: "amber", role: "Ajuste de Dificultad / Bloom", icon: <Sliders className="w-4 h-4" /> },
                             { name: "Agente Coordinador", color: "violet", role: "Consenso & Decisiones", icon: <Award className="w-4 h-4" /> }
                         ].map((agent) => {
                             const isActive = activeAgent === agent.name;
@@ -654,6 +788,7 @@ export default function AdaptivePractice() {
                                         "w-10 h-10 rounded-xl mx-auto flex items-center justify-center mb-2.5 shadow-sm",
                                         agent.color === "blue" && "bg-blue-500 text-white",
                                         agent.color === "emerald" && "bg-emerald-500 text-white",
+                                        agent.color === "amber" && "bg-amber-500 text-white",
                                         agent.color === "violet" && "bg-violet-600 text-white"
                                     )}>
                                         {agent.icon}
@@ -812,7 +947,7 @@ export default function AdaptivePractice() {
                             className={cn(
                                 "px-8 py-3.5 rounded-2xl text-white text-sm font-black font-display flex items-center gap-2 transition-all shadow-glow cursor-pointer",
                                 debateFinished
-                                    ? "bg-gradient-to-r from-violet-600 to-primary hover:opacity-90 active:scale-95"
+                                    ? "bg-primary hover:opacity-90 active:scale-95"
                                     : "bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50 shadow-none"
                             )}
                         >
@@ -856,6 +991,107 @@ export default function AdaptivePractice() {
                             <p className="text-sm text-muted-foreground font-medium max-w-xl">
                                 El comité pedagógico evaluó tu respuesta de forma cualitativa y estratégica, asignando un nivel que equilibra tu capacidad reflexiva e instructiva.
                             </p>
+                        </div>
+                    </div>
+
+                    {/* Dashboard de Progreso Cognitivo (Taxonomía de Bloom) y Medidor Adaptativo */}
+                    <div className="grid md:grid-cols-5 gap-6">
+                        {/* Radar Chart Column (3/5 cols) */}
+                        <div className="md:col-span-3 bg-card border border-border rounded-3xl p-6 shadow-soft flex flex-col justify-between">
+                            <div className="flex items-center gap-2 border-b border-border/40 pb-4 mb-4">
+                                <Compass className="w-5 h-5 text-primary animate-spin-slow" />
+                                <div>
+                                    <h3 className="font-display font-bold text-base md:text-lg">Distribución de Habilidades (Taxonomía de Bloom)</h3>
+                                    <p className="text-xs text-muted-foreground font-medium">Estimación de tu dominio actual por nivel cognitivo</p>
+                                </div>
+                            </div>
+                            
+                            <div className="h-64 w-full flex items-center justify-center">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={getBloomProfile(debateData.nivel_nuevo, debateData.notaFinal || 14)}>
+                                        <PolarGrid stroke="hsl(var(--border))" />
+                                        <PolarAngleAxis dataKey="subject" stroke="hsl(var(--muted-foreground))" fontSize={11} fontWeight="bold" />
+                                        <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="hsl(var(--muted-foreground))" fontSize={9} />
+                                        <Radar name="Dominio" dataKey="valor" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.25} />
+                                    </RadarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Adaptive Difficulty Gauge (2/5 cols) */}
+                        <div className="md:col-span-2 bg-card border border-border rounded-3xl p-6 shadow-soft flex flex-col justify-between">
+                            <div className="flex items-center gap-2 border-b border-border/40 pb-4 mb-4">
+                                <Gauge className="w-5 h-5 text-amber-500" />
+                                <div>
+                                    <h3 className="font-display font-bold text-base md:text-lg">Medidor de Dificultad Adaptativa</h3>
+                                    <p className="text-xs text-muted-foreground font-medium">Tu posición en la ruta de aprendizaje</p>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 flex flex-col justify-center space-y-6 py-4">
+                                {/* Visual Track Gauge */}
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-[10px] font-black uppercase text-muted-foreground tracking-wider">
+                                        <span>Principiante</span>
+                                        <span>Intermedio</span>
+                                        <span>Avanzado</span>
+                                        <span>Experto</span>
+                                    </div>
+                                    
+                                    {/* The segmented track */}
+                                    <div className="grid grid-cols-4 gap-1 h-3.5 rounded-full overflow-hidden bg-secondary/30 p-0.5 border border-border/50">
+                                        <div className={cn(
+                                            "rounded-l-full h-full transition-all duration-300",
+                                            (debateData.nivel_nuevo || "").toUpperCase().includes("PRINCIPIANTE")
+                                                ? "bg-gradient-to-r from-blue-500 to-cyan-500"
+                                                : "bg-muted"
+                                        )} />
+                                        <div className={cn(
+                                            "h-full transition-all duration-300",
+                                            (debateData.nivel_nuevo || "").toUpperCase().includes("INTERMEDIO")
+                                                ? "bg-gradient-to-r from-emerald-500 to-teal-500"
+                                                : (debateData.nivel_nuevo || "").toUpperCase().includes("AVANZADO") || (debateData.nivel_nuevo || "").toUpperCase().includes("EXPERTO")
+                                                    ? "bg-emerald-500/30"
+                                                    : "bg-muted"
+                                        )} />
+                                        <div className={cn(
+                                            "h-full transition-all duration-300",
+                                            (debateData.nivel_nuevo || "").toUpperCase().includes("AVANZADO")
+                                                ? "bg-gradient-to-r from-violet-600 to-indigo-600"
+                                                : (debateData.nivel_nuevo || "").toUpperCase().includes("EXPERTO")
+                                                    ? "bg-violet-600/30"
+                                                    : "bg-muted"
+                                        )} />
+                                        <div className={cn(
+                                            "rounded-r-full h-full transition-all duration-300",
+                                            (debateData.nivel_nuevo || "").toUpperCase().includes("EXPERTO")
+                                                ? "bg-gradient-to-r from-amber-500 to-rose-500 animate-pulse"
+                                                : "bg-muted"
+                                        )} />
+                                    </div>
+                                </div>
+
+                                {/* Active Level Indicator Box */}
+                                <div className="p-4 rounded-2xl bg-secondary/20 border border-border/60 text-xs font-semibold leading-relaxed">
+                                    <span className="block font-black text-[10px] uppercase text-primary tracking-widest mb-1">
+                                        NIVEL ADAPTADO
+                                    </span>
+                                    <span className="font-bold text-foreground">
+                                        Tu nivel adaptado actual es: <span className="text-primary font-black uppercase">{debateData.nivel_nuevo}</span>.
+                                    </span>
+                                    <p className="text-muted-foreground mt-2 font-medium">
+                                        {(debateData.nivel_nuevo || "").toUpperCase().includes("PRINCIPIANTE") && (
+                                            "¡Excelente base! El sistema está consolidando tus conceptos iniciales centrándose en los niveles de Recordar y Comprender de la taxonomía."
+                                        )}
+                                        {(debateData.nivel_nuevo || "").toUpperCase().includes("INTERMEDIO") && (
+                                            "¡Gran progreso! El sistema te preparará para preguntas desafiantes de nivel Aplicación y Análisis en las siguientes lecciones."
+                                        )}
+                                        {((debateData.nivel_nuevo || "").toUpperCase().includes("AVANZADO") || (debateData.nivel_nuevo || "").toUpperCase().includes("EXPERTO")) && (
+                                            "¡Felicidades, nivel superior! Dominas los fundamentos teóricos. El sistema te empujará hacia retos de Síntesis y Evaluación Crítica."
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

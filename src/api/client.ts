@@ -75,7 +75,15 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
             credentials: "include",
         });
 
-        if (!res.ok) throw { status: res.status, message: await res.text() } as ApiError;
+        if (!res.ok) {
+            // Si el token expiró o no tiene permisos, limpiar sesión y redirigir al login
+            if (res.status === 401 || res.status === 403) {
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                window.location.href = "/";
+            }
+            throw { status: res.status, message: await res.text() } as ApiError;
+        }
         return (await res.json()) as T;
     } finally {
         clearTimeout(timer);

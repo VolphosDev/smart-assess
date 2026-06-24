@@ -4,8 +4,8 @@
  * Mientras tanto, MOCK=true hace que client.ts use datos locales.
  */
 export const API_CONFIG = {
-  baseUrl: (import.meta.env.VITE_API_BASE_URL as string) || "https://api.semantika.local/v1",
-  mock: (import.meta.env.VITE_API_MOCK ?? "true") !== "false",
+  baseUrl: (import.meta.env.VITE_API_BASE_URL as string) || "/api",
+  mock: (import.meta.env.VITE_API_MOCK ?? "false") !== "false",
   timeoutMs: 300_000,
 };
 

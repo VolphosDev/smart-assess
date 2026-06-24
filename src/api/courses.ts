@@ -39,6 +39,8 @@ export const coursesApi = {
         apiClient.put<any>(`/cursos/${courseId}`, data),
     delete: (courseId: string | number) =>
         apiClient.delete<{ message: string }>(`/cursos/${courseId}`),
+    rendimiento: (teacherId: string | number) =>
+        apiClient.get<any[]>(`/cursos/docente/${teacherId}/rendimiento`),
 };
 export const semanasApi = {
     get: (semanaId: string | number) =>

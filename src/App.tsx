@@ -21,6 +21,7 @@ import CourseStudentsManager from "./pages/teacher/CourseStudentsManager";
 import AvatarTutor from "./pages/AvatarTutor";
 import VideoTutor from "./pages/VideoTutor";
 import AdaptivePractice from "./pages/AdaptivePractice";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -31,27 +32,41 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Ruta pública: login */}
           <Route path="/" element={<Index />} />
-          <Route path="/app" element={<AppLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="practica" element={<Practice />} />
+
+          {/* Rutas protegidas para STUDENT */}
+          <Route element={<ProtectedRoute allowedRoles={["STUDENT"]} />}>
+            <Route path="/app" element={<AppLayout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="practica" element={<Practice />} />
               <Route path="curso/:courseId" element={<Course />} />
               <Route path="curso/:courseId/semana/:semanaId" element={<EvalModeSelect />} />
               <Route path="curso/:courseId/semana/:semanaId/evaluacion/:mode" element={<Practice />} />
-              <Route path="curso/:courseId/semana/:semanaId/evaluacion/avatar" element={<AvatarTutor />}/>
-              <Route path="curso/:courseId/semana/:semanaId/evaluacion/video" element={<VideoTutor />}/>
+              <Route path="curso/:courseId/semana/:semanaId/evaluacion/avatar" element={<AvatarTutor />} />
+              <Route path="curso/:courseId/semana/:semanaId/evaluacion/video" element={<VideoTutor />} />
               <Route path="curso/:courseId/semana/:semanaId/evaluacion/adaptativa" element={<AdaptivePractice />} />
-            <Route path="historial" element={<HistoryPage />} />
-          </Route>
-            <Route path="/docente" element={<TeacherLayout />}>
-            <Route path="/docente/curso/:courseId/alumnos" element={<CourseStudentsManager />} />
-            <Route index element={<TeacherDashboard />} />
-            <Route path="curso/:courseId" element={<TeacherCourse />} />
-            <Route path="curso/:courseId/semana/:semanaId" element={<TeacherWeek />} />
+              <Route path="historial" element={<HistoryPage />} />
             </Route>
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
           </Route>
+
+          {/* Rutas protegidas para TEACHER */}
+          <Route element={<ProtectedRoute allowedRoles={["TEACHER"]} />}>
+            <Route path="/docente" element={<TeacherLayout />}>
+              <Route index element={<TeacherDashboard />} />
+              <Route path="curso/:courseId" element={<TeacherCourse />} />
+              <Route path="curso/:courseId/semana/:semanaId" element={<TeacherWeek />} />
+            </Route>
+            <Route path="/docente/curso/:courseId/alumnos" element={<CourseStudentsManager />} />
+          </Route>
+
+          {/* Rutas protegidas para ADMIN */}
+          <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminDashboard />} />
+            </Route>
+          </Route>
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

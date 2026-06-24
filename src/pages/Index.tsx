@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,50 +67,61 @@ export default function Index() {
         <div className="min-h-screen bg-background bg-mesh grid lg:grid-cols-2">
             {/* Left: brand panel */}
             <div className="hidden lg:flex flex-col justify-between p-12 bg-hero-gradient text-primary-foreground relative overflow-hidden">
-                <div className="absolute -right-20 -bottom-20 text-[22rem] opacity-15 select-none leading-none">🎓</div>
-                <Link to="/" className="flex items-center gap-2 font-display font-bold text-2xl relative">
-          <span className="grid place-items-center w-10 h-10 rounded-2xl bg-background/20 backdrop-blur">
-            <Sparkles className="w-5 h-5" />
-          </span>
-                    Semantika
+                {/* Decorative background grid (malla) */}
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:32px_32px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
+                
+                <Link to="/" className="flex items-center gap-2.5 font-display font-bold text-2xl relative z-10">
+                    <span className="grid place-items-center w-10 h-10 rounded-lg bg-white/10 border border-white/10 backdrop-blur-xs shadow-xs">
+                        <Sparkles className="w-5.5 h-5.5 text-white" />
+                    </span>
+                    <span className="tracking-tight text-white">Semantika</span>
                 </Link>
-                <div className="relative space-y-4 max-w-md">
-                    <h1 className="font-display text-5xl font-bold leading-tight">
-                        Aprende hablando, evalúa con IA.
+                
+                <div className="relative space-y-6 max-w-md z-10 my-auto text-left">
+                    <h1 className="font-display text-5xl font-bold leading-tight tracking-tight text-white">
+                        Evaluación formativa <br />y adaptativa con IA.
                     </h1>
-                    <p className="opacity-90 text-lg">
-                        Plataforma educativa para docentes y alumnos. Practica oralmente, recibe retroalimentación inmediata y sigue tu progreso semana a semana.
+                    <p className="text-white/80 text-lg font-light leading-relaxed">
+                        Plataforma académica integral impulsada por agentes de IA. Genera evaluaciones interactivas y visuales, interactúa con tutores inteligentes en video o conversación, y recibe diagnósticos adaptativos en tiempo real.
                     </p>
                 </div>
-                <div className="relative text-sm opacity-80">© 2026 Semantika · Educación generativa</div>
+                
+                <div className="relative text-xs text-white/50 z-10 font-mono text-left">
+                    © 2026 Semantika · Educación Generativa & Análisis
+                </div>
             </div>
-
+ 
             {/* Right: login */}
-            <div className="flex items-center justify-center p-6 sm:p-10">
+            <div className="flex items-center justify-center p-6 sm:p-10 relative overflow-hidden">
+                {/* Subtle background graphics */}
+                <div className="absolute top-10 right-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute bottom-10 left-10 w-72 h-72 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+                
                 <motion.div
-                    initial={{ opacity: 0, y: 12 }}
+                    initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="w-full max-w-md"
+                    transition={{ duration: 0.4 }}
+                    className="w-full max-w-md bg-card border border-border/80 p-8 sm:p-10 rounded-xl shadow-lg border-border hover:shadow-xl transition-all duration-300 relative z-10"
                 >
-                    <div className="lg:hidden flex items-center gap-2 font-display font-bold text-2xl mb-8">
-            <span className="grid place-items-center w-10 h-10 rounded-2xl bg-primary-gradient text-primary-foreground shadow-glow">
-              <Sparkles className="w-5 h-5" />
-            </span>
-                        Semantika
+                    <div className="lg:hidden flex items-center gap-2.5 font-display font-bold text-2xl mb-8">
+                        <span className="grid place-items-center w-10 h-10 rounded-lg bg-primary text-primary-foreground shadow-sm">
+                            <Sparkles className="w-5.5 h-5.5" />
+                        </span>
+                        <span className="tracking-tight">Semantika</span>
                     </div>
-
-                    <h2 className="font-display text-3xl font-bold mb-2">Bienvenido de vuelta</h2>
-                    <p className="text-muted-foreground mb-6">Ingresa tus credenciales para continuar.</p>
-
+ 
+                    <h2 className="font-display text-3xl font-bold mb-2 tracking-tight text-left">Bienvenido de vuelta</h2>
+                    <p className="text-muted-foreground text-sm mb-6 text-left">Ingresa tus credenciales para continuar al panel.</p>
+ 
                     {error && (
-                        <div className="mb-4 p-3 text-sm text-red-500 bg-red-100 rounded-lg text-center">
+                        <div className="mb-5 p-3.5 text-sm text-destructive bg-destructive/5 border border-destructive/15 rounded-lg text-center font-medium">
                             {error}
                         </div>
                     )}
-
+ 
                     <form onSubmit={submit} className="space-y-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="email">Correo institucional</Label>
+                        <div className="space-y-1.5 text-left">
+                            <Label htmlFor="email" className="font-semibold text-xs text-foreground/80">Correo institucional</Label>
                             <Input
                                 id="email"
                                 type="email"
@@ -118,11 +129,11 @@ export default function Index() {
                                 placeholder="correo@institucion.edu"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="h-12 rounded-2xl"
+                                className="h-11 rounded-lg border border-input bg-background/50 focus-visible:ring-primary/30 transition-all text-sm"
                             />
                         </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="password">Contraseña</Label>
+                        <div className="space-y-1.5 text-left">
+                            <Label htmlFor="password" className="font-semibold text-xs text-foreground/80">Contraseña</Label>
                             <Input
                                 id="password"
                                 type="password"
@@ -130,22 +141,22 @@ export default function Index() {
                                 placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="h-12 rounded-2xl"
+                                className="h-11 rounded-lg border border-input bg-background/50 focus-visible:ring-primary/30 transition-all text-sm"
                             />
                         </div>
                         <Button
                             type="submit"
                             size="lg"
                             disabled={isLoading}
-                            className="w-full h-12 rounded-2xl bg-primary-gradient font-bold shadow-glow mt-2"
+                            className="w-full h-11 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold mt-6 shadow-sm transition-all active:scale-[0.98] flex items-center justify-center gap-1.5"
                         >
                             {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
-                            {!isLoading && <ArrowRight className="w-4 h-4 ml-1" />}
+                            {!isLoading && <ArrowRight className="w-4 h-4" />}
                         </Button>
                     </form>
-
-                    <p className="text-center text-sm text-muted-foreground mt-6">
-                        ¿Aún no tienes cuenta? <a className="font-semibold text-primary hover:underline" href="#">Solicita acceso</a>
+ 
+                    <p className="text-center text-xs text-muted-foreground mt-8">
+                        ¿Aún no tienes cuenta? <a className="font-semibold text-primary hover:underline hover:text-primary/90" href="#">Solicita acceso</a>
                     </p>
                 </motion.div>
             </div>

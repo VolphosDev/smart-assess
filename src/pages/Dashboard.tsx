@@ -1,14 +1,16 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mic, Flame, Target, TrendingUp, ArrowRight } from "lucide-react";
+import { Mic, Flame, Target, TrendingUp, ArrowRight, GraduationCap, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { coursesApi } from "@/api";
+import { coursesApi, intentosApi } from "@/api";
+import { getCourseIcon } from "@/lib/icon-mapper";
+import { cn } from "@/lib/utils";
 
-const colorMap = {
-    primary: "bg-primary-gradient",
-    lime: "bg-lime-gradient",
-    coral: "bg-coral-gradient",
+const iconColorMap = {
+    primary: "bg-indigo-50 border border-indigo-100 text-indigo-600 dark:bg-indigo-950/20 dark:border-indigo-900/30 dark:text-indigo-400",
+    lime: "bg-emerald-50 border border-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400",
+    coral: "bg-rose-50 border border-rose-100 text-rose-600 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400",
 } as const;
 
 export default function Dashboard() {
@@ -23,99 +25,189 @@ export default function Dashboard() {
         enabled: !!studentId
     });
 
+    // 3. Traemos los intentos de evaluación para estadísticas reales
+    const { data: attempts = [] } = useQuery({
+        queryKey: ['student-attempts', studentId],
+        queryFn: async () => {
+            const response = await intentosApi.misIntentos(studentId);
+            return response.data || response;
+        },
+        enabled: !!studentId
+    });
+
+    // 4. Cálculos para estadísticas funcionales en tiempo real
+    const gradedAttempts = attempts.filter((i: any) => i.nota !== undefined && i.nota !== null);
+    const averageGrade = gradedAttempts.length > 0
+        ? (gradedAttempts.reduce((sum: number, i: any) => sum + Number(i.nota), 0) / gradedAttempts.length).toFixed(1)
+        : "—";
+
+    // Calculadora de racha (días consecutivos practicando)
+    const getStreak = (attemptsList: any[]) => {
+        if (attemptsList.length === 0) return 0;
+        const dates = Array.from(new Set(
+            attemptsList.map(a => new Date(a.fecha).toISOString().split('T')[0])
+        )).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+        
+        if (dates.length === 0) return 0;
+        const todayStr = new Date().toISOString().split('T')[0];
+        const yesterdayStr = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        
+        // Si no practicó hoy ni ayer, racha es 0
+        if (dates[0] !== todayStr && dates[0] !== yesterdayStr) {
+            return 0;
+        }
+        
+        let streak = 1;
+        let currentDate = new Date(dates[0]);
+        for (let i = 1; i < dates.length; i++) {
+            const nextDate = new Date(dates[i]);
+            const diffDays = Math.ceil(Math.abs(currentDate.getTime() - nextDate.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays === 1) {
+                streak++;
+                currentDate = nextDate;
+            } else if (diffDays > 1) {
+                break; // Racha rota
+            }
+        }
+        return streak;
+    };
+    const streakDays = getStreak(attempts);
+
+    const recommendedCourse = courses.length > 0 ? courses[0] : null;
     return (
-        <div className="space-y-10">
+        <div className="space-y-8">
             {/* Hero greeting */}
             <section className="grid lg:grid-cols-3 gap-6">
                 <motion.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="lg:col-span-2 bg-hero-gradient rounded-[2rem] p-8 text-primary-foreground shadow-glow relative overflow-hidden"
+                    className="lg:col-span-2 bg-hero-gradient rounded-xl p-8 text-primary-foreground relative overflow-hidden shadow-sm"
                 >
-                    <div className="absolute -right-10 -top-10 text-[10rem] opacity-20 select-none">🎯</div>
-                    <span className="inline-block px-3 py-1 rounded-full bg-background/20 text-xs font-bold uppercase tracking-wider mb-4">
-            Hola, {user.name?.split(' ')[0] || 'estudiante'} 👋  {/* ¡Saludo real! */}
-          </span>
-          <h1 className="font-display text-4xl md:text-5xl font-bold mb-3 max-w-md">
-            Tienes un examen oral de Biología hoy.
-          </h1>
-          <p className="opacity-90 mb-6 max-w-md">
-            Mitosis y meiosis. ¿Practicamos 5 preguntas antes de rendirlo?
-          </p>
-          <Button asChild size="lg" className="rounded-full bg-background text-foreground hover:bg-background/90 font-bold h-12 px-6">
-            <Link to="/app/curso/bio/semana/3">
-              <Mic className="w-5 h-5 mr-1" /> Empezar evaluación
-            </Link>
-          </Button>
-        </motion.div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
-          <StatCard icon={Flame} label="Racha" value="7 días" tone="bg-coral-gradient" />
-          <StatCard icon={Target} label="Promedio" value="16.4" tone="bg-lime-gradient" />
-          <StatCard icon={TrendingUp} label="XP semanal" value="+340" tone="bg-primary-gradient" className="col-span-2 lg:col-span-1" />
-        </div>
-      </section>
-
-      {/* Cursos */}
-      <section>
-        <div className="flex items-end justify-between mb-5">
-          <h2 className="font-display text-2xl md:text-3xl font-bold">Tus cursos</h2>
-          <Link to="/app/historial" className="text-sm font-semibold text-primary hover:underline">Ver todo</Link>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {courses.map((c) => (
-            <Link
-              key={c.id}
-              to={`/app/curso/${c.id}`}
-              className="group bg-card border border-border rounded-3xl p-6 shadow-soft hover:-translate-y-1 transition-all"
-            >
-              <div className={`w-14 h-14 rounded-2xl ${colorMap[c.color]} grid place-items-center text-3xl shadow-soft mb-4`}>
-                {c.emoji}
-              </div>
-              <h3 className="font-display font-bold text-lg mb-1">{c.name}</h3>
-              {c.nextExam && (
-                <p className="text-xs text-muted-foreground mb-4">Próximo: {c.nextExam}</p>
-              )}
-              <div className="flex items-center gap-2 mb-2">
-                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                  <div className={`h-full ${colorMap[c.color]} rounded-full`} style={{ width: `${c.progress}%` }} />
+                    <GraduationCap className="absolute right-6 top-1/2 -translate-y-1/2 w-32 h-32 md:w-36 md:h-36 opacity-[0.25] select-none pointer-events-none text-white" />
+                    <span className="inline-block px-3 py-1 rounded-lg bg-white/10 text-xs font-semibold uppercase tracking-wider mb-4 font-mono">
+                        Hola, {user.name?.split(' ')[0] || 'estudiante'} 👋
+                    </span>
+                    {recommendedCourse ? (
+                        <>
+                            <h1 className="font-display text-4xl md:text-5xl font-bold mb-3 max-w-md text-left leading-tight">
+                                ¿Repasamos el curso de {recommendedCourse.name} hoy?
+                            </h1>
+                            <p className="opacity-90 mb-6 max-w-md text-sm text-left">
+                                Evalúa tus conocimientos, practica con ARIA o mira un video interactivo de la semana.
+                            </p>
+                            <Button asChild size="lg" className="rounded-lg bg-background text-foreground hover:bg-background/90 font-semibold h-11 px-5 shadow-xs text-sm">
+                                <Link to={`/app/curso/${recommendedCourse.id}`}>
+                                    <BookOpen className="w-4 h-4 mr-1.5" /> Ir al curso
+                                </Link>
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <h1 className="font-display text-4xl md:text-5xl font-bold mb-3 max-w-md text-left leading-tight">
+                                ¡Bienvenido a Semantika!
+                            </h1>
+                            <p className="opacity-90 mb-6 max-w-md text-sm text-left">
+                                Para comenzar a evaluarte con Inteligencia Artificial, solicita a tu docente que te matricule en una asignatura.
+                            </p>
+                        </>
+                    )}
+                </motion.div>
+ 
+                <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+                    <StatCard icon={Flame} label="Racha" value={`${streakDays} ${streakDays === 1 ? "día" : "días"}`} tone="rose" />
+                    <StatCard icon={Target} label="Promedio" value={averageGrade} tone="emerald" />
+                    <StatCard icon={BookOpen} label="Evaluaciones" value={`${attempts.length} completadas`} tone="indigo" className="col-span-2 lg:col-span-1" />
                 </div>
-                <span className="text-xs font-bold text-muted-foreground">{c.progress}%</span>
-              </div>
-              <div className="flex items-center justify-between mt-4 text-sm font-semibold text-primary opacity-0 group-hover:opacity-100 transition">
-                Ver temas <ArrowRight className="w-4 h-4" />
-              </div>
-            </Link>
-          ))}
+            </section>
+ 
+            {/* Cursos */}
+            <section>
+                <div className="flex items-end justify-between mb-5">
+                    <h2 className="font-display text-2xl md:text-3xl font-bold">Tus cursos</h2>
+                    <Link to="/app/historial" className="text-sm font-semibold text-primary hover:underline">Ver todo</Link>
+                </div>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    {courses.map((c) => (
+                        <Link
+                            key={c.id}
+                            to={`/app/curso/${c.id}`}
+                            className="group bg-card border border-border/80 rounded-xl p-5 pt-7 shadow-xs hover:-translate-y-0.5 hover:shadow-xs hover:border-border transition-all flex flex-col justify-between relative overflow-hidden text-left"
+                        >
+                            {/* Accent Top Color Bar */}
+                            <div className={cn(
+                                "absolute top-0 left-0 right-0 h-1 transition-all duration-300",
+                                c.color === "lime" ? "bg-emerald-500" : c.color === "coral" ? "bg-rose-500" : "bg-indigo-600"
+                            )} />
+ 
+                            <div>
+                                <div className={cn(
+                                    "w-10 h-10 rounded-lg grid place-items-center shadow-xs border transition-all mb-4",
+                                    c.color === "lime" ? "bg-emerald-100/80 border-emerald-300 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400" : 
+                                    c.color === "coral" ? "bg-rose-100/80 border-rose-300 text-rose-700 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400" : 
+                                    "bg-indigo-100/80 border-indigo-300 text-indigo-700 dark:bg-indigo-950/20 dark:border-indigo-900/30 dark:text-indigo-400"
+                                )}>
+                                    {getCourseIcon(c.emoji, "w-5 h-5")}
+                                </div>
+                                <h3 className={cn(
+                                    "font-display font-bold text-lg mb-1 transition-colors mt-2 text-left group-hover:underline",
+                                    c.color === "lime" ? "text-emerald-700 dark:text-emerald-400" : 
+                                    c.color === "coral" ? "text-rose-700 dark:text-rose-400" : 
+                                    "text-indigo-700 dark:text-indigo-400"
+                                )}>
+                                    {c.name}
+                                </h3>
+                                {c.nextExam && (
+                                    <p className="text-xs text-muted-foreground mb-4 text-left">Próximo: {c.nextExam}</p>
+                                )}
+                            </div>
+                            <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-between">
+                                <span className="text-xs font-bold text-muted-foreground flex items-center gap-1">
+                                    <BookOpen className="w-3.5 h-3.5" /> {c.weeks || 4} semanas
+                                </span>
+                                <span className={cn(
+                                    "inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-md border transition-all group-hover:translate-x-0.5",
+                                    c.color === "lime" ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400" :
+                                    c.color === "coral" ? "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400" :
+                                    "bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900/30 dark:text-indigo-400"
+                                )}>
+                                    Ver temas <ArrowRight className="w-3.5 h-3.5" />
+                                </span>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+            </section>
         </div>
-      </section>
-
-    </div>
-  );
+    );
 }
-
+ 
 function StatCard({
-  icon: Icon,
-  label,
-  value,
-  tone,
-  className = "",
+    icon: Icon,
+    label,
+    value,
+    tone,
+    className = "",
 }: {
-  icon: typeof Flame;
-  label: string;
-  value: string;
-  tone: string;
-  className?: string;
+    icon: any;
+    label: string;
+    value: string;
+    tone: "rose" | "emerald" | "indigo";
+    className?: string;
 }) {
-  return (
-    <div className={`bg-card border border-border rounded-3xl p-5 shadow-soft flex items-center gap-4 ${className}`}>
-      <div className={`w-12 h-12 rounded-2xl ${tone} grid place-items-center text-primary-foreground shadow-soft`}>
-        <Icon className="w-6 h-6" />
-      </div>
-      <div>
-        <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{label}</div>
-        <div className="font-display font-bold text-2xl">{value}</div>
-      </div>
-    </div>
-  );
+    const toneClasses = {
+        rose: "bg-rose-50 border border-rose-100 text-rose-600 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400",
+        emerald: "bg-emerald-50 border border-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400",
+        indigo: "bg-indigo-50 border border-indigo-100 text-indigo-600 dark:bg-indigo-950/20 dark:border-indigo-900/30 dark:text-indigo-400",
+    };
+    return (
+        <div className={`bg-card border border-border/80 rounded-xl p-5 shadow-xs flex items-center gap-4 ${className} text-left`}>
+            <div className={`w-10 h-10 rounded-lg grid place-items-center shrink-0 ${toneClasses[tone]}`}>
+                <Icon className="w-4.5 h-4.5" />
+            </div>
+            <div>
+                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{label}</div>
+                <div className="font-display font-bold text-xl">{value}</div>
+            </div>
+        </div>
+    );
 }
