@@ -314,7 +314,7 @@ export default function AdaptivePractice() {
                 setStreamedText("");
 
                 const interval = setInterval(() => {
-                    charIdx += 2; // Stream 2 characters at a time for smooth but readable speed
+                    charIdx += 3; // Stream 3 characters at a time for faster speed
                     if (charIdx >= textToStream.length) {
                         setStreamedText(textToStream);
                         clearInterval(interval);
@@ -329,13 +329,13 @@ export default function AdaptivePractice() {
                             // Delay before starting next message (reading delay)
                             setTimeout(() => {
                                 speakNextMessage();
-                            }, 1500);
-                        }, 800); // Small pause after completing the text
+                            }, 600);
+                        }, 400); // Small pause after completing the text
                     } else {
                         setStreamedText(textToStream.slice(0, charIdx));
                     }
-                }, 35); // 35ms per step
-            }, 1500); // 1.5 seconds typing indicator
+                }, 10); // 10ms per step
+            }, 600); // 0.6 seconds typing indicator
         };
 
         // Start first message
@@ -689,7 +689,7 @@ export default function AdaptivePractice() {
                                                     >
                                                         <span className="flex-1 pr-2">
                                                             <span className="text-primary mr-1.5 font-extrabold">{optionLetter} –</span>
-                                                            {opt.texto}
+                                                            {opt.texto.replace(/^[A-Za-z][\)\.-]\s*/, "")}
                                                         </span>
                                                         {isSelected && <Check className="w-5 h-5 text-primary shrink-0" />}
                                                     </button>
@@ -947,7 +947,7 @@ export default function AdaptivePractice() {
                             className={cn(
                                 "px-8 py-3.5 rounded-2xl text-white text-sm font-black font-display flex items-center gap-2 transition-all shadow-glow cursor-pointer",
                                 debateFinished
-                                    ? "bg-gradient-to-r from-violet-600 to-primary hover:opacity-90 active:scale-95"
+                                    ? "bg-primary hover:opacity-90 active:scale-95"
                                     : "bg-muted text-muted-foreground border-border cursor-not-allowed opacity-50 shadow-none"
                             )}
                         >

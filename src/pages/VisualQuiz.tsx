@@ -83,7 +83,7 @@ export default function VisualQuiz({
             {/* Ilustración de IA Centrada */}
             {(pregunta.prompt_imagen || imageToShow) && (
                 <div className="flex justify-center max-w-xl mx-auto w-full px-2">
-                    <div className="relative rounded-3xl overflow-hidden border border-border/85 bg-gradient-to-br from-card to-muted/20 p-3 shadow-md hover:shadow-lg transition-all duration-300 w-full flex items-center justify-center min-h-[220px] md:min-h-[280px]">
+                    <div className="relative rounded-3xl overflow-hidden border border-border/85 bg-card p-3 shadow-md hover:shadow-lg transition-all duration-300 w-full flex items-center justify-center min-h-[220px] md:min-h-[280px]">
                         <span className="absolute top-3.5 left-3.5 bg-primary/95 text-white text-[10px] font-bold uppercase tracking-wider px-3.5 py-1 rounded-full shadow-sm z-10 select-none">
                             Ilustración del Quiz
                         </span>

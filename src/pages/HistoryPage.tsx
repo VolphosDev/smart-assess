@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, Eye } from "lucide-react";
 import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
 import { motion } from "framer-motion";
+import { getCourseIcon } from "@/lib/icon-mapper";
 
 export default function HistoryPage() {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -57,43 +58,43 @@ export default function HistoryPage() {
         <div className="space-y-8">
             <div>
                 <h1 className="font-display text-4xl font-bold mb-1">Tu progreso</h1>
-                <p className="text-muted-foreground">Revisa cada intento y descubre tus puntos a reforzar.</p>
+                <p className="text-muted-foreground text-sm">Revisa cada intento y descubre tus puntos a reforzar.</p>
             </div>
 
-      <div className="grid lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 bg-card border border-border rounded-3xl p-6 shadow-soft">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display font-bold text-xl">Evolución de notas</h3>
-              <span className="text-sm text-muted-foreground">Últimos {intentos.length} intentos</span>
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer>
-              <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis domain={[0, 20]} stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 12,
-                  }}
-                />
-                <Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 5, fill: "hsl(var(--primary))" }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        <div className="bg-hero-gradient rounded-3xl p-6 shadow-glow text-primary-foreground flex flex-col justify-center">
-          <div className="text-sm font-bold uppercase tracking-widest opacity-90 mb-2">Promedio general</div>
-          <div className="font-display font-bold text-6xl mb-1">{avg}</div>
-          <div className="opacity-90">de 20 puntos · ¡vas mejorando! 📈</div>
-        </div>
-      </div>
+            <div className="grid lg:grid-cols-3 gap-5">
+                <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6 shadow-xs">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-display font-bold text-xl">Evolución de notas</h3>
+                        <span className="text-sm text-muted-foreground">Últimos {intentos.length} intentos</span>
+                    </div>
+                    <div className="h-64">
+                        <ResponsiveContainer>
+                            <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                                <YAxis domain={[0, 20]} stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                                <Tooltip
+                                    contentStyle={{
+                                        background: "hsl(var(--card))",
+                                        border: "1px solid hsl(var(--border))",
+                                        borderRadius: 8,
+                                    }}
+                                />
+                                <Line type="monotone" dataKey="score" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--primary))" }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+                <div className="bg-hero-gradient rounded-xl p-6 shadow-sm text-primary-foreground flex flex-col justify-center">
+                    <div className="text-xs font-bold uppercase tracking-wider opacity-90 mb-2">Promedio general</div>
+                    <div className="font-display font-bold text-5xl mb-1">{avg}</div>
+                    <div className="opacity-90 text-sm">de un total de 20 puntos · Avance constante</div>
+                </div>
+            </div>
 
-            <div className="bg-card border border-border rounded-3xl shadow-soft overflow-hidden">
-                <div className="p-6 border-b border-border">
-                    <h3 className="font-display font-bold text-xl">Intentos recientes</h3>
+            <div className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
+                <div className="p-5 border-b border-border">
+                    <h3 className="font-display font-bold text-lg">Intentos recientes</h3>
                 </div>
                 <ul className="divide-y divide-border">
                     {intentosProcesados.map((h: any, i: number) => (
@@ -102,26 +103,26 @@ export default function HistoryPage() {
                                    className="flex items-center gap-4 p-5 hover:bg-muted/40 transition cursor-pointer"
                                    onClick={() => setIntentoAbierto(h)}
                         >
-                            <div className="w-12 h-12 rounded-2xl bg-primary-gradient grid place-items-center text-2xl shrink-0">
-                                {h.cursoEmoji || "📝"}
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">
+                                {getCourseIcon(h.cursoEmoji || "📘", "w-5 h-5")}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="font-bold truncate">
+                                <div className="font-bold truncate text-sm">
                                     {h.cursoNombre} · {h.semana} · {getTecnicaLabel(h.tecnica)} (Intento #{h.attemptNumber})
                                 </div>
-                                <div className="text-sm text-muted-foreground">
+                                <div className="text-xs text-muted-foreground mt-0.5">
                                     {new Date(h.fecha).toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" })}
                                 </div>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
-                                <span className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-primary border border-primary/20 bg-primary/5 px-3.5 py-2 rounded-2xl hover:bg-primary/10 transition-colors">
+                                <span className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-primary border border-primary/20 bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors">
                                     <Eye className="w-3.5 h-3.5" />
-                                    Ver respuestas anteriores
+                                    Ver respuestas
                                 </span>
-                                <span className="flex sm:hidden items-center justify-center text-xs font-bold text-primary border border-primary/20 bg-primary/5 p-2 rounded-xl hover:bg-primary/10 transition-colors" title="Ver respuestas anteriores">
+                                <span className="flex sm:hidden items-center justify-center text-xs font-semibold text-primary border border-primary/20 bg-primary/5 p-2 rounded-lg hover:bg-primary/10 transition-colors" title="Ver respuestas anteriores">
                                     <Eye className="w-4 h-4" />
                                 </span>
-                                <div className={`px-4 py-2 rounded-full font-display font-bold ${h.nota >= 17 ? "bg-green-100 text-green-800" : h.nota >= 14 ? "bg-primary/15 text-primary" : "bg-red-100 text-red-800"}`}>
+                                <div className={`px-3.5 py-1.5 rounded-full font-display font-bold text-sm ${h.nota >= 17 ? "bg-green-100 text-green-800" : h.nota >= 14 ? "bg-indigo-100 text-indigo-800" : "bg-red-100 text-red-800"}`}>
                                     {h.nota}/20
                                 </div>
                             </div>
@@ -132,19 +133,19 @@ export default function HistoryPage() {
 
             {/* Modal de detalle */}
             {intentoAbierto && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
                      onClick={() => setIntentoAbierto(null)}>
-                    <div className="bg-card rounded-3xl shadow-soft max-w-lg w-full max-h-[80vh] overflow-y-auto p-6 space-y-4"
+                    <div className="bg-card rounded-xl shadow-lg max-w-lg w-full max-h-[80vh] overflow-y-auto p-6 space-y-4"
                          onClick={e => e.stopPropagation()}>
                         <div className="flex flex-col gap-1 border-b border-border pb-3">
                             <div className="flex items-center justify-between">
-                                <h3 className="font-display font-bold text-xl flex items-center gap-2">
-                                    <span>{intentoAbierto.cursoEmoji || "📝"}</span>
+                                <h3 className="font-display font-bold text-lg flex items-center gap-2">
+                                    <span className="text-primary">{getCourseIcon(intentoAbierto.cursoEmoji || "📘", "w-5 h-5")}</span>
                                     <span className="truncate max-w-[280px]">{intentoAbierto.cursoNombre}</span>
                                 </h3>
                                 <span className="font-bold text-primary text-lg shrink-0">{intentoAbierto.nota}/20</span>
                             </div>
-                            <p className="text-sm text-muted-foreground font-semibold">
+                            <p className="text-xs text-muted-foreground font-semibold">
                                 {intentoAbierto.semana} · {getTecnicaLabel(intentoAbierto.tecnica)} (Intento #{intentoAbierto.attemptNumber})
                             </p>
                         </div>
@@ -160,7 +161,7 @@ export default function HistoryPage() {
                             ))}
                         </ul>
                         <button onClick={() => setIntentoAbierto(null)}
-                                className="w-full py-2 rounded-xl bg-primary-gradient text-white font-bold">
+                                className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold shadow-xs">
                             Cerrar
                         </button>
                     </div>

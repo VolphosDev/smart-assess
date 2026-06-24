@@ -12,7 +12,7 @@ export function QuizLoading() {
                     repeat: Infinity,
                     ease: "easeInOut",
                 }}
-                className="w-20 h-20 rounded-3xl bg-primary-gradient grid place-items-center text-4xl shadow-glow"
+                className="w-20 h-20 rounded-3xl bg-primary grid place-items-center text-4xl shadow-glow"
             >
                 🧠
             </motion.div>
@@ -28,7 +28,7 @@ export function QuizLoading() {
 
             <div className="w-full bg-secondary/50 rounded-full h-2.5 overflow-hidden relative border border-border">
                 <motion.div
-                    className="bg-primary-gradient h-full rounded-full"
+                    className="bg-primary h-full rounded-full"
                     animate={{
                         width: ["5%", "95%"],
                     }}

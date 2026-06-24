@@ -291,7 +291,7 @@ export default function Practice() {
                                     </button>
                                 ) : (
                                     <button
-                                        className="px-8 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold shadow-soft flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all"
+                                        className="px-8 py-2.5 rounded-xl bg-emerald-600 text-white font-bold shadow-soft flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all"
                                         onClick={() => finalizarExamen(resultados)}
                                         disabled={evaluando}
                                     >

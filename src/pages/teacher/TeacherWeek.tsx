@@ -1,8 +1,8 @@
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Upload, Trash2, FileText, BookOpen, Loader2, Eye, EyeOff, Download } from "lucide-react";
+import { ArrowLeft, Upload, Trash2, FileText, BookOpen, Loader2, Eye, EyeOff, Download, ChevronDown, ChevronUp } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { semanasApi, intentosApi } from "@/api/courses.ts";
+import { semanasApi, intentosApi, coursesApi } from "@/api/courses.ts";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useRef, useState } from "react";
@@ -27,8 +27,77 @@ export default function TeacherWeek() {
         enabled: !!semanaId,
     });
 
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const teacherId = user.id;
+
+    const { data: courses = [] } = useQuery({
+        queryKey: ['teacher-courses', teacherId],
+        queryFn: () => coursesApi.forTeacher(teacherId),
+        enabled: !!teacherId,
+    });
+    const course = courses.find((c: any) => String(c.id) === String(courseId));
+    const courseColor = course?.color || "primary";
+    const bgSolid = courseColor === "lime" ? "bg-emerald-600" : courseColor === "coral" ? "bg-rose-600" : "bg-indigo-600";
+
     // 2. ACTUALIZAMOS EL ESTADO PARA GUARDAR ID Y NOMBRE
     const [selectedFile, setSelectedFile] = useState<{ id: string, name: string } | null>(null);
+    const [expandedStudents, setExpandedStudents] = useState<Record<string, boolean>>({});
+
+    const toggleStudentExpand = (email: string) => {
+        setExpandedStudents(prev => ({ ...prev, [email]: !prev[email] }));
+    };
+
+    // Grouping attempts by student (using email as key)
+    const studentMap = new Map<string, { nombre: string; correo: string; intentos: any[] }>();
+    intentos.forEach((i: any) => {
+        const key = i.correo || "";
+        if (!studentMap.has(key)) {
+            studentMap.set(key, { nombre: i.alumno || "Alumno", correo: i.correo || "", intentos: [] });
+        }
+        studentMap.get(key)!.intentos.push(i);
+    });
+
+    const groupedStudents = Array.from(studentMap.values()).map(student => {
+        const total = student.intentos.reduce((sum, a) => sum + (a.nota || 0), 0);
+        const avg = student.intentos.length > 0 ? (total / student.intentos.length) : 0;
+        return {
+            ...student,
+            promedio: parseFloat(avg.toFixed(1)),
+            totalIntentos: student.intentos.length
+        };
+    });
+
+    // Grouping averages by technique (exam)
+    const techniqueMap = new Map<string, { total: number; count: number }>();
+    intentos.forEach((i: any) => {
+        const key = i.tecnica || "Práctica";
+        if (!techniqueMap.has(key)) {
+            techniqueMap.set(key, { total: 0, count: 0 });
+        }
+        const t = techniqueMap.get(key)!;
+        t.total += (i.nota || 0);
+        t.count += 1;
+    });
+
+    const techniqueAverages = Array.from(techniqueMap.entries()).map(([tecnica, data]) => {
+        let label = tecnica;
+        switch (tecnica.toLowerCase()) {
+            case "opcion_multiple": label = "Opción múltiple"; break;
+            case "verdadero_falso": label = "Verdadero / Falso"; break;
+            case "abierta": label = "Pregunta abierta"; break;
+            case "deteccion_errores": label = "Detección de errores"; break;
+            case "visual_quiz": label = "Visual Quiz"; break;
+            case "avatar": label = "Avatar Tutor"; break;
+            case "video": label = "Video Tutor"; break;
+            case "adaptativa": label = "Evaluación Recomendadora"; break;
+        }
+        return {
+            tecnicaRaw: tecnica,
+            tecnicaLabel: label,
+            promedio: parseFloat((data.total / data.count).toFixed(1)),
+            count: data.count
+        };
+    });
 
     const uploadMutation = useMutation({
         mutationFn: (files: File[]) => semanasApi.uploadFiles(semanaId, files),
@@ -153,9 +222,9 @@ export default function TeacherWeek() {
             <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-[2rem] p-8 bg-primary-gradient text-primary-foreground shadow-glow relative overflow-hidden"
+                className={cn("rounded-[2rem] p-8 text-primary-foreground shadow-glow relative overflow-hidden", bgSolid)}
             >
-                <div className="absolute -right-6 -top-6 text-[10rem] opacity-20 select-none">📄</div>
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 text-[8rem] opacity-35 select-none pointer-events-none">📄</div>
                 <span className="inline-block px-3 py-1 rounded-full bg-background/20 text-xs font-bold uppercase tracking-wider mb-3">
                     Gestión de material
                 </span>
@@ -172,7 +241,7 @@ export default function TeacherWeek() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-card border border-border rounded-3xl p-6 shadow-soft space-y-5"
+                className="bg-card border border-border rounded-xl p-6 shadow-soft space-y-5"
             >
                 <div className="flex items-center justify-between">
                     <h2 className="font-display font-bold text-xl">Material de la semana</h2>
@@ -180,7 +249,7 @@ export default function TeacherWeek() {
                         size="sm"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploadMutation.isPending}
-                        className="rounded-xl bg-primary-gradient"
+                        className={cn("rounded-lg text-white", bgSolid)}
                     >
                         <Upload className="w-4 h-4 mr-1" /> {uploadMutation.isPending ? "Subiendo..." : "Añadir archivos"}
                     </Button>
@@ -190,12 +259,12 @@ export default function TeacherWeek() {
                     <div className="space-y-3">
                         {materiales.map((mat: any) => (
                             <div key={mat.id} className={cn(
-                                "flex items-center gap-4 rounded-2xl p-4 transition-all",
+                                "flex items-center gap-4 rounded-xl p-4 transition-all",
                                 mat.visible ? "bg-muted/50" : "bg-muted/20 opacity-60" // Si está oculto, se ve más apagado
                             )}>
                                 <div className={cn(
-                                    "w-12 h-12 rounded-xl grid place-items-center text-primary-foreground shadow-soft shrink-0",
-                                    mat.visible ? "bg-primary-gradient" : "bg-muted-foreground"
+                                    "w-12 h-12 rounded-lg grid place-items-center text-primary-foreground shadow-soft shrink-0",
+                                    mat.visible ? bgSolid : "bg-muted-foreground"
                                 )}>
                                     <FileText className="w-5 h-5" />
                                 </div>
@@ -226,7 +295,7 @@ export default function TeacherWeek() {
                                 <Button
                                     size="sm"
                                     variant={mat.visible ? "outline" : "secondary"}
-                                    className={cn("rounded-xl", !mat.visible && "text-amber-600 bg-amber-100 hover:bg-amber-200")}
+                                    className={cn("rounded-lg", !mat.visible && "text-amber-600 bg-amber-100 hover:bg-amber-200")}
                                     onClick={() => toggleVisibilidadMutation.mutate(mat.id)}
                                     disabled={toggleVisibilidadMutation.isPending}
                                     title={mat.visible ? "Ocultar a estudiantes" : "Mostrar a estudiantes"}
@@ -251,7 +320,7 @@ export default function TeacherWeek() {
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploadMutation.isPending}
-                        className="w-full border-2 border-dashed border-border rounded-2xl p-10 flex flex-col items-center gap-3 hover:border-primary/50 hover:bg-primary/5 transition-all disabled:opacity-60"
+                        className="w-full border-2 border-dashed border-border rounded-xl p-10 flex flex-col items-center gap-3 hover:border-primary/50 hover:bg-primary/5 transition-all disabled:opacity-60"
                     >
                         {uploadMutation.isPending
                             ? <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -278,10 +347,10 @@ export default function TeacherWeek() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="bg-card border border-border rounded-3xl p-6 shadow-soft"
+                className="bg-card border border-border rounded-xl p-6 shadow-soft"
             >
                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-lime-gradient grid place-items-center text-primary-foreground shadow-soft shrink-0">
+                    <div className={cn("w-12 h-12 rounded-lg grid place-items-center text-primary-foreground shadow-soft shrink-0", bgSolid)}>
                         <BookOpen className="w-5 h-5" />
                     </div>
                     <div>
@@ -302,7 +371,7 @@ export default function TeacherWeek() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="bg-card border border-border rounded-3xl p-6 shadow-soft space-y-5"
+                className="bg-card border border-border rounded-xl p-6 shadow-soft space-y-5"
             >
                 <div className="flex items-center justify-between">
                     <div>
@@ -312,7 +381,7 @@ export default function TeacherWeek() {
                     <Button
                         size="sm"
                         onClick={handleDownloadCSV}
-                        className="rounded-xl bg-lime-gradient hover:opacity-90 active:scale-95 transition-all text-white font-bold"
+                        className={cn("rounded-lg hover:opacity-90 active:scale-95 transition-all text-white font-semibold", bgSolid)}
                         disabled={intentos.length === 0}
                     >
                         <Download className="w-4 h-4 mr-1" /> Descargar Notas
@@ -322,55 +391,123 @@ export default function TeacherWeek() {
                 {loadingIntentos ? (
                     <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
                 ) : intentos.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead>
-                                <tr className="border-b border-border text-xs text-muted-foreground uppercase font-semibold">
-                                    <th className="py-3 px-2">Alumno</th>
-                                    <th className="py-3 px-2">Correo</th>
-                                    <th className="py-3 px-2">Técnica</th>
-                                    <th className="py-3 px-2 text-center">Nota</th>
-                                    <th className="py-3 px-2 text-right">Fecha</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {intentos.map((i: any) => {
-                                    let tecnicaLabel = i.tecnica || "Práctica";
-                                    switch (tecnicaLabel.toLowerCase()) {
-                                        case "opcion_multiple": tecnicaLabel = "Opción múltiple"; break;
-                                        case "verdadero_falso": tecnicaLabel = "Verdadero / Falso"; break;
-                                        case "abierta": tecnicaLabel = "Pregunta abierta"; break;
-                                        case "deteccion_errores": tecnicaLabel = "Detección de errores"; break;
-                                        case "visual_quiz": tecnicaLabel = "Visual Quiz"; break;
-                                        case "avatar": tecnicaLabel = "Avatar Tutor"; break;
-                                        case "video": tecnicaLabel = "Video Tutor"; break;
-                                        case "adaptativa": tecnicaLabel = "Evaluación Recomendadora"; break;
-                                    }
-                                    return (
-                                        <tr key={i.id} className="hover:bg-muted/30 transition-colors">
-                                            <td className="py-3.5 px-2 font-semibold text-foreground">{i.alumno}</td>
-                                            <td className="py-3.5 px-2 text-muted-foreground">{i.correo}</td>
-                                            <td className="py-3.5 px-2 text-xs font-bold">
-                                                <span className="bg-secondary/60 text-secondary-foreground px-2.5 py-1 rounded-full border border-border/40">
-                                                    {tecnicaLabel}
-                                                </span>
-                                            </td>
-                                            <td className="py-3.5 px-2 text-center">
-                                                <span className={`px-2.5 py-1 rounded-full font-bold ${i.nota >= 17 ? "bg-green-100 text-green-800" : i.nota >= 14 ? "bg-primary/10 text-primary" : "bg-red-100 text-red-800"}`}>
-                                                    {i.nota}/20
-                                                </span>
-                                            </td>
-                                            <td className="py-3.5 px-2 text-right text-xs text-muted-foreground">
-                                                {new Date(i.fecha).toLocaleDateString("es-PE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                    <div className="space-y-6">
+                        {/* Averages by Technique/Exam */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 border-b border-border pb-4">
+                            {techniqueAverages.map((t, idx) => (
+                                <div key={idx} className="bg-muted/40 border border-border rounded-xl p-3 text-left">
+                                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider block">
+                                        {t.tecnicaLabel}
+                                    </span>
+                                    <div className="flex items-baseline gap-2 mt-1">
+                                        <span className="text-lg font-bold text-foreground">
+                                            {t.promedio} <span className="text-xs text-muted-foreground font-normal">/20</span>
+                                        </span>
+                                        <span className="text-[10px] text-muted-foreground font-medium">
+                                            ({t.count} {t.count === 1 ? 'intento' : 'intentos'})
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Grouped Table */}
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm text-left">
+                                <thead>
+                                    <tr className="border-b border-border text-xs text-muted-foreground uppercase font-semibold">
+                                        <th className="py-3 px-2">Alumno</th>
+                                        <th className="py-3 px-2">Correo</th>
+                                        <th className="py-3 px-2">Intentos</th>
+                                        <th className="py-3 px-2 text-center">Nota Promedio</th>
+                                        <th className="py-3 px-2 text-right">Detalles</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                    {groupedStudents.map((student) => {
+                                        const isExpanded = !!expandedStudents[student.correo];
+                                        return (
+                                            <>
+                                                <tr
+                                                    key={student.correo}
+                                                    onClick={() => toggleStudentExpand(student.correo)}
+                                                    className="hover:bg-muted/30 transition-colors cursor-pointer"
+                                                >
+                                                    <td className="py-3.5 px-2 font-semibold text-foreground flex items-center gap-2">
+                                                        {isExpanded ? (
+                                                            <ChevronUp className="w-4 h-4 text-primary shrink-0" />
+                                                        ) : (
+                                                            <ChevronDown className="w-4 h-4 text-primary shrink-0" />
+                                                        )}
+                                                        {student.nombre}
+                                                    </td>
+                                                    <td className="py-3.5 px-2 text-muted-foreground">{student.correo}</td>
+                                                    <td className="py-3.5 px-2 text-xs font-semibold text-muted-foreground">
+                                                        {student.totalIntentos} {student.totalIntentos === 1 ? 'intento' : 'intentos'}
+                                                    </td>
+                                                    <td className="py-3.5 px-2 text-center">
+                                                        <span className={`px-2.5 py-1 rounded-full font-bold ${student.promedio >= 17 ? "bg-green-100 text-green-800" : student.promedio >= 14 ? "bg-primary/10 text-primary" : "bg-red-100 text-red-800"}`}>
+                                                            {student.promedio}/20
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3.5 px-2 text-right text-xs text-primary font-bold hover:underline">
+                                                        {isExpanded ? "Ocultar" : "Ver detalles"}
+                                                    </td>
+                                                </tr>
+                                                {isExpanded && (
+                                                    <tr className="bg-muted/10">
+                                                        <td colSpan={5} className="py-3 px-4 border-l-2 border-primary">
+                                                            <div className="overflow-x-auto rounded-lg border border-border bg-card">
+                                                                <table className="w-full text-xs text-left">
+                                                                    <thead>
+                                                                        <tr className="bg-muted/30 text-muted-foreground border-b border-border text-[10px] uppercase font-bold">
+                                                                            <th className="py-2.5 px-3">Técnica de Evaluación</th>
+                                                                            <th className="py-2.5 px-3 text-center">Nota</th>
+                                                                            <th className="py-2.5 px-3 text-right">Fecha y Hora</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody className="divide-y divide-border">
+                                                                        {student.intentos.map((i: any) => {
+                                                                            let tecnicaLabel = i.tecnica || "Práctica";
+                                                                            switch (tecnicaLabel.toLowerCase()) {
+                                                                                case "opcion_multiple": tecnicaLabel = "Opción múltiple"; break;
+                                                                                case "verdadero_falso": tecnicaLabel = "Verdadero / Falso"; break;
+                                                                                case "abierta": tecnicaLabel = "Pregunta abierta"; break;
+                                                                                case "deteccion_errores": tecnicaLabel = "Detección de errores"; break;
+                                                                                case "visual_quiz": tecnicaLabel = "Visual Quiz"; break;
+                                                                                case "avatar": tecnicaLabel = "Avatar Tutor"; break;
+                                                                                case "video": tecnicaLabel = "Video Tutor"; break;
+                                                                                case "adaptativa": tecnicaLabel = "Evaluación Recomendadora"; break;
+                                                                            }
+                                                                            return (
+                                                                                <tr key={i.id} className="hover:bg-muted/20">
+                                                                                    <td className="py-2 px-3 font-medium text-foreground">{tecnicaLabel}</td>
+                                                                                    <td className="py-2 px-3 text-center">
+                                                                                        <span className={`px-2 py-0.5 rounded-full font-bold ${i.nota >= 17 ? "bg-green-100 text-green-800" : i.nota >= 14 ? "bg-primary/10 text-primary" : "bg-red-100 text-red-800"}`}>
+                                                                                            {i.nota}/20
+                                                                                        </span>
+                                                                                    </td>
+                                                                                    <td className="py-2 px-3 text-right text-muted-foreground">
+                                                                                        {new Date(i.fecha).toLocaleString("es-PE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                                                                    </td>
+                                                                                </tr>
+                                                                            );
+                                                                        })}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 ) : (
-                    <div className="text-center py-8 text-sm text-muted-foreground border-2 border-dashed border-border rounded-2xl">
+                    <div className="text-center py-8 text-sm text-muted-foreground border-2 border-dashed border-border rounded-xl">
                         Aún ningún alumno ha completado evaluaciones esta semana.
                     </div>
                 )}

@@ -889,10 +889,8 @@ export default function VideoTutor() {
             {/* ESTADO 2: REPRODUCTOR DE VIDEO SIMULADO */}
             {sesionIniciada && !videoCompletado && (
                 <div className="space-y-6">
-                    {/* Contenedor Principal del Video con Ambient Glow */}
+                    {/* Contenedor Principal del Video */}
                     <div className="relative group">
-                        {/* Ambient Glow */}
-                        <div className="absolute -inset-1 rounded-[32px] bg-gradient-to-r from-primary via-violet-600 to-indigo-500 opacity-15 blur-2xl group-hover:opacity-25 transition duration-1000 pointer-events-none" />
 
                         <div className="relative aspect-video rounded-3xl overflow-hidden bg-slate-950 border border-slate-800/80 shadow-2xl flex flex-col justify-between p-8 text-white select-none">
                             

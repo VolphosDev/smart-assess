@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Clock, Loader2, Eye, Lock, FlaskConical } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Loader2, Eye, Lock, FlaskConical, Brain, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import { useEvalModeSelect } from "../presentation/hooks/useEvalModeSelect";
+import { getEvalModeIcon } from "@/lib/icon-mapper";
 
 const evalModes = [
     {
@@ -102,11 +103,11 @@ const isModeRecommended = (modeId: string, recs: string[]): boolean => {
     }
 };
 
-const colorMap = {
-    primary: "bg-primary-gradient",
-    lime: "bg-lime-gradient",
-    coral: "bg-coral-gradient",
-    muted: "bg-muted",
+const iconColorMap = {
+    primary: "bg-indigo-50 border border-indigo-100 text-indigo-600 dark:bg-indigo-950/20 dark:border-indigo-900/30 dark:text-indigo-400",
+    lime: "bg-emerald-50 border border-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400",
+    coral: "bg-rose-50 border border-rose-100 text-rose-600 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400",
+    muted: "bg-muted text-muted-foreground",
 } as const;
 
 export default function EvalModeSelect() {
@@ -218,7 +219,7 @@ export default function EvalModeSelect() {
                     <button
                         onClick={() => setShowTestingMenu(!showTestingMenu)}
                         className={cn(
-                            "inline-flex items-center gap-2 px-4 py-2 rounded-2xl border text-xs font-bold transition-all shadow-soft cursor-pointer",
+                            "inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-xs font-bold transition-all shadow-xs cursor-pointer",
                             showTestingMenu
                                 ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 font-extrabold"
                                 : "bg-card border-border hover:bg-secondary/40 text-muted-foreground hover:text-foreground"
@@ -229,7 +230,7 @@ export default function EvalModeSelect() {
                     </button>
 
                     {showTestingMenu && (
-                        <div className="absolute right-0 mt-2 w-72 bg-card border border-border rounded-3xl p-5 shadow-soft z-50 space-y-4 animate-fade-in text-left">
+                        <div className="absolute right-0 mt-2 w-72 bg-card border border-border rounded-xl p-5 shadow-sm z-50 space-y-4 animate-fade-in text-left">
                             <div className="flex items-center gap-2 pb-2 border-b border-border">
                                 <FlaskConical className="w-4.5 h-4.5 text-amber-500" />
                                 <h4 className="font-display font-bold text-sm">Pruebas & Configuración</h4>
@@ -335,63 +336,83 @@ export default function EvalModeSelect() {
                 </div>
             </div>
 
-            <header className="text-center space-y-3">
-                <span className="inline-block px-3 py-1 rounded-full bg-secondary/40 text-xs font-bold uppercase tracking-wider">
+            <div className="text-center max-w-2xl mx-auto space-y-2">
+                <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight">
                     {semana.numSem}
-                </span>
-
-                <h1 className="font-display text-4xl md:text-5xl font-bold text-balance">
-                    {materiales.length > 0
-                        ? materiales.length === 1
-                            ? materiales[0].nombreArchivo
-                            : `Materiales de la semana (${materiales.length})`
-                        : "Material de la semana"}
                 </h1>
-
-                {materiales.length > 0 && (
-                    <div className="flex flex-wrap justify-center gap-2">
-                        {materiales.map((mat: any, idx: number) =>
-                            mat.mongoId ? (
-                                <button
-                                    key={mat.mongoId}
-                                    onClick={() => mat.visible && setSelectedFile({ id: mat.mongoId, name: mat.nombreArchivo })}
-                                    disabled={!mat.visible}
-                                    className={cn(
-                                        "inline-flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl transition-colors",
-                                        mat.visible
-                                            ? "bg-secondary/50 hover:bg-secondary cursor-pointer"
-                                            : "bg-secondary/20 text-muted-foreground/50 cursor-not-allowed"
-                                    )}
-                                    title={!mat.visible ? "Material oculto por el docente" : ""}
-                                >
-                                    {mat.visible ? <Eye className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                                    {materiales.length === 1
-                                        ? "Leer documento antes de empezar"
-                                        : `Documento ${idx + 1}: ${mat.nombreArchivo}`}
-                                </button>
-                            ) : null
-                        )}
-                    </div>
-                )}
-
-                <p className="text-muted-foreground max-w-xl mx-auto">
-                    ¿Cómo te quieres evaluar hoy? Elige la modalidad que mejor se adapte a ti.
+                <p className="text-muted-foreground text-sm">
+                    Revisa los materiales asignados y elige el método de evaluación para poner a prueba tus conocimientos.
                 </p>
-                {semana.totalPreguntas > 0 && (
-                    <p className="text-sm font-semibold text-primary">
-                        {semana.totalPreguntas} preguntas disponibles
-                    </p>
-                )}
-            </header>
+            </div>
+
+            {/* Tarjeta de Materiales de Estudio (Estética y Profesional) */}
+            <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs max-w-2xl mx-auto text-left relative overflow-hidden">
+                {/* Decoración lateral discreta */}
+                <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-primary" />
+                
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 pl-2">
+                    <div className="flex items-start gap-4 flex-1">
+                        <div className="w-12 h-12 rounded-lg bg-primary/5 text-primary border border-primary/10 grid place-items-center shrink-0">
+                            <BookOpen className="w-6 h-6" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Material de lectura</span>
+                            <h3 className="font-semibold text-base truncate pr-4 text-foreground/90 mt-0.5" title={materiales.length > 0 ? (materiales[0].nombreArchivo || "Material") : "Material de la semana"}>
+                                {materiales.length > 0
+                                    ? materiales[0].nombreArchivo.replace(/-/g, ' ').replace(/\.pdf$/i, '')
+                                    : "Material de la semana"}
+                            </h3>
+                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground font-medium">
+                                <span className="flex items-center gap-1">
+                                    <Clock className="w-3.5 h-3.5" /> {semana.totalPreguntas > 0 ? `${semana.totalPreguntas} preguntas` : "Sin preguntas"}
+                                </span>
+                                {materiales.length > 0 && (
+                                    <span className="bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 px-2 py-0.5 rounded-md text-[10px] font-bold">
+                                        Disponible
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Botón de lectura colocado aquí para garantizar máxima visibilidad */}
+                            {materiales.length > 0 && (
+                                <div className="pt-3 flex flex-wrap gap-2">
+                                    {materiales.map((mat: any, idx: number) => {
+                                        const fileId = mat.mongoId || mat.id;
+                                        return (
+                                            <button
+                                                key={fileId || idx}
+                                                onClick={() => mat.visible && setSelectedFile({ id: fileId || "", name: mat.nombreArchivo })}
+                                                disabled={!mat.visible}
+                                                className={cn(
+                                                    "inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all shadow-xs border cursor-pointer active:scale-95",
+                                                    mat.visible
+                                                        ? "bg-primary text-primary-foreground border-transparent hover:bg-primary/95 animate-pulse"
+                                                        : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+                                                )}
+                                                title={!mat.visible ? "Material oculto por el docente" : ""}
+                                            >
+                                                <Eye className="w-3.5 h-3.5" />
+                                                {materiales.length === 1
+                                                    ? "Leer documento"
+                                                    : `Leer Doc ${idx + 1}`}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             {materiales.length === 0 ? (
-                <div className="bg-card border border-dashed border-border rounded-3xl p-10 text-center">
+                <div className="bg-card border border-dashed border-border rounded-xl p-10 text-center">
                     <p className="text-muted-foreground">
                         Tu profesor aún no ha cargado el material de esta semana.
                     </p>
                 </div>
             ) : materiales.every((mat: any) => !mat.visible) ? (
-                <div className="bg-card border border-dashed border-border rounded-3xl p-10 text-center flex flex-col items-center justify-center gap-2">
+                <div className="bg-card border border-dashed border-border rounded-xl p-10 text-center flex flex-col items-center justify-center gap-2">
                     <Lock className="w-8 h-8 text-muted-foreground/50" />
                     <p className="text-muted-foreground font-semibold">
                         El material de esta semana se encuentra oculto.
@@ -405,10 +426,10 @@ export default function EvalModeSelect() {
                     {/* Banner de Evaluación Recomendadora */}
                     <div className="mb-8">
                         {!completedAdaptive ? (
-                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-soft">
+                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs">
                                 <div className="flex items-start gap-4 text-left">
-                                    <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white grid place-items-center text-2xl shadow-soft shrink-0 animate-pulse">
-                                        🧠
+                                    <div className="w-11 h-11 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 grid place-items-center shadow-xs shrink-0 animate-pulse">
+                                        <Brain className="w-5 h-5" />
                                     </div>
                                     <div className="space-y-1">
                                         <h3 className="font-display font-black text-lg text-foreground">Evaluación Recomendadora (Pendiente)</h3>
@@ -419,16 +440,16 @@ export default function EvalModeSelect() {
                                 </div>
                                 <Link
                                     to={`/app/curso/${courseId}/semana/${week}/evaluacion/adaptativa`}
-                                    className="px-6 py-3 rounded-xl bg-amber-500 text-white font-extrabold text-xs tracking-wider shadow-md hover:bg-amber-600 transition-all shrink-0 active:scale-95 text-center w-full md:w-auto cursor-pointer"
+                                    className="px-6 py-3 rounded-lg bg-amber-500 text-white font-extrabold text-xs tracking-wider shadow-sm hover:bg-amber-600 transition-all shrink-0 active:scale-95 text-center w-full md:w-auto cursor-pointer"
                                 >
                                     Realizar Diagnóstico
                                 </Link>
                             </div>
                         ) : (
-                            <div className="bg-violet-500/5 border border-violet-500/20 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-soft">
+                            <div className="bg-violet-500/5 border border-violet-500/20 rounded-xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs">
                                 <div className="flex items-start gap-4 text-left flex-1">
-                                    <div className="w-12 h-12 rounded-2xl bg-primary-gradient text-white grid place-items-center text-2xl shadow-soft shrink-0">
-                                        🧠
+                                    <div className="w-11 h-11 rounded-lg bg-primary/10 text-primary grid place-items-center shadow-xs shrink-0">
+                                        <Brain className="w-5 h-5" />
                                     </div>
                                     <div className="space-y-2 flex-1">
                                         <div className="flex flex-wrap items-center gap-2">
@@ -441,7 +462,7 @@ export default function EvalModeSelect() {
                                             ¡Diagnóstico completado! El comité de agentes te recomienda utilizar los métodos indicados abajo con la etiqueta <span className="text-emerald-600 dark:text-emerald-400 font-black">Recomendado</span>.
                                         </p>
                                         {recommendations.length > 0 && (
-                                             <div className="bg-background/40 border border-border/60 rounded-2xl p-4 mt-2 grid md:grid-cols-2 gap-4">
+                                             <div className="bg-background/40 border border-border/60 rounded-lg p-4 mt-2 grid md:grid-cols-2 gap-4">
                                                  <div>
                                                      <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-wider mb-1.5">Recomendaciones del Comité:</h4>
                                                      <ul className="space-y-1">
@@ -484,7 +505,7 @@ export default function EvalModeSelect() {
                                      {(!allRecommendedCompleted && !ignorarObligacionPracticas) ? (
                                          <button
                                              disabled
-                                             className="px-5 py-2.5 rounded-xl border border-border bg-secondary/20 text-muted-foreground font-bold text-xs tracking-wider transition-all text-center cursor-not-allowed opacity-50 flex items-center gap-1.5"
+                                             className="px-5 py-2.5 rounded-lg border border-border bg-secondary/20 text-muted-foreground font-bold text-xs tracking-wider transition-all text-center cursor-not-allowed opacity-50 flex items-center gap-1.5"
                                              title="Completa todas las prácticas recomendadas de la semana para desbloquear"
                                          >
                                              <Lock className="w-3.5 h-3.5" /> Volver a evaluar
@@ -492,7 +513,7 @@ export default function EvalModeSelect() {
                                      ) : (
                                          <Link
                                              to={`/app/curso/${courseId}/semana/${week}/evaluacion/adaptativa`}
-                                             className="px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-black text-xs tracking-wider transition-all text-center active:scale-95 cursor-pointer shadow-md shadow-violet-500/20 hover:shadow-lg hover:shadow-violet-500/30"
+                                             className="px-6 py-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-black text-xs tracking-wider transition-all text-center active:scale-95 cursor-pointer shadow-sm shadow-violet-500/20"
                                          >
                                              Volver a evaluar
                                          </Link>
@@ -511,7 +532,7 @@ export default function EvalModeSelect() {
                         <span className="text-sm font-semibold text-muted-foreground">
                             Cantidad de preguntas:
                         </span>
-                        <div className="flex rounded-2xl border border-border overflow-hidden">
+                        <div className="flex rounded-lg border border-border overflow-hidden">
                             {[5, 10].map((n) => (
                                 <button
                                     key={n}
@@ -544,14 +565,14 @@ export default function EvalModeSelect() {
                             const cardContent = (
                                 <div
                                     className={cn(
-                                        "group block bg-card border rounded-3xl p-6 shadow-soft h-full transition-all relative overflow-hidden",
+                                        "group block bg-card border rounded-xl p-5 shadow-xs h-full transition-all relative overflow-hidden",
                                         isDisabled
                                             ? "border-border opacity-50 grayscale cursor-not-allowed bg-secondary/5"
                                             : isUnfinished
-                                                ? "border-amber-500/50 shadow-glow bg-amber-500/5 hover:-translate-y-1 cursor-pointer"
+                                                ? "border-amber-500/50 shadow-sm bg-amber-500/5 hover:-translate-y-0.5 cursor-pointer"
                                                 : m.id === "adaptativa" && !completedAdaptive
-                                                    ? "border-primary/50 shadow-glow bg-primary/5 animate-pulse hover:-translate-y-1 cursor-pointer"
-                                                    : "border-border hover:-translate-y-1 cursor-pointer"
+                                                    ? "border-primary/50 shadow-sm bg-primary/5 animate-pulse hover:-translate-y-0.5 cursor-pointer"
+                                                    : "border-border hover:-translate-y-0.5 cursor-pointer"
                                     )}
                                 >
                                     {completedAdaptive && isRecommended && m.id !== "adaptativa" && (
@@ -568,11 +589,11 @@ export default function EvalModeSelect() {
 
                                     <div
                                         className={cn(
-                                            "w-16 h-16 rounded-2xl grid place-items-center text-3xl shadow-soft mb-4",
-                                            colorMap[m.color]
+                                            "w-11 h-11 rounded-lg grid place-items-center shadow-xs mb-4",
+                                            iconColorMap[m.color] || iconColorMap.primary
                                         )}
                                     >
-                                        {m.emoji}
+                                        {getEvalModeIcon(m.id, "w-5 h-5")}
                                     </div>
 
                                     <div className="flex items-center gap-2 mb-1.5">
@@ -588,7 +609,7 @@ export default function EvalModeSelect() {
                                             </span>
                                         )}
                                         {isUnfinished && (
-                                            <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold uppercase tracking-wider animate-pulse flex items-center gap-1 shadow-glow-sm">
+                                            <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold uppercase tracking-wider animate-pulse flex items-center gap-1 shadow-sm">
                                                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" /> Continuar
                                             </span>
                                         )}
@@ -638,7 +659,7 @@ export default function EvalModeSelect() {
                                 if (m.id === "adaptativa" || m.id === "avatar" || m.id === "video") {
                                     return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}`;
                                 }
-                                return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${materiales[0]?.mongoId ?? ""}&tema=${encodeURIComponent(
+                                return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${materiales[0]?.mongoId || materiales[0]?.id || ""}&tema=${encodeURIComponent(
                                     (materiales[0]?.nombreArchivo || "")
                                         .replace(/\.[^/.]+$/, "")
                                         .replace(/[-_]/g, " ")
