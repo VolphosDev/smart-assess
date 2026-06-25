@@ -10,6 +10,7 @@ const getWeekDetailsUseCase = new GetWeekDetails(courseRepo);
 export function useEvalModeSelect() {
     const { courseId = "", semanaId: week = "" } = useParams();
     const [cantidad, setCantidad] = useState(5);
+    const [selectedSubtemas, setSelectedSubtemas] = useState<string[]>([]);
     const [selectedFile, setSelectedFile] = useState<{ id: string, name: string } | null>(null);
 
     const { data: semana, isLoading } = useQuery({
@@ -23,6 +24,8 @@ export function useEvalModeSelect() {
         semanaId: week,
         cantidad,
         setCantidad,
+        selectedSubtemas,
+        setSelectedSubtemas,
         selectedFile,
         setSelectedFile,
         semana,

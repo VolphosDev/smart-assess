@@ -15,5 +15,11 @@ export const authApi = {
     },
 
     registrarConsentimiento: (version = "v1.0") =>
-        apiClient.post<{ ok: boolean }>("/auth/consent", { version })
+        apiClient.post<{ ok: boolean }>("/auth/consent", { version }),
+
+    setupPassword: (email: string, newPassword: string) =>
+        apiClient.post<{ message: string }>("/auth/setup-password", { email, newPassword }),
+
+    soporte: (correo: string, motivo: string, descripcion: string) =>
+        apiClient.post<{ message: string }>("/auth/soporte", { correo, motivo, descripcion })
 };

@@ -426,6 +426,134 @@ export default function TeacherDashboard() {
                 </div>
             </section>
 
+            {/* === Feature 4: Sistema de Alerta Temprana === */}
+            {(() => {
+                // Calcular alumnos en riesgo basado en datos existentes
+                const ahora = new Date();
+                const hace7Dias = new Date(ahora.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+                const alumnosMap: Record<string, { nombre: string; correo: string; intentos: any[]; alertas: string[] }> = {};
+
+                teacherAttempts.forEach((att: any) => {
+                    if (!att.alumno) return;
+                    if (!alumnosMap[att.correo]) {
+                        alumnosMap[att.correo] = { nombre: att.alumno, correo: att.correo, intentos: [], alertas: [] };
+                    }
+                    alumnosMap[att.correo].intentos.push(att);
+                });
+
+                const alumnosEnRiesgo = Object.values(alumnosMap).filter(alumno => {
+                    alumno.alertas = [];
+                    const notas = alumno.intentos.map(i => i.nota).filter(n => n !== undefined && n !== null);
+
+                    // Criterio 1: Promedio bajo (<11/20)
+                    if (notas.length > 0) {
+                        const promedio = notas.reduce((a: number, b: number) => a + b, 0) / notas.length;
+                        if (promedio < 11) alumno.alertas.push("Promedio bajo");
+                    }
+
+                    // Criterio 2: 3+ intentos consecutivos con nota < 11
+                    const notasOrdenadas = alumno.intentos
+                        .sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+                        .map(i => i.nota);
+                    if (notasOrdenadas.length >= 3) {
+                        const ultimas3 = notasOrdenadas.slice(0, 3);
+                        if (ultimas3.every((n: number) => n < 11)) {
+                            alumno.alertas.push("Racha negativa");
+                        }
+                    }
+
+                    // Criterio 3: Inactividad (>7 días sin practicar)
+                    const fechas = alumno.intentos.map(i => new Date(i.fecha));
+                    const ultimaFecha = fechas.length > 0 ? new Date(Math.max(...fechas.map(f => f.getTime()))) : null;
+                    if (ultimaFecha && ultimaFecha < hace7Dias) {
+                        alumno.alertas.push("Inactivo");
+                    }
+
+                    return alumno.alertas.length > 0;
+                });
+
+                if (alumnosEnRiesgo.length === 0) return null;
+
+                const alertaBadgeColors: Record<string, string> = {
+                    "Promedio bajo": "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
+                    "Racha negativa": "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
+                    "Inactivo": "bg-zinc-100 text-zinc-800 border-zinc-200 dark:bg-zinc-800/30 dark:text-zinc-300 dark:border-zinc-700",
+                };
+
+                return (
+                    <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
+                        <div className="p-5 border-b border-border flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 grid place-items-center shrink-0">
+                                <AlertTriangle className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h2 className="font-display font-bold text-lg">Alerta Temprana</h2>
+                                <p className="text-xs text-muted-foreground">
+                                    {alumnosEnRiesgo.length} alumno{alumnosEnRiesgo.length !== 1 ? "s" : ""} en riesgo detectado{alumnosEnRiesgo.length !== 1 ? "s" : ""} por la IA
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="divide-y divide-border">
+                            {alumnosEnRiesgo.slice(0, 8).map((alumno) => {
+                                const notas = alumno.intentos.map((i: any) => i.nota).filter((n: any) => n !== undefined);
+                                const promedio = notas.length > 0 ? (notas.reduce((a: number, b: number) => a + b, 0) / notas.length).toFixed(1) : "—";
+                                const ultimoIntento = alumno.intentos.length > 0
+                                    ? new Date(Math.max(...alumno.intentos.map((i: any) => new Date(i.fecha).getTime())))
+                                    : null;
+
+                                return (
+                                    <div key={alumno.correo} className="flex items-center gap-4 p-4 hover:bg-muted/30 transition-colors">
+                                        <div className="w-9 h-9 rounded-full bg-red-50 dark:bg-red-950/20 text-red-500 grid place-items-center font-display font-bold text-sm shrink-0 border border-red-200 dark:border-red-800">
+                                            {alumno.nombre.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-bold text-sm truncate">{alumno.nombre}</div>
+                                            <div className="text-[10px] text-muted-foreground">{alumno.correo}</div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5 shrink-0">
+                                            {alumno.alertas.map((alerta) => (
+                                                <span
+                                                    key={alerta}
+                                                    className={cn(
+                                                        "text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                                                        alertaBadgeColors[alerta] || "bg-muted text-muted-foreground"
+                                                    )}
+                                                >
+                                                    {alerta}
+                                                </span>
+                                            ))}
+                                        </div>
+                                        <div className="text-right shrink-0 hidden sm:block">
+                                            <div className={cn(
+                                                "font-display font-bold text-sm",
+                                                Number(promedio) < 11 ? "text-red-600 dark:text-red-400" : "text-foreground"
+                                            )}>
+                                                {promedio}/20
+                                            </div>
+                                            <div className="text-[10px] text-muted-foreground">
+                                                {ultimoIntento
+                                                    ? ultimoIntento.toLocaleDateString("es-PE", { day: "numeric", month: "short" })
+                                                    : "Sin fecha"}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {alumnosEnRiesgo.length > 8 && (
+                            <div className="p-3 text-center border-t border-border">
+                                <span className="text-xs font-semibold text-muted-foreground">
+                                    +{alumnosEnRiesgo.length - 8} alumno{alumnosEnRiesgo.length - 8 !== 1 ? "s" : ""} más en riesgo
+                                </span>
+                            </div>
+                        )}
+                    </section>
+                );
+            })()}
+
             <section>
                 <div className="flex items-end justify-between mb-5">
                     <h2 className="font-display text-2xl md:text-3xl font-bold">Mis cursos</h2>

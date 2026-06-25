@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Clock, Loader2, Eye, Lock, FlaskConical, Brain, BookOpen } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Loader2, Eye, Lock, FlaskConical, Brain, BookOpen, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import { useEvalModeSelect } from "../presentation/hooks/useEvalModeSelect";
@@ -118,6 +118,8 @@ export default function EvalModeSelect() {
         setCantidad,
         selectedFile,
         setSelectedFile,
+        selectedSubtemas,
+        setSelectedSubtemas,
         semana,
         isLoading,
     } = useEvalModeSelect();
@@ -405,6 +407,45 @@ export default function EvalModeSelect() {
                 </div>
             </div>
 
+            {/* Subtemas UI */}
+            {completedAdaptive && materiales.length > 0 && materiales[0]?.subtemas && materiales[0].subtemas.length > 0 && (
+                <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs max-w-2xl mx-auto text-left mt-4">
+                    <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-primary" /> Selecciona los temas a evaluar:
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                        {materiales[0].subtemas.map((subtema: string) => {
+                            const isSelected = selectedSubtemas.includes(subtema);
+                            return (
+                                <button
+                                    key={subtema}
+                                    onClick={() => {
+                                        if (isSelected) {
+                                            setSelectedSubtemas(selectedSubtemas.filter(s => s !== subtema));
+                                        } else {
+                                            setSelectedSubtemas([...selectedSubtemas, subtema]);
+                                        }
+                                    }}
+                                    className={cn(
+                                        "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer select-none",
+                                        isSelected 
+                                            ? "bg-primary text-primary-foreground border-primary" 
+                                            : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                                    )}
+                                >
+                                    {subtema}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {selectedSubtemas.length === 0 && (
+                        <p className="text-[10px] text-muted-foreground mt-2">
+                            *Si no seleccionas ninguno, se evaluará sobre todo el material por defecto.
+                        </p>
+                    )}
+                </div>
+            )}
+
             {materiales.length === 0 ? (
                 <div className="bg-card border border-dashed border-border rounded-xl p-10 text-center">
                     <p className="text-muted-foreground">
@@ -656,15 +697,17 @@ export default function EvalModeSelect() {
                             );
 
                             const getTargetUrl = () => {
-                                if (m.id === "adaptativa" || m.id === "avatar" || m.id === "video") {
-                                    return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}`;
-                                }
-                                return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${materiales[0]?.mongoId || materiales[0]?.id || ""}&tema=${encodeURIComponent(
-                                    (materiales[0]?.nombreArchivo || "")
+                                let temaParam = selectedSubtemas.length > 0 
+                                    ? selectedSubtemas.join(", ") 
+                                    : (materiales[0]?.nombreArchivo || "")
                                         .replace(/\.[^/.]+$/, "")
                                         .replace(/[-_]/g, " ")
-                                        .trim()
-                                )}`;
+                                        .trim();
+
+                                if (m.id === "adaptativa" || m.id === "avatar" || m.id === "video") {
+                                    return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?mongoId=${materiales[0]?.mongoId || materiales[0]?.id || ""}&tema=${encodeURIComponent(temaParam)}`;
+                                }
+                                return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${materiales[0]?.mongoId || materiales[0]?.id || ""}&tema=${encodeURIComponent(temaParam)}`;
                             };
 
                             return (

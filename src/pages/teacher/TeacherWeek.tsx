@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { semanasApi, intentosApi, coursesApi } from "@/api/courses.ts";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 // 1. IMPORTAMOS EL NUEVO MODAL UNIVERSAL
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import {cn} from "@/lib/utils.ts";
@@ -47,36 +47,50 @@ export default function TeacherWeek() {
         setExpandedStudents(prev => ({ ...prev, [email]: !prev[email] }));
     };
 
-    // Grouping attempts by student (using email as key)
-    const studentMap = new Map<string, { nombre: string; correo: string; intentos: any[] }>();
-    intentos.forEach((i: any) => {
-        const key = i.correo || "";
-        if (!studentMap.has(key)) {
-            studentMap.set(key, { nombre: i.alumno || "Alumno", correo: i.correo || "", intentos: [] });
-        }
-        studentMap.get(key)!.intentos.push(i);
-    });
+    // Determinar si los intentos ya vienen agrupados desde el backend o si es el formato plano antiguo
+    const isGroupedFormat = intentos.length > 0 && intentos[0].intentos !== undefined;
 
-    const groupedStudents = Array.from(studentMap.values()).map(student => {
-        const total = student.intentos.reduce((sum, a) => sum + (a.nota || 0), 0);
-        const avg = student.intentos.length > 0 ? (total / student.intentos.length) : 0;
-        return {
-            ...student,
-            promedio: parseFloat(avg.toFixed(1)),
-            totalIntentos: student.intentos.length
-        };
-    });
+    let groupedStudents: any[] = [];
+    if (isGroupedFormat) {
+        groupedStudents = intentos;
+    } else {
+        // Fallback: agrupar manualmente si el backend aún devuelve la lista plana (ej. no se ha reiniciado Spring Boot)
+        const studentMap = new Map<string, { nombre: string; correo: string; intentos: any[] }>();
+        intentos.forEach((i: any) => {
+            const key = i.correo || "";
+            if (!studentMap.has(key)) {
+                studentMap.set(key, { nombre: i.alumno || "Alumno", correo: i.correo || "", intentos: [] });
+            }
+            studentMap.get(key)!.intentos.push(i);
+        });
 
-    // Grouping averages by technique (exam)
+        groupedStudents = Array.from(studentMap.values()).map(student => {
+            const total = student.intentos.reduce((sum, a) => sum + (a.nota || 0), 0);
+            const avg = student.intentos.length > 0 ? (total / student.intentos.length) : 0;
+            return {
+                alumno: student.nombre,
+                correo: student.correo,
+                promedio: parseFloat(avg.toFixed(1)),
+                totalIntentos: student.intentos.length,
+                intentos: student.intentos
+            };
+        });
+    }
+
+    // Grouping averages by technique (exam) across all students
     const techniqueMap = new Map<string, { total: number; count: number }>();
-    intentos.forEach((i: any) => {
-        const key = i.tecnica || "Práctica";
-        if (!techniqueMap.has(key)) {
-            techniqueMap.set(key, { total: 0, count: 0 });
+    groupedStudents.forEach((student: any) => {
+        if (student.intentos) {
+            student.intentos.forEach((i: any) => {
+                const key = i.tecnica || "Práctica";
+                if (!techniqueMap.has(key)) {
+                    techniqueMap.set(key, { total: 0, count: 0 });
+                }
+                const t = techniqueMap.get(key)!;
+                t.total += (i.nota || 0);
+                t.count += 1;
+            });
         }
-        const t = techniqueMap.get(key)!;
-        t.total += (i.nota || 0);
-        t.count += 1;
     });
 
     const techniqueAverages = Array.from(techniqueMap.entries()).map(([tecnica, data]) => {
@@ -155,27 +169,31 @@ export default function TeacherWeek() {
             return;
         }
 
-        const headers = ["ID Intento", "Alumno", "Correo", "Tecnica", "Nota", "Fecha"];
-        const rows = intentos.map((i: any) => {
-            let tecnicaLabel = i.tecnica || "Práctica";
-            switch (tecnicaLabel.toLowerCase()) {
-                case "opcion_multiple": tecnicaLabel = "Opción múltiple"; break;
-                case "verdadero_falso": tecnicaLabel = "Verdadero / Falso"; break;
-                case "abierta": tecnicaLabel = "Pregunta abierta"; break;
-                case "deteccion_errores": tecnicaLabel = "Detección de errores"; break;
-                case "visual_quiz": tecnicaLabel = "Visual Quiz"; break;
-                case "avatar": tecnicaLabel = "Avatar Tutor"; break;
-                case "video": tecnicaLabel = "Video Tutor"; break;
-                case "adaptativa": tecnicaLabel = "Evaluación Recomendadora"; break;
+        const rows: any[] = [];
+        groupedStudents.forEach((student: any) => {
+            if (student.intentos) {
+                student.intentos.forEach((i: any) => {
+                    let tecnicaLabel = i.tecnica || "Práctica";
+                    switch (tecnicaLabel.toLowerCase()) {
+                        case "opcion_multiple": tecnicaLabel = "Opción múltiple"; break;
+                        case "verdadero_falso": tecnicaLabel = "Verdadero / Falso"; break;
+                        case "abierta": tecnicaLabel = "Pregunta abierta"; break;
+                        case "deteccion_errores": tecnicaLabel = "Detección de errores"; break;
+                        case "visual_quiz": tecnicaLabel = "Visual Quiz"; break;
+                        case "avatar": tecnicaLabel = "Avatar Tutor"; break;
+                        case "video": tecnicaLabel = "Video Tutor"; break;
+                        case "adaptativa": tecnicaLabel = "Evaluación Recomendadora"; break;
+                    }
+                    rows.push([
+                        i.id,
+                        student.alumno,
+                        student.correo,
+                        tecnicaLabel,
+                        i.nota,
+                        new Date(i.fecha).toLocaleString()
+                    ]);
+                });
             }
-            return [
-                i.id,
-                i.alumno,
-                i.correo,
-                tecnicaLabel,
-                i.nota,
-                new Date(i.fecha).toLocaleString()
-            ];
         });
 
         const csvRows = [
@@ -427,9 +445,8 @@ export default function TeacherWeek() {
                                     {groupedStudents.map((student) => {
                                         const isExpanded = !!expandedStudents[student.correo];
                                         return (
-                                            <>
+                                            <React.Fragment key={student.correo}>
                                                 <tr
-                                                    key={student.correo}
                                                     onClick={() => toggleStudentExpand(student.correo)}
                                                     className="hover:bg-muted/30 transition-colors cursor-pointer"
                                                 >
@@ -439,7 +456,7 @@ export default function TeacherWeek() {
                                                         ) : (
                                                             <ChevronDown className="w-4 h-4 text-primary shrink-0" />
                                                         )}
-                                                        {student.nombre}
+                                                        {student.alumno}
                                                     </td>
                                                     <td className="py-3.5 px-2 text-muted-foreground">{student.correo}</td>
                                                     <td className="py-3.5 px-2 text-xs font-semibold text-muted-foreground">
@@ -499,7 +516,7 @@ export default function TeacherWeek() {
                                                         </td>
                                                     </tr>
                                                 )}
-                                            </>
+                                            </React.Fragment>
                                         );
                                     })}
                                 </tbody>

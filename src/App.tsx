@@ -21,7 +21,10 @@ import CourseStudentsManager from "./pages/teacher/CourseStudentsManager";
 import AvatarTutor from "./pages/AvatarTutor";
 import VideoTutor from "./pages/VideoTutor";
 import AdaptivePractice from "./pages/AdaptivePractice";
+import KnowledgeMap from "./pages/KnowledgeMap";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+import SetupPassword from "./pages/SetupPassword";
 
 const queryClient = new QueryClient();
 
@@ -32,8 +35,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Ruta pública: login */}
+          {/* Ruta pública: login y configuración de contraseña */}
           <Route path="/" element={<Index />} />
+          <Route path="/setup-password" element={<SetupPassword />} />
 
           {/* Rutas protegidas para STUDENT */}
           <Route element={<ProtectedRoute allowedRoles={["STUDENT"]} />}>
@@ -46,6 +50,7 @@ const App = () => (
               <Route path="curso/:courseId/semana/:semanaId/evaluacion/avatar" element={<AvatarTutor />} />
               <Route path="curso/:courseId/semana/:semanaId/evaluacion/video" element={<VideoTutor />} />
               <Route path="curso/:courseId/semana/:semanaId/evaluacion/adaptativa" element={<AdaptivePractice />} />
+              <Route path="mapa-conocimiento" element={<KnowledgeMap />} />
               <Route path="historial" element={<HistoryPage />} />
             </Route>
           </Route>
@@ -56,8 +61,8 @@ const App = () => (
               <Route index element={<TeacherDashboard />} />
               <Route path="curso/:courseId" element={<TeacherCourse />} />
               <Route path="curso/:courseId/semana/:semanaId" element={<TeacherWeek />} />
+              <Route path="curso/:courseId/alumnos" element={<CourseStudentsManager />} />
             </Route>
-            <Route path="/docente/curso/:courseId/alumnos" element={<CourseStudentsManager />} />
           </Route>
 
           {/* Rutas protegidas para ADMIN */}

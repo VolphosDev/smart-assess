@@ -7,5 +7,11 @@ export const usersApi = {
 
     create: (data: any) => apiClient.post<any>('/admin/usuarios/crear', data),
 
+    crearMasivo: (data: any[]) => apiClient.post<any>('/admin/usuarios/crear-masivo', data),
+
     remove: (id: string | number) => apiClient.delete<any>(`/admin/usuarios/${id}`),
+
+    unlock: (id: string | number) => apiClient.put<any>(`/admin/usuarios/${id}/desbloquear`),
+
+    toggleBlock: (id: string | number) => apiClient.put<any>(`/admin/usuarios/${id}/toggle-block`),
 };

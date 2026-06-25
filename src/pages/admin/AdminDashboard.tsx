@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { UserPlus, Trash2, Users, GraduationCap, BookOpenCheck, Loader2, Download, ShieldCheck, TrendingUp, BarChart2, Calendar, Filter, ChevronDown, Check, RefreshCw } from "lucide-react";
+import { UserPlus, Trash2, Users, GraduationCap, BookOpenCheck, Loader2, Download, ShieldCheck, TrendingUp, BarChart2, Calendar, Filter, ChevronDown, Check, RefreshCw, Unlock, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,11 @@ export default function AdminDashboard() {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+
+    // Estados de registro masivo
+    const [activeTab, setActiveTab] = useState<"individual" | "masivo">("individual");
+    const [bulkNames, setBulkNames] = useState("");
+    const [bulkPreview, setBulkPreview] = useState<{ name: string; email: string; role: string; password: string }[]>([]);
 
     const { data: users = [], isLoading: loadingUsers } = useQuery<any[]>({
         queryKey: ['admin-users'],
@@ -143,6 +148,24 @@ export default function AdminDashboard() {
         }
     });
 
+    const bulkCreateMutation = useMutation({
+        mutationFn: (usersList: any[]) => usersApi.crearMasivo(usersList),
+        onSuccess: (res) => {
+            toast.success(res?.data?.message || "Usuarios masivos registrados");
+            setBulkNames("");
+            setBulkPreview([]);
+            queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+        },
+        onError: (error: any) => {
+            let msg = "Error al registrar masivamente";
+            const rawError = error?.response?.data || error?.message;
+            if (typeof rawError === "string") {
+                try { msg = JSON.parse(rawError).message || rawError; } catch (e) { msg = rawError; }
+            } else if (rawError?.message) { msg = rawError.message; }
+            toast.error(msg);
+        }
+    });
+
     const deleteMutation = useMutation({
         mutationFn: (id: string | number) => usersApi.remove(id),
         onSuccess: () => {
@@ -167,6 +190,23 @@ export default function AdminDashboard() {
         }
     });
 
+    const toggleBlockMutation = useMutation({
+        mutationFn: (id: string | number) => usersApi.toggleBlock(id),
+        onSuccess: (data: any) => {
+            const status = data?.data?.cuentaBloqueada ? "bloqueada" : "desbloqueada";
+            toast.success(`Cuenta ${status} exitosamente`);
+            queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+        },
+        onError: (error: any) => {
+            let msg = "Error al cambiar el estado del usuario";
+            const rawError = error?.response?.data || error?.message;
+            if (typeof rawError === "string") {
+                try { msg = JSON.parse(rawError).message || rawError; } catch (e) { msg = rawError; }
+            } else if (rawError?.message) { msg = rawError.message; }
+            toast.error(msg);
+        }
+    });
+
     const register = (e: React.FormEvent) => {
         e.preventDefault();
         createMutation.mutate({
@@ -176,6 +216,48 @@ export default function AdminDashboard() {
             password, // <-- Mandamos la contraseña a Java
             avatar: avatars[Math.floor(Math.random() * avatars.length)],
         });
+    };
+
+    // Lógica para generar correos
+    const handleGeneratePreview = () => {
+        if (!bulkNames.trim()) return;
+        const lines = bulkNames.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        
+        const existingEmails = new Set(users.map((u: any) => u.correo));
+        const preview: { name: string; email: string; role: string; password: string }[] = [];
+
+        lines.forEach(fullName => {
+            const parts = fullName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z\s]/g, "").split(/\s+/);
+            let base = "";
+            if (parts.length >= 3) {
+                base = parts[0].charAt(0) + parts[parts.length - 2] + parts[parts.length - 1].charAt(0);
+            } else if (parts.length === 2) {
+                base = parts[0].charAt(0) + parts[1];
+            } else {
+                base = parts[0];
+            }
+            
+            let email = `${base}@semantika.edu.pe`;
+            let num = 2;
+            while (existingEmails.has(email)) {
+                email = `${base}${num}@semantika.edu.pe`;
+                num++;
+            }
+            existingEmails.add(email);
+            
+            preview.push({
+                name: fullName,
+                email: email,
+                role: role,
+                password: password || "123456" // Contraseña temporal por defecto
+            });
+        });
+        setBulkPreview(preview);
+    };
+
+    const registerBulk = () => {
+        if (bulkPreview.length === 0) return;
+        bulkCreateMutation.mutate(bulkPreview);
     };
     // --- LÓGICA DE ANALÍTICAS DIVERSIFICADAS ---
     const sortedAttempts = [...attempts].sort((a: any, b: any) => new Date(a.fecha).getTime() - new Date(b).getTime());
@@ -513,11 +595,27 @@ export default function AdminDashboard() {
             </motion.section>
 
             <div className="grid lg:grid-cols-[380px_1fr] gap-6">
-                {/* Formulario */}
-                <form onSubmit={register} className="bg-card border border-border rounded-xl p-6 shadow-xs h-fit space-y-4 text-left">
-                    <h3 className="font-display font-bold text-lg flex items-center gap-2">
-                        <UserPlus className="w-5 h-5 text-primary" /> Registrar usuario
-                    </h3>
+                <div className="bg-card border border-border rounded-xl shadow-xs h-fit text-left flex flex-col">
+                    <div className="flex border-b border-border">
+                        <button 
+                            className={cn("flex-1 py-4 text-sm font-bold transition-all", activeTab === "individual" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:bg-muted/50")}
+                            onClick={() => setActiveTab("individual")}
+                        >
+                            Individual
+                        </button>
+                        <button 
+                            className={cn("flex-1 py-4 text-sm font-bold transition-all", activeTab === "masivo" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:bg-muted/50")}
+                            onClick={() => setActiveTab("masivo")}
+                        >
+                            Registro Masivo
+                        </button>
+                    </div>
+
+                    {activeTab === "individual" ? (
+                        <form onSubmit={register} className="p-6 space-y-4">
+                            <h3 className="font-display font-bold text-lg flex items-center gap-2">
+                                <UserPlus className="w-5 h-5 text-primary" /> Registrar usuario
+                            </h3>
                     <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-lg">
                         {(["student", "teacher"] as const).map((r) => (
                             <button
@@ -546,10 +644,80 @@ export default function AdminDashboard() {
                         <Input required type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña segura" className="h-11 rounded-lg" />
                     </div>
 
-                    <Button type="submit" disabled={createMutation.isPending} className="w-full h-11 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold mt-2 shadow-sm">
-                        {createMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Registrar"}
-                    </Button>
-                </form>
+                            <Button type="submit" disabled={createMutation.isPending} className="w-full h-11 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold mt-2 shadow-sm">
+                                {createMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Registrar"}
+                            </Button>
+                        </form>
+                    ) : (
+                        <div className="p-6 space-y-4">
+                            <h3 className="font-display font-bold text-lg flex items-center gap-2">
+                                <Users className="w-5 h-5 text-primary" /> Registro Rápido
+                            </h3>
+                            <div className="grid grid-cols-2 gap-2 p-1 bg-muted rounded-lg">
+                                {(["student", "teacher"] as const).map((r) => (
+                                    <button
+                                        key={r} type="button" onClick={() => setRole(r)}
+                                        className={cn(
+                                            "py-2 rounded-lg text-sm font-bold transition",
+                                            role === r ? "bg-card shadow-xs text-foreground" : "text-muted-foreground"
+                                        )}
+                                    >
+                                        {r === "student" ? "Alumnos" : "Docentes"}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label>Lista de Nombres (uno por línea)</Label>
+                                <textarea 
+                                    className="w-full h-32 p-3 text-sm rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary/20 outline-none resize-none"
+                                    placeholder="Adriano Chacon Paredes&#10;Juan Perez Benites"
+                                    value={bulkNames}
+                                    onChange={(e) => setBulkNames(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label>Contraseña inicial genérica</Label>
+                                <Input required type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Ej: 123456" className="h-11 rounded-lg" />
+                                <p className="text-xs text-muted-foreground">Se les pedirá cambiarla en su primer inicio de sesión.</p>
+                            </div>
+
+                            {bulkPreview.length === 0 ? (
+                                <Button type="button" onClick={handleGeneratePreview} className="w-full h-11 bg-muted hover:bg-muted/80 text-foreground font-semibold">
+                                    Generar Correos
+                                </Button>
+                            ) : (
+                                <>
+                                    <div className="max-h-48 overflow-y-auto border border-border rounded-lg text-xs">
+                                        <table className="w-full">
+                                            <thead className="bg-muted sticky top-0">
+                                                <tr>
+                                                    <th className="p-2 text-left font-bold">Nombre</th>
+                                                    <th className="p-2 text-left font-bold">Correo (Generado)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border">
+                                                {bulkPreview.map((item, idx) => (
+                                                    <tr key={idx}>
+                                                        <td className="p-2 truncate max-w-[120px]">{item.name}</td>
+                                                        <td className="p-2 truncate font-mono text-[10px] text-primary">{item.email}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button type="button" variant="outline" onClick={() => setBulkPreview([])} className="h-11 flex-1">
+                                            Modificar
+                                        </Button>
+                                        <Button type="button" onClick={registerBulk} disabled={bulkCreateMutation.isPending} className="w-full flex-[2] h-11 rounded-lg bg-primary hover:bg-primary/95 text-primary-foreground font-semibold shadow-sm">
+                                            {bulkCreateMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : `Registrar ${bulkPreview.length} usuarios`}
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
 
                 {/* Listas */}
                 <div className="space-y-6">
@@ -557,8 +725,24 @@ export default function AdminDashboard() {
                         <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
                     ) : (
                         <>
-                            <UserList title="Docentes" tone="coral" items={teachers} onRemove={(id) => deleteMutation.mutate(id)} isDeleting={deleteMutation.isPending} />
-                            <UserList title="Alumnos" tone="lime" items={students} onRemove={(id) => deleteMutation.mutate(id)} isDeleting={deleteMutation.isPending} />
+                            <UserList 
+                                title="Docentes" 
+                                tone="coral" 
+                                items={teachers} 
+                                onRemove={(id) => deleteMutation.mutate(id)} 
+                                isDeleting={deleteMutation.isPending}
+                                onToggleBlock={(id) => toggleBlockMutation.mutate(id)}
+                                isToggling={toggleBlockMutation.isPending}
+                            />
+                            <UserList 
+                                title="Alumnos" 
+                                tone="lime" 
+                                items={students} 
+                                onRemove={(id) => deleteMutation.mutate(id)} 
+                                isDeleting={deleteMutation.isPending}
+                                onToggleBlock={(id) => toggleBlockMutation.mutate(id)}
+                                isToggling={toggleBlockMutation.isPending}
+                            />
                         </>
                     )}
                 </div>
@@ -586,7 +770,23 @@ function Stat({ icon: Icon, label, value, tone }: { icon: any; label: string; va
     );
 }
 
-function UserList({ title, tone, items, onRemove, isDeleting }: { title: string; tone: "lime" | "coral"; items: any[]; onRemove: (id: string) => void; isDeleting: boolean }) {
+function UserList({ 
+    title, 
+    tone, 
+    items, 
+    onRemove, 
+    isDeleting, 
+    onToggleBlock, 
+    isToggling 
+}: { 
+    title: string; 
+    tone: "lime" | "coral"; 
+    items: any[]; 
+    onRemove: (id: string) => void; 
+    isDeleting: boolean; 
+    onToggleBlock: (id: string) => void; 
+    isToggling: boolean; 
+}) {
     return (
         <div className="bg-card border border-border rounded-xl shadow-xs overflow-hidden text-left">
             <div className="px-6 py-4 border-b border-border flex items-center justify-between">
@@ -601,16 +801,39 @@ function UserList({ title, tone, items, onRemove, isDeleting }: { title: string;
                         <li key={u.id} className="flex items-center gap-4 px-6 py-3 hover:bg-muted/30 transition-colors">
                             <UserAvatar name={u.nombre || u.name || "Usuario"} className="w-9 h-9" />
                             <div className="flex-1 min-w-0">
-                                <div className="font-semibold truncate text-sm">{u.nombre || u.name}</div>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-semibold truncate text-sm">{u.nombre || u.name}</span>
+                                    {u.cuentaBloqueada && (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-destructive/15 text-destructive border border-destructive/20 animate-pulse">
+                                            Bloqueado
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="text-xs text-muted-foreground truncate mt-0.5">{u.correo || u.email}</div>
                             </div>
-                            <button
-                                onClick={() => onRemove(u.id)}
-                                disabled={isDeleting}
-                                className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 border border-transparent hover:border-border transition-colors disabled:opacity-50"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    onClick={() => onToggleBlock(u.id)}
+                                    disabled={isToggling}
+                                    className={`p-1.5 rounded-lg border transition-colors disabled:opacity-50 flex items-center gap-1 text-xs font-semibold ${
+                                        u.cuentaBloqueada 
+                                        ? "text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 border-border/80" 
+                                        : "text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-border/80"
+                                    }`}
+                                    title={u.cuentaBloqueada ? "Desbloquear cuenta" : "Bloquear cuenta"}
+                                >
+                                    {u.cuentaBloqueada ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                                    <span className="hidden sm:inline">{u.cuentaBloqueada ? "Desbloquear" : "Bloquear"}</span>
+                                </button>
+                                <button
+                                    onClick={() => onRemove(u.id)}
+                                    disabled={isDeleting}
+                                    className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 border border-transparent hover:border-border transition-colors disabled:opacity-50"
+                                    title="Eliminar usuario"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
                         </li>
                     ))}
                 </ul>
