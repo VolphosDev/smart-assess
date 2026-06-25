@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Sparkles, ArrowRight, GraduationCap } from "lucide-react";
+import { Sparkles, ArrowRight, GraduationCap, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,14 @@ export default function Index() {
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+
+    // Estados para el Modal de Soporte
+    const [showSupportModal, setShowSupportModal] = useState(false);
+    const [supportEmail, setSupportEmail] = useState("");
+    const [supportReason, setSupportReason] = useState("Olvidé mi contraseña");
+    const [supportDescription, setSupportDescription] = useState("");
+    const [isSubmittingSupport, setIsSubmittingSupport] = useState(false);
+    const [supportSuccess, setSupportSuccess] = useState(false);
 
     const navigate = useNavigate();
 
@@ -47,6 +55,13 @@ export default function Index() {
 
             console.log("¡Login exitoso!", response.user);
 
+            // Verificar si el usuario necesita configurar su contraseña
+            if (response.user.requiresPasswordSetup) {
+                // Redirigir a la pantalla de setup-password, pasando el correo
+                navigate(`/setup-password?email=${encodeURIComponent(email)}`);
+                return; // Evita guardar el token para forzar que inicie sesión bien después
+            }
+
             // 👇 ¡NUEVO! Guardamos el token y el usuario en el navegador
             localStorage.setItem("token", response.user.token);
             // Guardamos el resto de info (id, name, role) convertido a texto
@@ -57,9 +72,32 @@ export default function Index() {
             navigate(userRole === "student" ? "/app" : userRole === "teacher" ? "/docente" : "/admin");
 
         } catch (err: any) {
-            setError(err.response?.data?.error || "Correo o contraseña incorrectos");
+            let errorMsg = "Correo o contraseña incorrectos";
+            if (err.message) {
+                try {
+                    const parsed = JSON.parse(err.message);
+                    errorMsg = parsed.error || parsed.message || errorMsg;
+                } catch {
+                    errorMsg = err.message;
+                }
+            }
+            setError(errorMsg);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const submitSupport = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmittingSupport(true);
+        try {
+            await authApi.soporte(supportEmail, supportReason, supportDescription);
+            setSupportSuccess(true);
+        } catch (error) {
+            console.error("Error al enviar soporte", error);
+            // Mostrar error (opcionalmente con toast si lo tuviéramos importado)
+        } finally {
+            setIsSubmittingSupport(false);
         }
     };
 
@@ -156,10 +194,84 @@ export default function Index() {
                     </form>
  
                     <p className="text-center text-xs text-muted-foreground mt-8">
-                        ¿Aún no tienes cuenta? <a className="font-semibold text-primary hover:underline hover:text-primary/90" href="#">Solicita acceso</a>
+                        ¿Tienes problemas para ingresar?{" "}
+                        <button 
+                            type="button"
+                            onClick={() => setShowSupportModal(true)}
+                            className="font-semibold text-primary hover:underline hover:text-primary/90"
+                        >
+                            Solicita ayuda
+                        </button>
                     </p>
                 </motion.div>
             </div>
+
+            {/* MODAL DE SOPORTE */}
+            {showSupportModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-card w-full max-w-md p-6 rounded-2xl shadow-xl border border-border relative"
+                    >
+                        <h3 className="text-xl font-bold mb-4">Solicitar Ayuda</h3>
+                        
+                        {supportSuccess ? (
+                            <div className="text-center py-6">
+                                <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Check className="w-6 h-6" />
+                                </div>
+                                <h4 className="font-semibold text-lg mb-2">¡Solicitud Enviada!</h4>
+                                <p className="text-sm text-muted-foreground mb-6">Hemos recibido tu mensaje. Un administrador revisará tu caso pronto.</p>
+                                <Button onClick={() => { setShowSupportModal(false); setSupportSuccess(false); }} className="w-full">
+                                    Cerrar
+                                </Button>
+                            </div>
+                        ) : (
+                            <form onSubmit={submitSupport} className="space-y-4">
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-semibold">Correo institucional que recuerdes</Label>
+                                    <Input
+                                        type="email"
+                                        required
+                                        value={supportEmail}
+                                        onChange={(e) => setSupportEmail(e.target.value)}
+                                        placeholder="correo@institucion.edu"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-semibold">Motivo</Label>
+                                    <select
+                                        value={supportReason}
+                                        onChange={(e) => setSupportReason(e.target.value)}
+                                        className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                    >
+                                        <option value="Olvidé mi contraseña">Olvidé mi contraseña</option>
+                                        <option value="Mi cuenta está bloqueada">Mi cuenta está bloqueada</option>
+                                        <option value="No puedo acceder a mis cursos">No puedo acceder a mis cursos</option>
+                                        <option value="Otro (detallar en descripción)">Otro (detallar en descripción)</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-semibold">Descripción (Opcional)</Label>
+                                    <textarea
+                                        value={supportDescription}
+                                        onChange={(e) => setSupportDescription(e.target.value)}
+                                        placeholder="Escribe más detalles aquí..."
+                                        className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                                    ></textarea>
+                                </div>
+                                <div className="flex justify-end gap-2 pt-2">
+                                    <Button type="button" variant="ghost" onClick={() => setShowSupportModal(false)}>Cancelar</Button>
+                                    <Button type="submit" disabled={isSubmittingSupport}>
+                                        {isSubmittingSupport ? "Enviando..." : "Enviar Solicitud"}
+                                    </Button>
+                                </div>
+                            </form>
+                        )}
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 }

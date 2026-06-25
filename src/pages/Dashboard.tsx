@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Mic, Flame, Target, TrendingUp, ArrowRight, GraduationCap, BookOpen } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Mic, Flame, Target, TrendingUp, ArrowRight, GraduationCap, BookOpen, AlertTriangle, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
-import { coursesApi, intentosApi } from "@/api";
+import { coursesApi, intentosApi, rendimientoApi } from "@/api";
 import { getCourseIcon } from "@/lib/icon-mapper";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 
 const iconColorMap = {
     primary: "bg-indigo-50 border border-indigo-100 text-indigo-600 dark:bg-indigo-950/20 dark:border-indigo-900/30 dark:text-indigo-400",
@@ -74,8 +75,84 @@ export default function Dashboard() {
     const streakDays = getStreak(attempts);
 
     const recommendedCourse = courses.length > 0 ? courses[0] : null;
+
+    // === Feature 2: Refuerzo Activo ===
+    const { data: mapaCalor = [] } = useQuery({
+        queryKey: ['mapa-calor-dashboard', studentId],
+        queryFn: () => rendimientoApi.mapaCalor(studentId),
+        enabled: !!studentId,
+    });
+    const temasDebiles = mapaCalor.filter((e: any) => e.nivel === "DEBIL");
+    const [refuerzoDismissed, setRefuerzoDismissed] = useState(() => {
+        return sessionStorage.getItem("semantika.refuerzo_dismissed") === "true";
+    });
+    const handleDismissRefuerzo = () => {
+        setRefuerzoDismissed(true);
+        sessionStorage.setItem("semantika.refuerzo_dismissed", "true");
+    };
+
     return (
         <div className="space-y-8">
+            {/* === Refuerzo Activo === */}
+            <AnimatePresence>
+                {false && temasDebiles.length > 0 && !refuerzoDismissed && (
+                    <motion.section
+                        initial={{ opacity: 0, y: -12, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: "auto" }}
+                        exit={{ opacity: 0, y: -12, height: 0 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-rose-50 dark:from-amber-950/20 dark:via-orange-950/20 dark:to-rose-950/20 border border-amber-200 dark:border-amber-800 rounded-xl p-5 relative">
+                            <button
+                                type="button"
+                                onClick={handleDismissRefuerzo}
+                                className="absolute top-3 right-3 p-1 rounded-lg text-muted-foreground hover:bg-background/50 transition-colors"
+                                title="Cerrar"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                            <div className="flex items-start gap-4">
+                                <div className="w-11 h-11 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 grid place-items-center shrink-0">
+                                    <Sparkles className="w-6 h-6" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-display font-bold text-sm text-foreground">
+                                        🎯 ARIA detectó temas que puedes reforzar
+                                    </h3>
+                                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                                        ¡Hola! Noté que tienes algunas áreas donde podrías mejorar.
+                                        {temasDebiles.length === 1
+                                            ? ` Específicamente en "${temasDebiles[0].numSem}" de ${temasDebiles[0].cursoNombre}.`
+                                            : ` Hay ${temasDebiles.length} temas que necesitan más práctica.`}
+                                        {" "}¿Qué tal un repaso rápido?
+                                    </p>
+                                    <div className="flex flex-wrap gap-2 mt-3">
+                                        {temasDebiles.slice(0, 3).map((tema: any) => (
+                                            <Link
+                                                key={tema.semanaId}
+                                                to={`/app/curso/${tema.cursoId}`}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-xs font-bold hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors border border-amber-200 dark:border-amber-800"
+                                            >
+                                                <AlertTriangle className="w-3 h-3" />
+                                                {tema.cursoNombre} · {tema.numSem} ({tema.porcentaje}%)
+                                            </Link>
+                                        ))}
+                                        {temasDebiles.length > 3 && (
+                                            <Link
+                                                to="/app/mapa-conocimiento"
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors border border-primary/20"
+                                            >
+                                                Ver todos →
+                                            </Link>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.section>
+                )}
+            </AnimatePresence>
+
             {/* Hero greeting */}
             <section className="grid lg:grid-cols-3 gap-6">
                 <motion.div

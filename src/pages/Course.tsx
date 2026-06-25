@@ -20,13 +20,13 @@ export default function Course() {
     // Estado para controlar el modal de previsualización
     const [selectedFile, setSelectedFile] = useState<{ id: string, name: string } | null>(null);
 
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+
     // 1. Traemos el curso
-    const { data: courses = [] } = useQuery({
-        queryKey: ['student-courses'],
-        queryFn: () => {
-            const user = JSON.parse(localStorage.getItem("user") || "{}");
-            return coursesApi.forStudent(user.id);
-        },
+    const { data: courses = [], isLoading: loadingCourses } = useQuery({
+        queryKey: ['student-courses', user.id],
+        queryFn: () => coursesApi.forStudent(user.id),
+        enabled: !!user.id,
     });
     const course = courses.find((c: any) => String(c.id) === String(courseId));
 
@@ -40,6 +40,14 @@ export default function Course() {
     const openPreview = (id: string, name: string) => {
         setSelectedFile({ id, name });
     };
+
+    if (loadingCourses) {
+        return (
+            <div className="flex items-center justify-center py-32 text-muted-foreground font-semibold">
+                Cargando información del curso...
+            </div>
+        );
+    }
 
     if (!course) {
         return (

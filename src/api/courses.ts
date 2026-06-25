@@ -155,3 +155,8 @@ export const adaptiveApi = {
     getMaterialesRecomendados: (usuarioId: number | string, semanaId: string) =>
         apiClient.get<any[]>(`/adaptive/materiales-recomendados?usuarioId=${usuarioId}&semanaId=${semanaId}`),
 };
+
+export const rendimientoApi = {
+    mapaCalor: (usuarioId: number | string) =>
+        apiClient.get<any[]>(`/rendimiento/mapa-calor/${usuarioId}`),
+};

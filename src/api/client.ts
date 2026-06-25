@@ -77,7 +77,12 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
 
         if (!res.ok) {
             // Si el token expiró o no tiene permisos, limpiar sesión y redirigir al login
-            if (res.status === 401 || res.status === 403) {
+            const isPublicAuthEndpoint = 
+                path.startsWith("/auth/login") || 
+                path.startsWith("/auth/setup-password") || 
+                path.startsWith("/auth/soporte");
+
+            if ((res.status === 401 || res.status === 403) && !isPublicAuthEndpoint) {
                 localStorage.removeItem("token");
                 localStorage.removeItem("user");
                 window.location.href = "/";

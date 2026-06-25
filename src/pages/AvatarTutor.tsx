@@ -906,15 +906,25 @@ export default function AvatarTutor() {
                 } else if (name === "done") {
                     const match = feedbackAcumulado.match(/\[PUNTUACION:\s*(\d+)\]/i);
                     const puntuacion = match ? parseInt(match[1], 10) : undefined;
+                    const sentimientoMatch = feedbackAcumulado.match(/\[SENTIMIENTO:\s*(\w+)\]/i);
+                    const sentimiento = sentimientoMatch ? sentimientoMatch[1].toLowerCase() : "neutral";
                     const veredicto = detectarVeredicto(feedbackAcumulado, puntuacion);
-                    const textToSpeak = feedbackAcumulado.replace(/\[PUNTUACION:\s*\d+\]/i, "").trim();
+                    const textToSpeak = feedbackAcumulado
+                        .replace(/\[PUNTUACION:\s*\d+\]/i, "")
+                        .replace(/\[SENTIMIENTO:\s*\w+\]/i, "")
+                        .trim();
                     if (!textToSpeak) {
                         setError("No se pudo obtener una respuesta clara. Por favor, intenta de nuevo o escribe tu respuesta.");
                         setEstado("esperando");
                         return;
                     }
-                    setEstado(veredicto);
-                    setHistorial(h => [...h, {...turnoConRespuesta, feedback: textToSpeak, puntuacion}]);
+                    if (sentimiento === "frustrado") {
+                        setEstado("triste");
+                        setTimeout(() => setEstado(veredicto), 2000);
+                    } else {
+                        setEstado(veredicto);
+                    }
+                    setHistorial(h => [...h, {...turnoConRespuesta, feedback: textToSpeak, puntuacion, sentimiento}]);
                     setTurno(t => t + 1);
                     setTurnoListo(true);
                     hablar(textToSpeak);
@@ -1040,15 +1050,25 @@ export default function AvatarTutor() {
                 } else if (name === "done") {
                     const match = feedbackAcumulado.match(/\[PUNTUACION:\s*(\d+)\]/i);
                     const puntuacion = match ? parseInt(match[1], 10) : undefined;
+                    const sentimientoMatch = feedbackAcumulado.match(/\[SENTIMIENTO:\s*(\w+)\]/i);
+                    const sentimiento = sentimientoMatch ? sentimientoMatch[1].toLowerCase() : "neutral";
                     const veredicto = detectarVeredicto(feedbackAcumulado, puntuacion);
-                    const textToSpeak = feedbackAcumulado.replace(/\[PUNTUACION:\s*\d+\]/i, "").trim();
+                    const textToSpeak = feedbackAcumulado
+                        .replace(/\[PUNTUACION:\s*\d+\]/i, "")
+                        .replace(/\[SENTIMIENTO:\s*\w+\]/i, "")
+                        .trim();
                     if (!textToSpeak) {
                         setError("No se pudo obtener una respuesta clara. Por favor, intenta de nuevo o escribe tu respuesta.");
                         setEstado("esperando");
                         return;
                     }
-                    setEstado(veredicto);
-                    setHistorial(h => [...h, {...turnoConRespuesta, feedback: textToSpeak, puntuacion}]);
+                    if (sentimiento === "frustrado") {
+                        setEstado("triste");
+                        setTimeout(() => setEstado(veredicto), 2000);
+                    } else {
+                        setEstado(veredicto);
+                    }
+                    setHistorial(h => [...h, {...turnoConRespuesta, feedback: textToSpeak, puntuacion, sentimiento}]);
                     setTurno(t => t + 1);
                     setTurnoListo(true);
                     hablar(textToSpeak);
@@ -1446,7 +1466,7 @@ export default function AvatarTutor() {
                                             )}
                                         </div>
                                     </div>
-                                    <p className="text-sm leading-relaxed">{feedback.replace(/\[PUNTUACION:\s*\d+\]/i, "").trim()}</p>
+                                    <p className="text-sm leading-relaxed">{feedback.replace(/\[PUNTUACION:\s*\d+\]/i, "").replace(/\[SENTIMIENTO:\s*\w+\]/i, "").trim()}</p>
                                 </motion.div>
                             );
                         })()}

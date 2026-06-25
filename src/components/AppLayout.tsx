@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
-import { Home, History, Sparkles, LogOut, Loader2, ShieldAlert, Check } from "lucide-react";
+import { Home, History, Sparkles, LogOut, Loader2, ShieldAlert, Check, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/lib/icon-mapper";
 import { authApi } from "@/api/auth";
 
 const nav = [
   { to: "/app", icon: Home, label: "Inicio", end: true },
+  { to: "/app/mapa-conocimiento", icon: Brain, label: "Mapa de Conocimiento" },
   { to: "/app/historial", icon: History, label: "Historial" },
 ];
 

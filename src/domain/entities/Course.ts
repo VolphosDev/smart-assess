@@ -4,6 +4,7 @@ export interface Material {
   nombreArchivo: string;
   visible: boolean;
   tipo?: string;
+  subtemas?: string[];
 }
 
 export interface Week {
