@@ -125,22 +125,23 @@ export default function EvalModeSelect() {
     } = useEvalModeSelect();
 
     const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const isStudent = user?.role?.toLowerCase() === "student";
     const savedRecsRaw = localStorage.getItem(`semantika.recomendaciones.${user?.id}.${week}`);
     const completedAdaptive = !!savedRecsRaw;
     const recommendations = savedRecsRaw ? JSON.parse(savedRecsRaw) : [];
 
     const [showTestingMenu, setShowTestingMenu] = useState(false);
     const [ignorarBloqueo, setIgnorarBloqueo] = useState(() => {
-        return localStorage.getItem("semantika.testing_ignorar_bloqueo") === "true";
+        return !isStudent && localStorage.getItem("semantika.testing_ignorar_bloqueo") === "true";
     });
     const [ignorarContinuar, setIgnorarContinuar] = useState(() => {
-        return localStorage.getItem("semantika.testing_ignorar_continuar") === "true";
+        return !isStudent && localStorage.getItem("semantika.testing_ignorar_continuar") === "true";
     });
     const [ignorarRecomendados, setIgnorarRecomendados] = useState(() => {
-        return localStorage.getItem("semantika.testing_ignorar_recomendados") === "true";
+        return !isStudent && localStorage.getItem("semantika.testing_ignorar_recomendados") === "true";
     });
     const [ignorarObligacionPracticas, setIgnorarObligacionPracticas] = useState(() => {
-        return localStorage.getItem("semantika.testing_ignorar_obligacion_practicas") === "true";
+        return !isStudent && localStorage.getItem("semantika.testing_ignorar_obligacion_practicas") === "true";
     });
 
     const toggleIgnorarBloqueo = () => {
@@ -217,125 +218,127 @@ export default function EvalModeSelect() {
                     <ArrowLeft className="w-4 h-4" /> Volver al curso
                 </Link>
 
-                <div className="relative">
-                    <button
-                        onClick={() => setShowTestingMenu(!showTestingMenu)}
-                        className={cn(
-                            "inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-xs font-bold transition-all shadow-xs cursor-pointer",
-                            showTestingMenu
-                                ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 font-extrabold"
-                                : "bg-card border-border hover:bg-secondary/40 text-muted-foreground hover:text-foreground"
+                {!isStudent && (
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowTestingMenu(!showTestingMenu)}
+                            className={cn(
+                                "inline-flex items-center gap-2 px-4 py-2 rounded-lg border text-xs font-bold transition-all shadow-xs cursor-pointer",
+                                showTestingMenu
+                                    ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 font-extrabold"
+                                    : "bg-card border-border hover:bg-secondary/40 text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            <FlaskConical className="w-4.5 h-4.5" />
+                            Herramientas de Test
+                        </button>
+
+                        {showTestingMenu && (
+                            <div className="absolute right-0 mt-2 w-72 bg-card border border-border rounded-xl p-5 shadow-sm z-50 space-y-4 animate-fade-in text-left">
+                                <div className="flex items-center gap-2 pb-2 border-b border-border">
+                                    <FlaskConical className="w-4.5 h-4.5 text-amber-500" />
+                                    <h4 className="font-display font-bold text-sm">Pruebas & Configuración</h4>
+                                </div>
+                                
+                                {/* Ignorar Bloqueo */}
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="space-y-0.5">
+                                        <span className="text-xs font-bold block">Ignorar bloqueo</span>
+                                        <span className="text-[10px] text-muted-foreground leading-normal block">
+                                            Permite acceder a otros modos aun con exámenes activos.
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={toggleIgnorarBloqueo}
+                                        className={cn(
+                                            "w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 cursor-pointer",
+                                            ignorarBloqueo ? "bg-amber-500" : "bg-muted"
+                                        )}
+                                    >
+                                        <div
+                                            className={cn(
+                                                "bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200",
+                                                ignorarBloqueo ? "translate-x-6" : "translate-x-0"
+                                            )}
+                                        />
+                                    </button>
+                                </div>
+
+                                {/* Ignorar Continuar */}
+                                <div className="flex items-center justify-between gap-4 pt-2 border-t border-border/50">
+                                    <div className="space-y-0.5">
+                                        <span className="text-xs font-bold block">Ignorar "continuar"</span>
+                                        <span className="text-[10px] text-muted-foreground leading-normal block">
+                                            Fuerza la generación de preguntas desde 0.
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={toggleIgnorarContinuar}
+                                        className={cn(
+                                            "w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 cursor-pointer",
+                                            ignorarContinuar ? "bg-amber-500" : "bg-muted"
+                                        )}
+                                    >
+                                        <div
+                                            className={cn(
+                                                "bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200",
+                                                ignorarContinuar ? "translate-x-6" : "translate-x-0"
+                                            )}
+                                        />
+                                    </button>
+                                </div>
+
+                                {/* Ignorar Recomendados */}
+                                <div className="flex items-center justify-between gap-4 pt-2 border-t border-border/50">
+                                    <div className="space-y-0.5">
+                                        <span className="text-xs font-bold block">Ignorar recomendados</span>
+                                        <span className="text-[10px] text-muted-foreground leading-normal block">
+                                            Habilita todos los métodos sin importar la recomendación.
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={toggleIgnorarRecomendados}
+                                        className={cn(
+                                            "w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 cursor-pointer",
+                                            ignorarRecomendados ? "bg-amber-500" : "bg-muted"
+                                        )}
+                                    >
+                                        <div
+                                            className={cn(
+                                                "bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200",
+                                                ignorarRecomendados ? "translate-x-6" : "translate-x-0"
+                                            )}
+                                        />
+                                    </button>
+                                </div>
+
+                                {/* Ignorar Obligación de Prácticas */}
+                                <div className="flex items-center justify-between gap-4 pt-2 border-t border-border/50">
+                                    <div className="space-y-0.5">
+                                        <span className="text-xs font-bold block">Ignorar obligación</span>
+                                        <span className="text-[10px] text-muted-foreground leading-normal block">
+                                            Permite volver a evaluar sin completar las recomendadas.
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={toggleIgnorarObligacionPracticas}
+                                        className={cn(
+                                            "w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 cursor-pointer",
+                                            ignorarObligacionPracticas ? "bg-amber-500" : "bg-muted"
+                                        )}
+                                    >
+                                        <div
+                                            className={cn(
+                                                "bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200",
+                                                ignorarObligacionPracticas ? "translate-x-6" : "translate-x-0"
+                                            )}
+                                        />
+                                    </button>
+                                </div>
+                            </div>
                         )}
-                    >
-                        <FlaskConical className="w-4.5 h-4.5" />
-                        Herramientas de Test
-                    </button>
-
-                    {showTestingMenu && (
-                        <div className="absolute right-0 mt-2 w-72 bg-card border border-border rounded-xl p-5 shadow-sm z-50 space-y-4 animate-fade-in text-left">
-                            <div className="flex items-center gap-2 pb-2 border-b border-border">
-                                <FlaskConical className="w-4.5 h-4.5 text-amber-500" />
-                                <h4 className="font-display font-bold text-sm">Pruebas & Configuración</h4>
-                            </div>
-                            
-                            {/* Ignorar Bloqueo */}
-                            <div className="flex items-center justify-between gap-4">
-                                <div className="space-y-0.5">
-                                    <span className="text-xs font-bold block">Ignorar bloqueo</span>
-                                    <span className="text-[10px] text-muted-foreground leading-normal block">
-                                        Permite acceder a otros modos aun con exámenes activos.
-                                    </span>
-                                </div>
-                                <button
-                                    onClick={toggleIgnorarBloqueo}
-                                    className={cn(
-                                        "w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 cursor-pointer",
-                                        ignorarBloqueo ? "bg-amber-500" : "bg-muted"
-                                    )}
-                                >
-                                    <div
-                                        className={cn(
-                                            "bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200",
-                                            ignorarBloqueo ? "translate-x-6" : "translate-x-0"
-                                        )}
-                                    />
-                                </button>
-                            </div>
-
-                            {/* Ignorar Continuar */}
-                            <div className="flex items-center justify-between gap-4 pt-2 border-t border-border/50">
-                                <div className="space-y-0.5">
-                                    <span className="text-xs font-bold block">Ignorar "continuar"</span>
-                                    <span className="text-[10px] text-muted-foreground leading-normal block">
-                                        Fuerza la generación de preguntas desde 0.
-                                    </span>
-                                </div>
-                                <button
-                                    onClick={toggleIgnorarContinuar}
-                                    className={cn(
-                                        "w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 cursor-pointer",
-                                        ignorarContinuar ? "bg-amber-500" : "bg-muted"
-                                    )}
-                                >
-                                    <div
-                                        className={cn(
-                                            "bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200",
-                                            ignorarContinuar ? "translate-x-6" : "translate-x-0"
-                                        )}
-                                    />
-                                </button>
-                            </div>
-
-                            {/* Ignorar Recomendados */}
-                            <div className="flex items-center justify-between gap-4 pt-2 border-t border-border/50">
-                                <div className="space-y-0.5">
-                                    <span className="text-xs font-bold block">Ignorar recomendados</span>
-                                    <span className="text-[10px] text-muted-foreground leading-normal block">
-                                        Habilita todos los métodos sin importar la recomendación.
-                                    </span>
-                                </div>
-                                <button
-                                    onClick={toggleIgnorarRecomendados}
-                                    className={cn(
-                                        "w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 cursor-pointer",
-                                        ignorarRecomendados ? "bg-amber-500" : "bg-muted"
-                                    )}
-                                >
-                                    <div
-                                        className={cn(
-                                            "bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200",
-                                            ignorarRecomendados ? "translate-x-6" : "translate-x-0"
-                                        )}
-                                    />
-                                </button>
-                            </div>
-
-                            {/* Ignorar Obligación de Prácticas */}
-                            <div className="flex items-center justify-between gap-4 pt-2 border-t border-border/50">
-                                <div className="space-y-0.5">
-                                    <span className="text-xs font-bold block">Ignorar obligación</span>
-                                    <span className="text-[10px] text-muted-foreground leading-normal block">
-                                        Permite volver a evaluar sin completar las recomendadas.
-                                    </span>
-                                </div>
-                                <button
-                                    onClick={toggleIgnorarObligacionPracticas}
-                                    className={cn(
-                                        "w-12 h-6 rounded-full p-0.5 transition-colors duration-200 focus:outline-none shrink-0 cursor-pointer",
-                                        ignorarObligacionPracticas ? "bg-amber-500" : "bg-muted"
-                                    )}
-                                >
-                                    <div
-                                        className={cn(
-                                            "bg-white w-5 h-5 rounded-full shadow-md transform transition-transform duration-200",
-                                            ignorarObligacionPracticas ? "translate-x-6" : "translate-x-0"
-                                        )}
-                                    />
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
             <div className="text-center max-w-2xl mx-auto space-y-2">

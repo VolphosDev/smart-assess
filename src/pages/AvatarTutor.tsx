@@ -604,10 +604,11 @@ export default function AvatarTutor() {
     const tema = searchParams.get("tema") ?? "el material de esta semana";
 
     const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const isStudent = user?.role?.toLowerCase() === "student";
     const storageKey = `semantika.unfinished_attempt.${user.id}.${courseId}.${semanaId}.avatar`;
 
     // Si está activada la opción de pruebas para ignorar la continuación, limpiamos el intento guardado
-    if (localStorage.getItem("semantika.testing_ignorar_continuar") === "true") {
+    if (!isStudent && localStorage.getItem("semantika.testing_ignorar_continuar") === "true") {
         localStorage.removeItem(storageKey);
     }
 
