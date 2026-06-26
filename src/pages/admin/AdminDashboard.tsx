@@ -634,8 +634,8 @@ export default function AdminDashboard() {
                         <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Ana Pérez" className="h-11 rounded-lg" />
                     </div>
                     <div className="space-y-1.5">
-                        <Label>Correo institucional</Label>
-                        <Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ana@upao.edu.pe" className="h-11 rounded-lg" />
+                        <Label>Correo electrónico</Label>
+                        <Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ana@gmail.com" className="h-11 rounded-lg" />
                     </div>
 
                     {/* NUEVO CAMPO DE CONTRASEÑA */}
