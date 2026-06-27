@@ -189,7 +189,7 @@ export default function VideoTutor() {
     const [slideIndex, setSlideIndex] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [slideProgress, setSlideProgress] = useState(0);
-    const [playbackRate, setPlaybackRate] = useState(1);
+    const [playbackRate, setPlaybackRate] = useState(0.8);
     const [isMuted, setIsMuted] = useState(false);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -402,15 +402,16 @@ export default function VideoTutor() {
 
         if (timerRef.current) clearInterval(timerRef.current);
 
-        // Estimación visual de progreso: 15 caracteres por segundo aprox. ajustado por la velocidad
-        const charsPerSec = 15 * playbackRate;
-        const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+        // Estimación visual de progreso: ~7 caracteres por segundo en español (velocidad TTS real)
+        const charsPerSec = 7 * playbackRate;
+        const estimatedSecs = Math.max(90, slide.narracion.length / charsPerSec);
         const totalMs = estimatedSecs * 1000;
         let elapsed = 0;
 
         timerRef.current = setInterval(() => {
             elapsed += 100;
-            const pct = Math.min(100, (elapsed / totalMs) * 100);
+            // Limitar al 95% — el 100% sólo se alcanza en onend para sincronizar con el TTS real
+            const pct = Math.min(95, (elapsed / totalMs) * 100);
             setSlideProgress(pct);
         }, 100);
 
@@ -461,15 +462,15 @@ export default function VideoTutor() {
             if (timerRef.current) clearInterval(timerRef.current);
             
             const slide = diapositivas[slideIndex];
-            const charsPerSec = 15 * rate;
-            const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+            const charsPerSec = 7 * rate;
+            const estimatedSecs = Math.max(90, slide.narracion.length / charsPerSec);
             const totalMs = estimatedSecs * 1000;
             // Reanudar desde el progreso actual
             let elapsed = (slideProgress / 100) * totalMs;
 
             timerRef.current = setInterval(() => {
                 elapsed += 100;
-                const pct = Math.min(100, (elapsed / totalMs) * 100);
+                const pct = Math.min(95, (elapsed / totalMs) * 100);
                 setSlideProgress(pct);
             }, 100);
 
@@ -520,14 +521,14 @@ export default function VideoTutor() {
             if (timerRef.current) clearInterval(timerRef.current);
             
             const slide = diapositivas[slideIndex];
-            const charsPerSec = 15 * playbackRate;
-            const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+            const charsPerSec = 7 * playbackRate;
+            const estimatedSecs = Math.max(90, slide.narracion.length / charsPerSec);
             const totalMs = estimatedSecs * 1000;
             let elapsed = (slideProgress / 100) * totalMs;
 
             timerRef.current = setInterval(() => {
                 elapsed += 100;
-                const pct = Math.min(100, (elapsed / totalMs) * 100);
+                const pct = Math.min(95, (elapsed / totalMs) * 100);
                 setSlideProgress(pct);
             }, 100);
 
@@ -580,14 +581,14 @@ export default function VideoTutor() {
             if (timerRef.current) clearInterval(timerRef.current);
             
             const slide = diapositivas[slideIndex];
-            const charsPerSec = 15 * playbackRate;
-            const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+            const charsPerSec = 7 * playbackRate;
+            const estimatedSecs = Math.max(90, slide.narracion.length / charsPerSec);
             const totalMs = estimatedSecs * 1000;
             let elapsed = (percentage / 100) * totalMs;
             
             timerRef.current = setInterval(() => {
                 elapsed += 100;
-                const pct = Math.min(100, (elapsed / totalMs) * 100);
+                const pct = Math.min(95, (elapsed / totalMs) * 100);
                 setSlideProgress(pct);
             }, 100);
             
@@ -638,8 +639,8 @@ export default function VideoTutor() {
         } else {
             // Reanudar barra de progreso e iniciar TTS desde la fracción restante
             const slide = diapositivas[slideIndex];
-            const charsPerSec = 15 * playbackRate;
-            const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+            const charsPerSec = 7 * playbackRate;
+            const estimatedSecs = Math.max(90, slide.narracion.length / charsPerSec);
             const totalMs = estimatedSecs * 1000;
             
             setIsPlaying(true);
@@ -649,7 +650,7 @@ export default function VideoTutor() {
 
             timerRef.current = setInterval(() => {
                 elapsed += 100;
-                const pct = Math.min(100, (elapsed / totalMs) * 100);
+                const pct = Math.min(95, (elapsed / totalMs) * 100);
                 setSlideProgress(pct);
             }, 100);
 
