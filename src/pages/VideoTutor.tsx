@@ -83,7 +83,7 @@ const getBloomLevelLabel = (level: string | number) => {
 
 function parseIncrementalLeccionYPreguntas(rawJson: string): any {
     const response: { leccion?: Leccion; preguntas: Pregunta[] } = { preguntas: [] };
-    
+
     // Parse leccion topic
     const temaMatch = rawJson.match(/"tema"\s*:\s*"([^"]+)"/);
     const temaValue = temaMatch ? temaMatch[1] : "";
@@ -111,7 +111,7 @@ function parseIncrementalLeccionYPreguntas(rawJson: string): any {
                             if (parsed && typeof parsed === 'object' && parsed.titulo) {
                                 diapositivas.push(parsed as Diapositiva);
                             }
-                        } catch (e) {}
+                        } catch (e) { }
                     }
                 } else if (char === ']' && depth === 0) {
                     break;
@@ -119,7 +119,7 @@ function parseIncrementalLeccionYPreguntas(rawJson: string): any {
             }
         }
     }
-    
+
     if (diapositivas.length > 0 || temaValue) {
         response.leccion = {
             tema: temaValue || "el material de esta semana",
@@ -149,7 +149,7 @@ function parseIncrementalLeccionYPreguntas(rawJson: string): any {
                             if (parsed && typeof parsed === 'object' && parsed.enunciado) {
                                 response.preguntas.push(parsed as Pregunta);
                             }
-                        } catch (e) {}
+                        } catch (e) { }
                     }
                 } else if (char === ']' && depth === 0) {
                     break;
@@ -169,7 +169,7 @@ export default function VideoTutor() {
     const { courseId = "", semanaId = "" } = useParams();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    
+
     const mongoId = searchParams.get("mongoId") ?? "";
     const tema = searchParams.get("tema") ?? "el material de esta semana";
     const cantidadParam = searchParams.get("cantidad");
@@ -189,7 +189,7 @@ export default function VideoTutor() {
     const [slideIndex, setSlideIndex] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [slideProgress, setSlideProgress] = useState(0);
-    const [playbackRate, setPlaybackRate] = useState(1);
+    const [playbackRate, setPlaybackRate] = useState(0.8);
     const [isMuted, setIsMuted] = useState(false);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -314,9 +314,9 @@ export default function VideoTutor() {
     // Cola de precarga en segundo plano para las imágenes del Video Tutor
     useEffect(() => {
         if (!evaluacion?.leccion?.diapositivas) return;
-        
+
         const slides = evaluacion.leccion.diapositivas;
-        
+
         // Cargar las base64 iniciales si existen o precargadas en cache global
         slides.forEach((slide) => {
             if (slide.prompt_imagen) {
@@ -337,7 +337,7 @@ export default function VideoTutor() {
                 const slide = slides[i];
                 if (!slide.prompt_imagen) continue;
                 if (slide.base64_imagen) continue;
-                
+
                 // Si ya está en caché o en proceso de solicitud, saltar
                 if (videoImageCache.has(slide.prompt_imagen) || videoPendingRequests.has(slide.prompt_imagen)) {
                     continue;
@@ -402,15 +402,16 @@ export default function VideoTutor() {
 
         if (timerRef.current) clearInterval(timerRef.current);
 
-        // Estimación visual de progreso: 15 caracteres por segundo aprox. ajustado por la velocidad
-        const charsPerSec = 15 * playbackRate;
-        const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+        // Estimación visual de progreso: ~7 caracteres por segundo en español (velocidad TTS real)
+        const charsPerSec = 7 * playbackRate;
+        const estimatedSecs = Math.max(90, slide.narracion.length / charsPerSec);
         const totalMs = estimatedSecs * 1000;
         let elapsed = 0;
 
         timerRef.current = setInterval(() => {
             elapsed += 100;
-            const pct = Math.min(100, (elapsed / totalMs) * 100);
+            // Limitar al 95% — el 100% sólo se alcanza en onend para sincronizar con el TTS real
+            const pct = Math.min(95, (elapsed / totalMs) * 100);
             setSlideProgress(pct);
         }, 100);
 
@@ -459,17 +460,17 @@ export default function VideoTutor() {
         if (isPlaying) {
             cancelTTS();
             if (timerRef.current) clearInterval(timerRef.current);
-            
+
             const slide = diapositivas[slideIndex];
-            const charsPerSec = 15 * rate;
-            const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+            const charsPerSec = 7 * rate;
+            const estimatedSecs = Math.max(90, slide.narracion.length / charsPerSec);
             const totalMs = estimatedSecs * 1000;
             // Reanudar desde el progreso actual
             let elapsed = (slideProgress / 100) * totalMs;
 
             timerRef.current = setInterval(() => {
                 elapsed += 100;
-                const pct = Math.min(100, (elapsed / totalMs) * 100);
+                const pct = Math.min(95, (elapsed / totalMs) * 100);
                 setSlideProgress(pct);
             }, 100);
 
@@ -500,7 +501,7 @@ export default function VideoTutor() {
                     }
                 }, 800);
             };
-            
+
             utterance.onerror = (e) => {
                 console.warn("TTS Utterance error in change rate:", e);
                 if (timerRef.current) clearInterval(timerRef.current);
@@ -514,20 +515,20 @@ export default function VideoTutor() {
     const toggleMute = () => {
         const newMuted = !isMuted;
         setIsMuted(newMuted);
-        
+
         if (isPlaying) {
             cancelTTS();
             if (timerRef.current) clearInterval(timerRef.current);
-            
+
             const slide = diapositivas[slideIndex];
-            const charsPerSec = 15 * playbackRate;
-            const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+            const charsPerSec = 7 * playbackRate;
+            const estimatedSecs = Math.max(90, slide.narracion.length / charsPerSec);
             const totalMs = estimatedSecs * 1000;
             let elapsed = (slideProgress / 100) * totalMs;
 
             timerRef.current = setInterval(() => {
                 elapsed += 100;
-                const pct = Math.min(100, (elapsed / totalMs) * 100);
+                const pct = Math.min(95, (elapsed / totalMs) * 100);
                 setSlideProgress(pct);
             }, 100);
 
@@ -557,7 +558,7 @@ export default function VideoTutor() {
                     }
                 }, 800);
             };
-            
+
             utterance.onerror = (e) => {
                 console.warn("TTS Utterance error in mute:", e);
                 if (timerRef.current) clearInterval(timerRef.current);
@@ -574,36 +575,36 @@ export default function VideoTutor() {
         const width = rect.width;
         const percentage = (clickX / width) * 100;
         setSlideProgress(percentage);
-        
+
         if (isPlaying) {
             cancelTTS();
             if (timerRef.current) clearInterval(timerRef.current);
-            
+
             const slide = diapositivas[slideIndex];
-            const charsPerSec = 15 * playbackRate;
-            const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+            const charsPerSec = 7 * playbackRate;
+            const estimatedSecs = Math.max(90, slide.narracion.length / charsPerSec);
             const totalMs = estimatedSecs * 1000;
             let elapsed = (percentage / 100) * totalMs;
-            
+
             timerRef.current = setInterval(() => {
                 elapsed += 100;
-                const pct = Math.min(100, (elapsed / totalMs) * 100);
+                const pct = Math.min(95, (elapsed / totalMs) * 100);
                 setSlideProgress(pct);
             }, 100);
-            
+
             const startIndex = Math.floor((percentage / 100) * slide.narracion.length);
             const subText = slide.narracion.substring(startIndex) || slide.narracion;
-            
+
             const utterance = new SpeechSynthesisUtterance(subText);
             utterance.lang = "es-ES";
             utterance.rate = playbackRate;
             utterance.pitch = 1.0;
             utterance.volume = isMuted ? 0 : 1;
-            
+
             const voices = window.speechSynthesis.getVoices();
             const spanishVoice = voices.find(v => v.lang.startsWith("es"));
             if (spanishVoice) utterance.voice = spanishVoice;
-            
+
             utterance.onend = () => {
                 if (timerRef.current) clearInterval(timerRef.current);
                 setSlideProgress(100);
@@ -617,7 +618,7 @@ export default function VideoTutor() {
                     }
                 }, 800);
             };
-            
+
             utterance.onerror = (e) => {
                 console.warn("TTS Utterance error in seek:", e);
                 if (timerRef.current) clearInterval(timerRef.current);
@@ -638,18 +639,18 @@ export default function VideoTutor() {
         } else {
             // Reanudar barra de progreso e iniciar TTS desde la fracción restante
             const slide = diapositivas[slideIndex];
-            const charsPerSec = 15 * playbackRate;
-            const estimatedSecs = Math.max(6, slide.narracion.length / charsPerSec);
+            const charsPerSec = 7 * playbackRate;
+            const estimatedSecs = Math.max(90, slide.narracion.length / charsPerSec);
             const totalMs = estimatedSecs * 1000;
-            
+
             setIsPlaying(true);
-            
+
             let elapsed = (slideProgress / 100) * totalMs;
             if (timerRef.current) clearInterval(timerRef.current);
 
             timerRef.current = setInterval(() => {
                 elapsed += 100;
-                const pct = Math.min(100, (elapsed / totalMs) * 100);
+                const pct = Math.min(95, (elapsed / totalMs) * 100);
                 setSlideProgress(pct);
             }, 100);
 
@@ -680,7 +681,7 @@ export default function VideoTutor() {
                     }
                 }, 800);
             };
-            
+
             utterance.onerror = (e) => {
                 console.warn("TTS Utterance error in toggle play:", e);
                 if (timerRef.current) clearInterval(timerRef.current);
@@ -782,7 +783,7 @@ export default function VideoTutor() {
         try {
             const user = JSON.parse(localStorage.getItem("user") || "{}");
             const finalScore = resultadosQuiz.reduce((total, r) => total + (r?.evaluacion?.puntaje || 0), 0);
-            
+
             const respuestasDetalle = preguntas.map((p, idx) => {
                 const resEval = resultadosQuiz[idx];
                 return {
@@ -893,14 +894,14 @@ export default function VideoTutor() {
                     <div className="relative group">
 
                         <div className="relative aspect-video rounded-3xl overflow-hidden bg-slate-950 border border-slate-800/80 shadow-2xl flex flex-col justify-between p-8 text-white select-none">
-                            
+
                             {/* Presenter slide background image (full presentation backdrop) */}
                             {(() => {
                                 const currentSlide = diapositivas[slideIndex];
                                 const imageToShow = (currentSlide?.prompt_imagen ? imagenesCargadas[currentSlide.prompt_imagen] : undefined) || currentSlide?.base64_imagen;
                                 return (
                                     <div className="absolute inset-0 w-full h-full z-0 overflow-hidden flex flex-col md:flex-row gap-6 p-6 select-none bg-slate-950">
-                                        
+
                                         {/* Left Side: Frame for the Illustration itself (Centerpiece) */}
                                         <div className="flex-1 flex flex-col justify-center items-center relative z-10 h-full">
                                             {imageToShow ? (
@@ -908,8 +909,8 @@ export default function VideoTutor() {
                                                     <span className="absolute top-2.5 left-2.5 bg-primary/95 text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full z-15 shadow-sm select-none">
                                                         Ilustración del Tutor
                                                     </span>
-                                                    <img 
-                                                        src={`data:image/png;base64,${imageToShow}`} 
+                                                    <img
+                                                        src={`data:image/png;base64,${imageToShow}`}
                                                         alt="Ilustración explicativa de la lección"
                                                         className="max-w-full max-h-full object-contain rounded-xl shadow-md transition-transform duration-300"
                                                     />
@@ -979,7 +980,7 @@ export default function VideoTutor() {
                                     {/* Mantenemos el componente para no alterar enlaces pero oculto, ya que todo el contenido está en el panel derecho */}
                                     <h2>{diapositivas[slideIndex].titulo}</h2>
                                 </div>
-                                
+
                                 {/* Dynamic voice waveform status */}
                                 <div className="flex items-center gap-2 bg-black/40 border border-white/5 backdrop-blur-md px-3 py-1.5 rounded-2xl pointer-events-auto shadow-md ml-auto">
                                     <span className="text-[9px] uppercase font-bold tracking-wider text-slate-300">
@@ -1010,7 +1011,7 @@ export default function VideoTutor() {
                             </div>
 
                             {/* Interactive screen play listener */}
-                            <div 
+                            <div
                                 onClick={togglePlayPause}
                                 className="absolute inset-0 bg-transparent z-20 cursor-pointer"
                             />
@@ -1019,14 +1020,14 @@ export default function VideoTutor() {
 
                     {/* Controles del reproductor inferior */}
                     <div className="bg-card border border-border rounded-3xl p-5 shadow-soft space-y-4">
-                        
+
                         {/* Barra de progreso de lectura de la diapositiva */}
                         <div className="space-y-1.5">
                             <div className="flex justify-between text-[10px] font-black uppercase text-muted-foreground tracking-wider">
                                 <span>Progreso de Lección</span>
                                 <span>{Math.round(slideProgress)}%</span>
                             </div>
-                            <div 
+                            <div
                                 onClick={handleSeekBarClick}
                                 className="w-full h-2.5 bg-secondary hover:h-3 rounded-full overflow-hidden cursor-pointer relative group transition-all"
                                 title="Haz clic para retroceder o avanzar en la narración"
@@ -1042,7 +1043,7 @@ export default function VideoTutor() {
 
                         {/* Botones de Control */}
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                            
+
                             {/* Left Controls: Audio and Speed */}
                             <div className="flex items-center gap-3">
                                 {/* Mute Button */}
@@ -1062,8 +1063,8 @@ export default function VideoTutor() {
                                             onClick={() => changePlaybackRate(rate)}
                                             className={cn(
                                                 "px-2.5 py-1 text-[10px] font-black rounded-lg transition-all",
-                                                playbackRate === rate 
-                                                    ? "bg-primary text-white shadow-sm" 
+                                                playbackRate === rate
+                                                    ? "bg-primary text-white shadow-sm"
                                                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                                             )}
                                         >
@@ -1082,7 +1083,7 @@ export default function VideoTutor() {
                                 >
                                     <RotateCcw className="w-4 h-4" />
                                 </button>
-                                
+
                                 <button
                                     onClick={togglePlayPause}
                                     className="w-14 h-14 rounded-full bg-primary-gradient text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all"
@@ -1159,7 +1160,7 @@ export default function VideoTutor() {
                                     const esSeleccionado = respuestas[currentQuestionIdx] === opcion;
                                     const respondida = !!preguntaEvaluada;
                                     const esCorrecta = opcion.trim() === preguntas[currentQuestionIdx].respuesta_correcta?.trim();
-                                    
+
                                     const hasLetterPrefix = /^[A-D]\)/.test(opcion.trim());
                                     const cleanText = hasLetterPrefix ? opcion.replace(/^[A-D]\)\s*/, "") : opcion;
 
@@ -1288,7 +1289,7 @@ export default function VideoTutor() {
             {examenCompletado && (
                 <div className="bg-card border border-border rounded-3xl p-8 text-center space-y-6 shadow-soft max-w-md mx-auto">
                     <Award className="w-16 h-16 text-primary mx-auto animate-bounce" />
-                    
+
                     <div className="space-y-2">
                         <h2 className="font-display font-bold text-2xl">¡Evaluación Completada!</h2>
                         <p className="text-sm text-muted-foreground flex items-center justify-center gap-2 flex-wrap">
