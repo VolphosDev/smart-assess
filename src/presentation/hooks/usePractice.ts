@@ -119,6 +119,7 @@ export function usePractice() {
     });
 
     const [imagenesCargadas, setImagenesCargadas] = useState<Record<string, string>>({});
+    const [practiceStreamCompleted, setPracticeStreamCompleted] = useState(false);
 
     const preguntas = evaluacion?.preguntas ?? [];
     const isMounted = useRef(true);
@@ -171,6 +172,7 @@ export function usePractice() {
     // Pre-fetch illustration queue for Visual Quizzes in background
     useEffect(() => {
         if (!preguntas || preguntas.length === 0 || mode !== "VISUAL_QUIZ") return;
+        if (!practiceStreamCompleted) return;
 
         preguntas.forEach((p) => {
             if (p.prompt_imagen) {
@@ -212,7 +214,7 @@ export function usePractice() {
         }
 
         prefetchImages();
-    }, [preguntas, mode]);
+    }, [preguntas, mode, practiceStreamCompleted]);
 
     // Setup Evaluation Questions Fetching (with SSE Streaming falling back to direct HTTP post)
     useEffect(() => {
@@ -234,6 +236,7 @@ export function usePractice() {
         setStreamCompleted(false);
         setEvaluacion(null);
         setImagenesCargadas({});
+        setPracticeStreamCompleted(false);
 
         let sseCompleted = false;
         let cleanUpStream: (() => void) | null = null;
@@ -246,6 +249,7 @@ export function usePractice() {
                     setEvaluacion(res);
                     setIsLoading(false);
                     setStreamCompleted(true);
+                    setPracticeStreamCompleted(true);
                 }
             } catch (err: any) {
                 if (isMounted.current) {
@@ -253,6 +257,7 @@ export function usePractice() {
                     setErrorMsg(err?.message || "Error al generar preguntas de evaluación.");
                     setIsLoading(false);
                     setStreamCompleted(true);
+                    setPracticeStreamCompleted(true);
                 }
             }
         };
@@ -289,6 +294,7 @@ export function usePractice() {
                         setEvaluacion(result);
                         setIsLoading(false);
                         setStreamCompleted(true);
+                        setPracticeStreamCompleted(true);
                     }
                 },
                 (err) => {
@@ -297,6 +303,7 @@ export function usePractice() {
                         handleFallback();
                     } else if (isMounted.current) {
                         setStreamCompleted(true);
+                        setPracticeStreamCompleted(true);
                     }
                 }
             );

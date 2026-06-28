@@ -202,6 +202,7 @@ export default function VideoTutor() {
     const [preguntaEvaluada, setPreguntaEvaluada] = useState<any | null>(null);
 
     const [imagenesCargadas, setImagenesCargadas] = useState<Record<string, string>>({});
+    const [streamCompleted, setStreamCompleted] = useState(false);
     const isMounted = useRef(true);
 
     useEffect(() => {
@@ -228,6 +229,7 @@ export default function VideoTutor() {
         }
 
         setImagenesCargadas({});
+        setStreamCompleted(false);
         let eventSource: EventSource | null = null;
         let sseCompleted = false;
 
@@ -237,10 +239,12 @@ export default function VideoTutor() {
                 const data = await evaluacionApi.generarPreguntas(mongoId, "VIDEO_EXPLICATIVO", totalPreguntas, tema);
                 setEvaluacion(data);
                 setCargando(false);
+                setStreamCompleted(true);
             } catch (err: any) {
                 console.error("[VideoTutor] Error en fallback:", err);
                 setError(err?.message || "Error al generar la videolección.");
                 setCargando(false);
+                setStreamCompleted(true);
             }
         };
 
@@ -284,6 +288,7 @@ export default function VideoTutor() {
                     const finalData = JSON.parse(event.data);
                     setEvaluacion(finalData);
                     setCargando(false);
+                    setStreamCompleted(true);
                     eventSource?.close();
                 } catch (err) {
                     console.error("[VideoTutor] Error parseando datos de result SSE:", err);
@@ -297,6 +302,8 @@ export default function VideoTutor() {
                 eventSource?.close();
                 if (!sseCompleted) {
                     ejecutarFallback();
+                } else {
+                    setStreamCompleted(true);
                 }
             };
         } catch (e) {
@@ -313,6 +320,7 @@ export default function VideoTutor() {
 
     // Cola de precarga en segundo plano para las imágenes del Video Tutor
     useEffect(() => {
+        if (!streamCompleted) return;
         if (!evaluacion?.leccion?.diapositivas) return;
 
         const slides = evaluacion.leccion.diapositivas;
@@ -361,7 +369,7 @@ export default function VideoTutor() {
         }
 
         loadImagesSequentially();
-    }, [evaluacion]);
+    }, [evaluacion, streamCompleted]);
 
     // Limpieza de TTS al desmontar
     useEffect(() => {
