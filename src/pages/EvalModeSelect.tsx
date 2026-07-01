@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Clock, Loader2, Eye, Lock, FlaskConical, Brain, BookOpen, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
+import { EvalTutorialModal } from "@/components/EvalTutorialModal";
 import { useEvalModeSelect } from "../presentation/hooks/useEvalModeSelect";
 import { getEvalModeIcon } from "@/lib/icon-mapper";
 
@@ -111,6 +112,7 @@ const iconColorMap = {
 } as const;
 
 export default function EvalModeSelect() {
+    const navigate = useNavigate();
     const {
         courseId,
         semanaId: week,
@@ -123,6 +125,8 @@ export default function EvalModeSelect() {
         semana,
         isLoading,
     } = useEvalModeSelect();
+
+    const [pendingTutorial, setPendingTutorial] = useState<{ modeId: string; url: string } | null>(null);
 
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const isStudent = user?.role?.toLowerCase() === "student";
@@ -723,9 +727,12 @@ export default function EvalModeSelect() {
                                     {isDisabled ? (
                                         <div>{cardContent}</div>
                                     ) : (
-                                        <Link to={getTargetUrl()}>
+                                        <div
+                                            className="cursor-pointer"
+                                            onClick={() => setPendingTutorial({ modeId: m.id, url: getTargetUrl() })}
+                                        >
                                             {cardContent}
-                                        </Link>
+                                        </div>
                                     )}
                                 </motion.div>
                             );
@@ -739,6 +746,19 @@ export default function EvalModeSelect() {
                 onClose={() => setSelectedFile(null)}
                 mongoId={selectedFile?.id || ""}
                 fileName={selectedFile?.name || ""}
+            />
+
+            {/* Modal de tutorial previo a la evaluación */}
+            <EvalTutorialModal
+                modeId={pendingTutorial?.modeId ?? ""}
+                isOpen={!!pendingTutorial}
+                onConfirm={() => {
+                    if (pendingTutorial) {
+                        navigate(pendingTutorial.url);
+                    }
+                    setPendingTutorial(null);
+                }}
+                onClose={() => setPendingTutorial(null)}
             />
         </div>
     );
