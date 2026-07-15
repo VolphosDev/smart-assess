@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { UserPlus, Trash2, Users, GraduationCap, BookOpenCheck, Loader2, Download, ShieldCheck, TrendingUp, BarChart2, Calendar, Filter, ChevronDown, Check, RefreshCw, Unlock, Lock } from "lucide-react";
+import { UserPlus, Trash2, Users, GraduationCap, BookOpenCheck, Loader2, Download, ShieldCheck, TrendingUp, BarChart2, Calendar, Filter, ChevronDown, Check, RefreshCw, Unlock, Lock, Key, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { usersApi } from "@/api";
 import { intentosApi } from "@/api/courses";
+import { API_CONFIG } from "@/api/config";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { UserAvatar } from "@/lib/icon-mapper";
@@ -27,6 +29,10 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState<"individual" | "masivo">("individual");
     const [bulkNames, setBulkNames] = useState("");
     const [bulkPreview, setBulkPreview] = useState<{ name: string; email: string; role: string; password: string }[]>([]);
+
+    // Estados para cambio de contraseña
+    const [selectedUserForPasswordChange, setSelectedUserForPasswordChange] = useState<any>(null);
+    const [newPassword, setNewPassword] = useState("");
 
     const { data: users = [], isLoading: loadingUsers } = useQuery<any[]>({
         queryKey: ['admin-users'],
@@ -207,6 +213,71 @@ export default function AdminDashboard() {
         }
     });
 
+    const changePasswordMutation = useMutation({
+        mutationFn: ({ id, password }: { id: string | number; password: string }) => usersApi.changePassword(id, password),
+        onSuccess: () => {
+            toast.success("Contraseña actualizada exitosamente");
+            setSelectedUserForPasswordChange(null);
+            setNewPassword("");
+        },
+        onError: (error: any) => {
+            let msg = "Error al cambiar la contraseña";
+            const rawError = error?.response?.data || error?.message;
+            if (typeof rawError === "string") {
+                try { msg = JSON.parse(rawError).message || rawError; } catch (e) { msg = rawError; }
+            } else if (rawError?.message) { msg = rawError.message; }
+            toast.error(msg);
+        }
+    });
+
+    const backupDatabase = async () => {
+        try {
+            toast.loading("Generando copia de seguridad de la base de datos...", { id: "backup-toast" });
+            const token = localStorage.getItem("token");
+            const response = await fetch(`${API_CONFIG.baseUrl}/admin/usuarios/backup`, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMsg = "Error al descargar el backup";
+                try {
+                    const parsed = JSON.parse(errorText);
+                    errorMsg = parsed.message || errorMsg;
+                } catch {
+                    errorMsg = errorText || errorMsg;
+                }
+                throw new Error(errorMsg);
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            const disposition = response.headers.get("content-disposition");
+            let filename = `colegio_db_backup_${new Date().toISOString().split('T')[0]}.sql`;
+            if (disposition && disposition.indexOf("attachment") !== -1) {
+                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                const matches = filenameRegex.exec(disposition);
+                if (matches != null && matches[1]) { 
+                    filename = matches[1].replace(/['"]/g, '');
+                }
+            }
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            toast.success("Copia de seguridad descargada y guardada en MongoDB", { id: "backup-toast" });
+        } catch (err: any) {
+            toast.error("Error al generar backup: " + err.message, { id: "backup-toast" });
+        }
+    };
+
     const register = (e: React.FormEvent) => {
         e.preventDefault();
         createMutation.mutate({
@@ -360,12 +431,20 @@ export default function AdminDashboard() {
                             Registra nuevas cuentas y asígnales una contraseña temporal.
                         </p>
                     </div>
-                    <Button
-                        onClick={downloadGlobalCSV}
-                        className="bg-white/10 hover:bg-white/20 border border-white/40 text-white font-semibold rounded-lg px-5 py-2.5 flex items-center gap-2 shrink-0 active:scale-95 transition-all w-full md:w-auto text-sm"
-                    >
-                        <Download className="w-4.5 h-4.5" /> Descargar Notas
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full md:w-auto">
+                        <Button
+                            onClick={backupDatabase}
+                            className="bg-white/10 hover:bg-white/20 border border-white/40 text-white font-semibold rounded-lg px-5 py-2.5 flex items-center gap-2 active:scale-95 transition-all w-full sm:w-auto text-sm"
+                        >
+                            <Database className="w-4 h-4" /> Respaldar Base de Datos
+                        </Button>
+                        <Button
+                            onClick={downloadGlobalCSV}
+                            className="bg-white/10 hover:bg-white/20 border border-white/40 text-white font-semibold rounded-lg px-5 py-2.5 flex items-center gap-2 active:scale-95 transition-all w-full sm:w-auto text-sm"
+                        >
+                            <Download className="w-4.5 h-4.5" /> Descargar Notas
+                        </Button>
+                    </div>
                 </div>
             </motion.section>
 
@@ -733,6 +812,7 @@ export default function AdminDashboard() {
                                 isDeleting={deleteMutation.isPending}
                                 onToggleBlock={(id) => toggleBlockMutation.mutate(id)}
                                 isToggling={toggleBlockMutation.isPending}
+                                onChangePassword={(u) => setSelectedUserForPasswordChange(u)}
                             />
                             <UserList 
                                 title="Alumnos" 
@@ -742,11 +822,74 @@ export default function AdminDashboard() {
                                 isDeleting={deleteMutation.isPending}
                                 onToggleBlock={(id) => toggleBlockMutation.mutate(id)}
                                 isToggling={toggleBlockMutation.isPending}
+                                onChangePassword={(u) => setSelectedUserForPasswordChange(u)}
                             />
                         </>
                     )}
                 </div>
             </div>
+
+            {/* Dialog de Cambio de Contraseña */}
+            <Dialog open={selectedUserForPasswordChange !== null} onOpenChange={(open) => { if (!open) setSelectedUserForPasswordChange(null); }}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                            <Key className="w-5 h-5 text-primary" /> Cambiar Contraseña
+                        </DialogTitle>
+                    </DialogHeader>
+                    {selectedUserForPasswordChange && (
+                        <form onSubmit={(e) => {
+                            e.preventDefault();
+                            if (!newPassword.trim()) {
+                                toast.error("La contraseña no puede estar vacía");
+                                return;
+                            }
+                            changePasswordMutation.mutate({
+                                id: selectedUserForPasswordChange.id,
+                                password: newPassword
+                            });
+                        }} className="space-y-4 py-2">
+                            <div className="space-y-1 text-left">
+                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Usuario</span>
+                                <p className="text-sm font-semibold">{selectedUserForPasswordChange.nombre || selectedUserForPasswordChange.name}</p>
+                                <p className="text-xs text-muted-foreground">{selectedUserForPasswordChange.correo || selectedUserForPasswordChange.email}</p>
+                            </div>
+                            <div className="space-y-1.5 text-left">
+                                <Label htmlFor="new-password">Nueva Contraseña</Label>
+                                <Input
+                                    id="new-password"
+                                    type="text"
+                                    required
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    placeholder="Ingresa la nueva contraseña"
+                                    className="h-11 rounded-lg"
+                                />
+                            </div>
+                            <DialogFooter className="gap-2 pt-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setSelectedUserForPasswordChange(null);
+                                        setNewPassword("");
+                                    }}
+                                    className="h-11 flex-1 sm:flex-initial"
+                                >
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={changePasswordMutation.isPending}
+                                    className="h-11 flex-1 sm:flex-initial"
+                                >
+                                    {changePasswordMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Guardar Cambios"}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -777,7 +920,8 @@ function UserList({
     onRemove, 
     isDeleting, 
     onToggleBlock, 
-    isToggling 
+    isToggling,
+    onChangePassword
 }: { 
     title: string; 
     tone: "lime" | "coral"; 
@@ -786,6 +930,7 @@ function UserList({
     isDeleting: boolean; 
     onToggleBlock: (id: string) => void; 
     isToggling: boolean; 
+    onChangePassword: (user: any) => void;
 }) {
     return (
         <div className="bg-card border border-border rounded-xl shadow-xs overflow-hidden text-left">
@@ -798,21 +943,33 @@ function UserList({
             ) : (
                 <ul className="divide-y divide-border">
                     {items.map((u) => (
-                        <li key={u.id} className="flex items-center gap-4 px-6 py-3 hover:bg-muted/30 transition-colors">
-                            <UserAvatar name={u.nombre || u.name || "Usuario"} className="w-9 h-9" />
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <span className="font-semibold truncate text-sm">{u.nombre || u.name}</span>
-                                    {u.cuentaBloqueada && (
-                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-destructive/15 text-destructive border border-destructive/20 animate-pulse">
-                                            Bloqueado
-                                        </span>
-                                    )}
+                        <li key={u.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 hover:bg-muted/30 transition-colors">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <UserAvatar name={u.nombre || u.name || "Usuario"} className="w-9 h-9 shrink-0" />
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-semibold truncate text-sm">{u.nombre || u.name}</span>
+                                        {u.cuentaBloqueada && (
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-destructive/15 text-destructive border border-destructive/20 animate-pulse shrink-0">
+                                                Bloqueado
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground truncate mt-0.5">{u.correo || u.email}</div>
                                 </div>
-                                <div className="text-xs text-muted-foreground truncate mt-0.5">{u.correo || u.email}</div>
                             </div>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 sm:justify-end self-end sm:self-auto w-full sm:w-auto justify-end">
                                 <button
+                                    type="button"
+                                    onClick={() => onChangePassword(u)}
+                                    className="p-1.5 rounded-lg border border-border/80 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1 text-xs font-semibold"
+                                    title="Cambiar contraseña"
+                                >
+                                    <Key className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Contraseña</span>
+                                </button>
+                                <button
+                                    type="button"
                                     onClick={() => onToggleBlock(u.id)}
                                     disabled={isToggling}
                                     className={`p-1.5 rounded-lg border transition-colors disabled:opacity-50 flex items-center gap-1 text-xs font-semibold ${
@@ -826,6 +983,7 @@ function UserList({
                                     <span className="hidden sm:inline">{u.cuentaBloqueada ? "Desbloquear" : "Bloquear"}</span>
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => onRemove(u.id)}
                                     disabled={isDeleting}
                                     className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 border border-transparent hover:border-border transition-colors disabled:opacity-50"
