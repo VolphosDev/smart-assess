@@ -14,4 +14,6 @@ export const usersApi = {
     unlock: (id: string | number) => apiClient.put<any>(`/admin/usuarios/${id}/desbloquear`),
 
     toggleBlock: (id: string | number) => apiClient.put<any>(`/admin/usuarios/${id}/toggle-block`),
+
+    changePassword: (id: string | number, password: string) => apiClient.put<any>(`/admin/usuarios/${id}/change-password`, { password }),
 };

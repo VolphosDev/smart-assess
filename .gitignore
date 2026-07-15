@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Testing coverage
+coverage/
+
+# Environment files
+.env
+
+TallerIntegrador/
+arquitectura-agentes.png
+*.mmd
+ultimo_commit_explicacion.md
