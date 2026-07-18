@@ -138,7 +138,7 @@ export default function TeacherDashboard() {
     // --- LÓGICA DE ANALÍTICAS DIVERSIFICADAS PARA DOCENTE ---
     const teacherCourseNames = courses.map((c: any) => c.name);
     const teacherAttempts = allAttempts.filter((att: any) => teacherCourseNames.includes(att.curso));
-    const sortedAttempts = [...teacherAttempts].sort((a: any, b: any) => new Date(a.fecha).getTime() - new Date(b).getTime());
+    const sortedAttempts = [...teacherAttempts].sort((a: any, b: any) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
     const filteredAttempts = sortedAttempts.filter((att: any) => {
         const matchCourse = selectedCourse === "all" || att.curso === selectedCourse;

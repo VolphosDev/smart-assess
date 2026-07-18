@@ -136,16 +136,16 @@ export default function EvalModeSelect() {
 
     const [showTestingMenu, setShowTestingMenu] = useState(false);
     const [ignorarBloqueo, setIgnorarBloqueo] = useState(() => {
-        return !isStudent && localStorage.getItem("semantika.testing_ignorar_bloqueo") === "true";
+        return localStorage.getItem("semantika.testing_ignorar_bloqueo") === "true";
     });
     const [ignorarContinuar, setIgnorarContinuar] = useState(() => {
-        return !isStudent && localStorage.getItem("semantika.testing_ignorar_continuar") === "true";
+        return localStorage.getItem("semantika.testing_ignorar_continuar") === "true";
     });
     const [ignorarRecomendados, setIgnorarRecomendados] = useState(() => {
-        return !isStudent && localStorage.getItem("semantika.testing_ignorar_recomendados") === "true";
+        return localStorage.getItem("semantika.testing_ignorar_recomendados") === "true";
     });
     const [ignorarObligacionPracticas, setIgnorarObligacionPracticas] = useState(() => {
-        return !isStudent && localStorage.getItem("semantika.testing_ignorar_obligacion_practicas") === "true";
+        return localStorage.getItem("semantika.testing_ignorar_obligacion_practicas") === "true";
     });
 
     const toggleIgnorarBloqueo = () => {
@@ -222,7 +222,7 @@ export default function EvalModeSelect() {
                     <ArrowLeft className="w-4 h-4" /> Volver al curso
                 </Link>
 
-                {!isStudent && (
+                {true && (
                     <div className="relative">
                         <button
                             onClick={() => setShowTestingMenu(!showTestingMenu)}
@@ -355,7 +355,7 @@ export default function EvalModeSelect() {
             </div>
 
             {/* Tarjeta de Materiales de Estudio (Estética y Profesional) */}
-            <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs max-w-2xl mx-auto text-left relative overflow-hidden">
+            <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs text-left relative overflow-hidden">
                 {/* Decoración lateral discreta */}
                 <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-primary" />
                 
@@ -416,7 +416,7 @@ export default function EvalModeSelect() {
 
             {/* Subtemas UI */}
             {completedAdaptive && materiales.length > 0 && materiales[0]?.subtemas && materiales[0].subtemas.length > 0 && (
-                <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs max-w-2xl mx-auto text-left mt-4">
+                <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs text-left mt-4">
                     <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-primary" /> Selecciona los temas a evaluar:
                     </h4>
@@ -474,9 +474,9 @@ export default function EvalModeSelect() {
                     {/* Banner de Evaluación Recomendadora */}
                     <div className="mb-8">
                         {!completedAdaptive ? (
-                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs">
+                            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs">
                                 <div className="flex items-start gap-4 text-left">
-                                    <div className="w-11 h-11 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 grid place-items-center shadow-xs shrink-0 animate-pulse">
+                                    <div className="w-11 h-11 rounded-lg bg-primary/10 border border-primary/20 text-primary dark:text-primary-glow grid place-items-center shadow-xs shrink-0 animate-pulse">
                                         <Brain className="w-5 h-5" />
                                     </div>
                                     <div className="space-y-1">
@@ -488,7 +488,7 @@ export default function EvalModeSelect() {
                                 </div>
                                 <Link
                                     to={`/app/curso/${courseId}/semana/${week}/evaluacion/adaptativa`}
-                                    className="px-6 py-3 rounded-lg bg-amber-500 text-white font-extrabold text-xs tracking-wider shadow-sm hover:bg-amber-600 transition-all shrink-0 active:scale-95 text-center w-full md:w-auto cursor-pointer"
+                                    className="px-6 py-3 rounded-lg bg-primary text-primary-foreground font-extrabold text-xs tracking-wider shadow-sm hover:bg-primary/90 transition-all shrink-0 active:scale-95 text-center w-full md:w-auto cursor-pointer"
                                 >
                                     Realizar Diagnóstico
                                 </Link>

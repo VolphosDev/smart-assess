@@ -331,7 +331,7 @@ export default function AdminDashboard() {
         bulkCreateMutation.mutate(bulkPreview);
     };
     // --- LÓGICA DE ANALÍTICAS DIVERSIFICADAS ---
-    const sortedAttempts = [...attempts].sort((a: any, b: any) => new Date(a.fecha).getTime() - new Date(b).getTime());
+    const sortedAttempts = [...attempts].sort((a: any, b: any) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
 
     // Filtrado de intentos
     const filteredAttempts = sortedAttempts.filter((att: any) => {

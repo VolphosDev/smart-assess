@@ -10,11 +10,16 @@ export default function HistoryPage() {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const [intentoAbierto, setIntentoAbierto] = useState<any | null>(null);
 
-    const { data: intentos = [], isLoading } = useQuery({
+    const { data: rawIntentos = [], isLoading } = useQuery({
         queryKey: ["mis-intentos", user.id],
         queryFn: () => intentosApi.misIntentos(Number(user.id)),
         enabled: !!user.id,
     });
+
+    const intentos = rawIntentos.filter((h: any) => 
+        h.tipoEvaluacion !== "DIAGNOSTICA" && 
+        h.tecnica?.toLowerCase() !== "adaptativa"
+    );
 
     const avg = intentos.length
         ? (intentos.reduce((a: number, b: any) => a + b.nota, 0) / intentos.length).toFixed(1)

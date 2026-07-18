@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { authApi } from "@/api/auth";
+import { cn } from "@/lib/utils";
 
 export default function SetupPassword() {
     const [searchParams] = useSearchParams();
@@ -18,6 +19,22 @@ export default function SetupPassword() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [termsAccepted, setTermsAccepted] = useState(false);
+
+    const getPasswordStrength = (pass: string) => {
+        if (!pass) return { score: 0, label: "", color: "bg-muted", text: "text-muted-foreground" };
+        let score = 0;
+        if (pass.length >= 6) score++;
+        if (pass.length >= 8) score++;
+        if (/[A-Z]/.test(pass)) score++;
+        if (/[0-9]/.test(pass)) score++;
+        if (/[^A-Za-z0-9]/.test(pass)) score++;
+
+        if (score <= 2) return { score, label: "Débil ⚠️", color: "bg-rose-500", text: "text-rose-500" };
+        if (score <= 4) return { score, label: "Media ⚡", color: "bg-amber-500", text: "text-amber-500" };
+        return { score, label: "Fuerte 💪", color: "bg-emerald-500", text: "text-emerald-500" };
+    };
+
+    const strength = getPasswordStrength(password);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -111,6 +128,19 @@ export default function SetupPassword() {
                             onChange={(e) => setPassword(e.target.value)}
                             className="h-11 rounded-lg border-input bg-background/50 focus-visible:ring-primary/30 text-sm"
                         />
+                        {password && (
+                            <div className="mt-1.5 space-y-1">
+                                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                                    <div 
+                                        className={cn("h-full transition-all duration-300", strength.color)}
+                                        style={{ width: `${(strength.score / 5) * 100}%` }}
+                                    />
+                                </div>
+                                <span className={cn("text-[10px] font-bold block text-left", strength.text)}>
+                                    Fuerza: {strength.label}
+                                </span>
+                            </div>
+                        )}
                     </div>
                     <div className="space-y-1.5 text-left">
                         <Label className="font-semibold text-xs text-foreground/80">Confirmar contraseña</Label>

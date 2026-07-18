@@ -113,7 +113,7 @@ export default function Practice() {
         const errorText = errorMsg || "Error desconocido";
         const isFreeTierIssue = errorText.includes("503") || errorText.includes("high demand") || errorText.includes("429") || errorText.includes("Quota exceeded");
         return (
-            <div className="text-center py-20 space-y-4 max-w-md mx-auto">
+            <div className="text-center py-20 space-y-4 max-w-lg mx-auto">
                 <AlertCircle className={cn("w-16 h-16 mx-auto", isFreeTierIssue ? "text-amber-500" : "text-destructive")} />
                 <h2 className="font-display font-bold text-2xl">
                     {isFreeTierIssue ? "¡Ups! La IA necesita un respiro 🤖" : "Error al generar las preguntas"}
@@ -121,8 +121,20 @@ export default function Practice() {
                 <p className="text-sm text-muted-foreground leading-relaxed">
                     {isFreeTierIssue
                         ? "Hemos alcanzado los límites de la cuota gratuita de IA o el servidor está bajo una alta demanda. Por favor, espera un momento y reinténtalo."
-                        : errorText}
+                        : "No hemos podido conectar con el motor de Inteligencia Artificial para estructurar tu examen. Por favor, inténtalo más tarde."}
                 </p>
+                
+                {!isFreeTierIssue && (
+                    <details className="text-left bg-muted/40 border border-border/60 rounded-lg p-3 text-xs text-muted-foreground max-w-md mx-auto">
+                        <summary className="cursor-pointer font-semibold hover:text-foreground transition-colors select-none">
+                            Ver detalles técnicos
+                        </summary>
+                        <p className="mt-2 font-mono whitespace-pre-wrap leading-relaxed break-words bg-background/60 p-2 rounded-md border border-border/40">
+                            {errorText}
+                        </p>
+                    </details>
+                )}
+
                 <div className="pt-4">
                     <Link
                         to={`/app/curso/${courseId}/semana/${semanaId}`}

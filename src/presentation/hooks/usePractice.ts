@@ -36,7 +36,7 @@ export function usePractice() {
     const storageKey = `semantika.unfinished_attempt.${user.id}.${courseId}.${semanaId}.${mode}`;
 
     // Si está activada la opción de pruebas para ignorar la continuación, limpiamos el intento guardado
-    if (!isStudent && localStorage.getItem("semantika.testing_ignorar_continuar") === "true") {
+    if (localStorage.getItem("semantika.testing_ignorar_continuar") === "true") {
         localStorage.removeItem(storageKey);
     }
 
