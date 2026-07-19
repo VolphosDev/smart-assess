@@ -8,6 +8,9 @@ import { EvalTutorialModal } from "@/components/EvalTutorialModal";
 import { useEvalModeSelect } from "../presentation/hooks/useEvalModeSelect";
 import { getEvalModeIcon } from "@/lib/icon-mapper";
 
+// 🛠️ Bandera de Configuración: Cambia a false para ocultar el menú de Herramientas de Test en demostración final o producción
+const SHOW_TESTING_TOOLS = true;
+
 const evalModes = [
     {
         id: "OPCION_MULTIPLE",
@@ -136,16 +139,16 @@ export default function EvalModeSelect() {
 
     const [showTestingMenu, setShowTestingMenu] = useState(false);
     const [ignorarBloqueo, setIgnorarBloqueo] = useState(() => {
-        return localStorage.getItem("semantika.testing_ignorar_bloqueo") === "true";
+        return SHOW_TESTING_TOOLS && localStorage.getItem("semantika.testing_ignorar_bloqueo") === "true";
     });
     const [ignorarContinuar, setIgnorarContinuar] = useState(() => {
-        return localStorage.getItem("semantika.testing_ignorar_continuar") === "true";
+        return SHOW_TESTING_TOOLS && localStorage.getItem("semantika.testing_ignorar_continuar") === "true";
     });
     const [ignorarRecomendados, setIgnorarRecomendados] = useState(() => {
-        return localStorage.getItem("semantika.testing_ignorar_recomendados") === "true";
+        return SHOW_TESTING_TOOLS && localStorage.getItem("semantika.testing_ignorar_recomendados") === "true";
     });
     const [ignorarObligacionPracticas, setIgnorarObligacionPracticas] = useState(() => {
-        return localStorage.getItem("semantika.testing_ignorar_obligacion_practicas") === "true";
+        return SHOW_TESTING_TOOLS && localStorage.getItem("semantika.testing_ignorar_obligacion_practicas") === "true";
     });
 
     const toggleIgnorarBloqueo = () => {
@@ -224,7 +227,7 @@ export default function EvalModeSelect() {
                     <ArrowLeft className="w-4 h-4" /> Volver al curso
                 </Link>
 
-                {true && (
+                {SHOW_TESTING_TOOLS && (
                     <div className="relative">
                         <button
                             onClick={() => setShowTestingMenu(!showTestingMenu)}
