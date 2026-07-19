@@ -1,8 +1,48 @@
 import { useState } from "react";
 import ReactDOM from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, CheckCircle2, Lightbulb, ChevronRight } from "lucide-react";
+import { 
+    X, CheckCircle2, Lightbulb, ChevronRight, HelpCircle, Bot, Target, Zap, 
+    BarChart4, ClipboardList, Search, Timer, Brain, Edit3, MessageSquare, 
+    Pencil, Puzzle, Palette, Eye, Image, Star, Mic, RefreshCw, Video, 
+    Volume2, Pause, TrendingUp, Sparkles 
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getEvalModeIcon } from "@/lib/icon-mapper";
+
+/* Mapeador de emojis de pasos a iconos Lucide */
+const getStepIcon = (emoji: string, className = "w-5 h-5") => {
+    const map: Record<string, React.ComponentType<any>> = {
+        "🤖": Bot,
+        "🎯": Target,
+        "⚡": Zap,
+        "📊": BarChart4,
+        "📝": ClipboardList,
+        "✅": CheckCircle2,
+        "🔍": Search,
+        "🔎": Search,
+        "⏱️": Timer,
+        "🧠": Brain,
+        "✍️": Edit3,
+        "💬": MessageSquare,
+        "✏️": Pencil,
+        "🧩": Puzzle,
+        "🎨": Palette,
+        "👁️": Eye,
+        "🖼️": Image,
+        "🌟": Star,
+        "🎙️": Mic,
+        "🔄": RefreshCw,
+        "📽️": Video,
+        "🔊": Volume2,
+        "⏸️": Pause,
+        "📋": ClipboardList,
+        "📈": TrendingUp,
+        "✨": Sparkles,
+    };
+    const IconComponent = map[emoji] || HelpCircle;
+    return <IconComponent className={className} />;
+};
 
 /* ─── Datos por modo ─────────────────────────────── */
 export interface TutorialStep {
@@ -145,6 +185,9 @@ export function EvalTutorialModal({ modeId, isOpen, onConfirm, onClose }: EvalTu
     };
 
     const handleConfirm = () => {
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const userId = user.id || "guest";
+        localStorage.setItem(`semantika.skip_tutorial.${userId}.${modeId}`, "true");
         setStep(0);
         onConfirm();
     };
@@ -195,7 +238,12 @@ export function EvalTutorialModal({ modeId, isOpen, onConfirm, onClose }: EvalTu
                                 {/* Header */}
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="flex items-center gap-3">
-                                        <span className="text-3xl leading-none select-none">{tutorial.emoji}</span>
+                                        <div className={cn(
+                                            "w-10 h-10 rounded-xl grid place-items-center shadow-xs text-white bg-gradient-to-br shrink-0",
+                                            tutorial.accentClass
+                                        )}>
+                                            {getEvalModeIcon(modeId, "w-5 h-5")}
+                                        </div>
                                         <div>
                                             <div className="flex items-center gap-2 mb-0.5">
                                                 <span className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">
@@ -208,7 +256,7 @@ export function EvalTutorialModal({ modeId, isOpen, onConfirm, onClose }: EvalTu
                                                     {step + 1}/{totalSteps}
                                                 </span>
                                             </div>
-                                            <h2 className="font-display font-extrabold text-xl leading-tight">
+                                            <h2 className="font-display font-extrabold text-xl leading-tight text-foreground">
                                                 {tutorial.title}
                                             </h2>
                                         </div>
@@ -241,15 +289,21 @@ export function EvalTutorialModal({ modeId, isOpen, onConfirm, onClose }: EvalTu
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: -16 }}
                                         transition={{ duration: 0.18 }}
-                                        className="bg-secondary/30 border border-border/60 rounded-xl p-5 space-y-2"
+                                        className="bg-secondary/30 border border-border/60 rounded-xl p-5"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-2xl select-none">{currentStep.icon}</span>
-                                            <h3 className="font-display font-bold text-base">{currentStep.title}</h3>
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-8 h-8 rounded-lg grid place-items-center bg-background border border-border/80 text-foreground shadow-xs shrink-0 mt-0.5">
+                                                {getStepIcon(currentStep.icon, "w-4 h-4")}
+                                            </div>
+                                            <div className="space-y-1 flex-1">
+                                                <h3 className="font-display font-bold text-base text-foreground">
+                                                    {currentStep.title}
+                                                </h3>
+                                                <p className="text-sm text-muted-foreground leading-relaxed">
+                                                    {currentStep.body}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <p className="text-sm text-muted-foreground leading-relaxed pl-9">
-                                            {currentStep.body}
-                                        </p>
                                     </motion.div>
                                 </AnimatePresence>
 
@@ -262,7 +316,7 @@ export function EvalTutorialModal({ modeId, isOpen, onConfirm, onClose }: EvalTu
                                             className={cn(
                                                 "rounded-full transition-all duration-300 cursor-pointer",
                                                 i === step
-                                                    ? "w-6 h-2 bg-primary"
+                                                    ? cn("w-6 h-2 bg-gradient-to-r", tutorial.accentClass)
                                                     : "w-2 h-2 bg-border hover:bg-muted-foreground/40"
                                             )}
                                             aria-label={`Paso ${i + 1}`}
@@ -318,7 +372,10 @@ export function EvalTutorialModal({ modeId, isOpen, onConfirm, onClose }: EvalTu
                                         ) : (
                                             <button
                                                 onClick={() => setStep(s => s + 1)}
-                                                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-bold transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
+                                                className={cn(
+                                                    "inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-xs font-bold transition-all active:scale-95 cursor-pointer bg-gradient-to-r hover:brightness-95",
+                                                    tutorial.accentClass
+                                                )}
                                             >
                                                 Siguiente <ChevronRight className="w-3.5 h-3.5" />
                                             </button>

@@ -199,7 +199,8 @@ export default function AdminDashboard() {
     const toggleBlockMutation = useMutation({
         mutationFn: (id: string | number) => usersApi.toggleBlock(id),
         onSuccess: (data: any) => {
-            const status = data?.data?.cuentaBloqueada ? "bloqueada" : "desbloqueada";
+            const isBlocked = data?.cuentaBloqueada ?? data?.data?.cuentaBloqueada;
+            const status = isBlocked ? "bloqueada" : "desbloqueada";
             toast.success(`Cuenta ${status} exitosamente`);
             queryClient.invalidateQueries({ queryKey: ['admin-users'] });
         },
@@ -294,11 +295,24 @@ export default function AdminDashboard() {
         if (!bulkNames.trim()) return;
         const lines = bulkNames.split('\n').map(l => l.trim()).filter(l => l.length > 0);
         
-        const existingEmails = new Set(users.map((u: any) => u.correo));
         const preview: { name: string; email: string; role: string; password: string }[] = [];
 
-        lines.forEach(fullName => {
-            const parts = fullName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z\s]/g, "").split(/\s+/);
+        lines.forEach(line => {
+            // Si la línea contiene un '@', es un correo explícito (ej. alumnoejemplo@gmail.com)
+            if (line.includes("@")) {
+                const emailClean = line.toLowerCase().trim();
+                const defaultName = emailClean.split("@")[0];
+                preview.push({
+                    name: defaultName.charAt(0).toUpperCase() + defaultName.slice(1),
+                    email: emailClean,
+                    role: role,
+                    password: password || "123456"
+                });
+                return;
+            }
+
+            // Si es un nombre de persona, generamos el correo con @gmail.com por defecto
+            const parts = line.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z\s]/g, "").split(/\s+/);
             let base = "";
             if (parts.length >= 3) {
                 base = parts[0].charAt(0) + parts[parts.length - 2] + parts[parts.length - 1].charAt(0);
@@ -308,19 +322,11 @@ export default function AdminDashboard() {
                 base = parts[0];
             }
             
-            let email = `${base}@semantika.edu.pe`;
-            let num = 2;
-            while (existingEmails.has(email)) {
-                email = `${base}${num}@semantika.edu.pe`;
-                num++;
-            }
-            existingEmails.add(email);
-            
             preview.push({
-                name: fullName,
-                email: email,
+                name: line,
+                email: `${base}@gmail.com`,
                 role: role,
-                password: password || "123456" // Contraseña temporal por defecto
+                password: password || "123456"
             });
         });
         setBulkPreview(preview);
