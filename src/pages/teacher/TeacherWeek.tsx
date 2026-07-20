@@ -147,14 +147,20 @@ export default function TeacherWeek() {
         if (files.length > 0) {
             const allowedTypes = [
                 "application/pdf",
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                "image/jpeg",
-                "image/png"
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             ];
 
             const allValid = files.every(f => allowedTypes.includes(f.type));
             if (!allValid) {
-                toast.error("Solo se permiten archivos PDF, DOCX, JPG o PNG");
+                toast.error("Solo se permiten archivos PDF o DOCX");
+                return;
+            }
+
+            // Validar que ningún archivo exceda los 25 MB
+            const MAX_SIZE = 25 * 1024 * 1024;
+            const hasTooLargeFile = files.some(f => f.size > MAX_SIZE);
+            if (hasTooLargeFile) {
+                toast.error("El peso de este archivo es mayor a 25 MB, por favor comprímelo o sube otro");
                 return;
             }
 
@@ -354,7 +360,7 @@ export default function TeacherWeek() {
                     ref={fileInputRef}
                     type="file"
                     multiple
-                    accept=".pdf,.docx,.jpg,.jpeg,.png"
+                    accept=".pdf,.docx"
                     className="hidden"
                     onChange={handleFileChange}
                 />

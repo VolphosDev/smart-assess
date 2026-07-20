@@ -8,6 +8,9 @@ import { EvalTutorialModal } from "@/components/EvalTutorialModal";
 import { useEvalModeSelect } from "../presentation/hooks/useEvalModeSelect";
 import { getEvalModeIcon } from "@/lib/icon-mapper";
 
+// 🛠️ Bandera de Configuración: Cambia a false para ocultar el menú de Herramientas de Test en demostración final o producción
+const SHOW_TESTING_TOOLS = true;
+
 const evalModes = [
     {
         id: "OPCION_MULTIPLE",
@@ -136,16 +139,16 @@ export default function EvalModeSelect() {
 
     const [showTestingMenu, setShowTestingMenu] = useState(false);
     const [ignorarBloqueo, setIgnorarBloqueo] = useState(() => {
-        return !isStudent && localStorage.getItem("semantika.testing_ignorar_bloqueo") === "true";
+        return SHOW_TESTING_TOOLS && localStorage.getItem("semantika.testing_ignorar_bloqueo") === "true";
     });
     const [ignorarContinuar, setIgnorarContinuar] = useState(() => {
-        return !isStudent && localStorage.getItem("semantika.testing_ignorar_continuar") === "true";
+        return SHOW_TESTING_TOOLS && localStorage.getItem("semantika.testing_ignorar_continuar") === "true";
     });
     const [ignorarRecomendados, setIgnorarRecomendados] = useState(() => {
-        return !isStudent && localStorage.getItem("semantika.testing_ignorar_recomendados") === "true";
+        return SHOW_TESTING_TOOLS && localStorage.getItem("semantika.testing_ignorar_recomendados") === "true";
     });
     const [ignorarObligacionPracticas, setIgnorarObligacionPracticas] = useState(() => {
-        return !isStudent && localStorage.getItem("semantika.testing_ignorar_obligacion_practicas") === "true";
+        return SHOW_TESTING_TOOLS && localStorage.getItem("semantika.testing_ignorar_obligacion_practicas") === "true";
     });
 
     const toggleIgnorarBloqueo = () => {
@@ -211,6 +214,8 @@ export default function EvalModeSelect() {
     }
 
     const materiales = semana.materiales || [];
+    const visibleMateriales = materiales.filter((m: any) => m.visible);
+    const allSubtemas = visibleMateriales.flatMap((m: any) => m.subtemas || []);
 
     return (
         <div className="space-y-8 max-w-5xl mx-auto">
@@ -222,7 +227,7 @@ export default function EvalModeSelect() {
                     <ArrowLeft className="w-4 h-4" /> Volver al curso
                 </Link>
 
-                {!isStudent && (
+                {SHOW_TESTING_TOOLS && (
                     <div className="relative">
                         <button
                             onClick={() => setShowTestingMenu(!showTestingMenu)}
@@ -339,6 +344,24 @@ export default function EvalModeSelect() {
                                         />
                                     </button>
                                 </div>
+
+                                {/* Restablecer tutoriales */}
+                                <div className="pt-3 border-t border-border/50 flex flex-col gap-2">
+                                    <button
+                                        onClick={() => {
+                                            const userId = user.id || "guest";
+                                            Object.keys(localStorage).forEach(key => {
+                                                if (key.startsWith(`semantika.skip_tutorial.${userId}.`)) {
+                                                    localStorage.removeItem(key);
+                                                }
+                                            });
+                                            alert("Se restablecieron todos los tutoriales.");
+                                        }}
+                                        className="w-full text-center py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground text-xs font-bold transition-all cursor-pointer"
+                                    >
+                                        Restablecer tutoriales
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -355,7 +378,7 @@ export default function EvalModeSelect() {
             </div>
 
             {/* Tarjeta de Materiales de Estudio (Estética y Profesional) */}
-            <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs max-w-2xl mx-auto text-left relative overflow-hidden">
+            <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs text-left relative overflow-hidden">
                 {/* Decoración lateral discreta */}
                 <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-primary" />
                 
@@ -366,9 +389,11 @@ export default function EvalModeSelect() {
                         </div>
                         <div className="min-w-0 flex-1">
                             <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Material de lectura</span>
-                            <h3 className="font-semibold text-base truncate pr-4 text-foreground/90 mt-0.5" title={materiales.length > 0 ? (materiales[0].nombreArchivo || "Material") : "Material de la semana"}>
-                                {materiales.length > 0
-                                    ? materiales[0].nombreArchivo.replace(/-/g, ' ').replace(/\.pdf$/i, '')
+                            <h3 className="font-semibold text-base truncate pr-4 text-foreground/90 mt-0.5" title={visibleMateriales.map((m: any) => m.nombreArchivo || "").join("\n")}>
+                                {visibleMateriales.length > 0
+                                    ? (visibleMateriales.length === 1
+                                        ? visibleMateriales[0].nombreArchivo.replace(/-/g, ' ').replace(/\.pdf$/i, '').replace(/\.docx$/i, '')
+                                        : `${visibleMateriales[0].nombreArchivo.replace(/-/g, ' ').replace(/\.pdf$/i, '').replace(/\.docx$/i, '')} y ${visibleMateriales.length - 1} más`)
                                     : "Material de la semana"}
                             </h3>
                             <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground font-medium">
@@ -415,13 +440,13 @@ export default function EvalModeSelect() {
             </div>
 
             {/* Subtemas UI */}
-            {completedAdaptive && materiales.length > 0 && materiales[0]?.subtemas && materiales[0].subtemas.length > 0 && (
-                <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs max-w-2xl mx-auto text-left mt-4">
+            {completedAdaptive && allSubtemas.length > 0 && (
+                <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs text-left mt-4">
                     <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-primary" /> Selecciona los temas a evaluar:
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                        {materiales[0].subtemas.map((subtema: string) => {
+                        {allSubtemas.map((subtema: string) => {
                             const isSelected = selectedSubtemas.includes(subtema);
                             return (
                                 <button
@@ -474,9 +499,9 @@ export default function EvalModeSelect() {
                     {/* Banner de Evaluación Recomendadora */}
                     <div className="mb-8">
                         {!completedAdaptive ? (
-                            <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs">
+                            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs">
                                 <div className="flex items-start gap-4 text-left">
-                                    <div className="w-11 h-11 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 grid place-items-center shadow-xs shrink-0 animate-pulse">
+                                    <div className="w-11 h-11 rounded-lg bg-primary/10 border border-primary/20 text-primary dark:text-primary-glow grid place-items-center shadow-xs shrink-0 animate-pulse">
                                         <Brain className="w-5 h-5" />
                                     </div>
                                     <div className="space-y-1">
@@ -488,7 +513,7 @@ export default function EvalModeSelect() {
                                 </div>
                                 <Link
                                     to={`/app/curso/${courseId}/semana/${week}/evaluacion/adaptativa`}
-                                    className="px-6 py-3 rounded-lg bg-amber-500 text-white font-extrabold text-xs tracking-wider shadow-sm hover:bg-amber-600 transition-all shrink-0 active:scale-95 text-center w-full md:w-auto cursor-pointer"
+                                    className="px-6 py-3 rounded-lg bg-primary text-primary-foreground font-extrabold text-xs tracking-wider shadow-sm hover:bg-primary/90 transition-all shrink-0 active:scale-95 text-center w-full md:w-auto cursor-pointer"
                                 >
                                     Realizar Diagnóstico
                                 </Link>
@@ -706,15 +731,17 @@ export default function EvalModeSelect() {
                             const getTargetUrl = () => {
                                 let temaParam = selectedSubtemas.length > 0 
                                     ? selectedSubtemas.join(", ") 
-                                    : (materiales[0]?.nombreArchivo || "")
-                                        .replace(/\.[^/.]+$/, "")
-                                        .replace(/[-_]/g, " ")
-                                        .trim();
+                                    : (visibleMateriales.length > 0
+                                        ? visibleMateriales.map((m: any) => (m.nombreArchivo || "").replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim()).join(", ")
+                                        : "");
+
+                                const targetMat = visibleMateriales[0] || materiales[0];
+                                const mongoIdParam = targetMat?.mongoId || targetMat?.id || "";
 
                                 if (m.id === "adaptativa" || m.id === "avatar" || m.id === "video") {
-                                    return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?mongoId=${materiales[0]?.mongoId || materiales[0]?.id || ""}&tema=${encodeURIComponent(temaParam)}`;
+                                    return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?mongoId=${mongoIdParam}&tema=${encodeURIComponent(temaParam)}`;
                                 }
-                                return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${materiales[0]?.mongoId || materiales[0]?.id || ""}&tema=${encodeURIComponent(temaParam)}`;
+                                return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${mongoIdParam}&tema=${encodeURIComponent(temaParam)}`;
                             };
 
                             return (
@@ -729,7 +756,16 @@ export default function EvalModeSelect() {
                                     ) : (
                                         <div
                                             className="cursor-pointer"
-                                            onClick={() => setPendingTutorial({ modeId: m.id, url: getTargetUrl() })}
+                                            onClick={() => {
+                                                const url = getTargetUrl();
+                                                const userId = user.id || "guest";
+                                                const shouldSkip = localStorage.getItem(`semantika.skip_tutorial.${userId}.${m.id}`) === "true";
+                                                if (shouldSkip) {
+                                                    navigate(url);
+                                                } else {
+                                                    setPendingTutorial({ modeId: m.id, url });
+                                                }
+                                            }}
                                         >
                                             {cardContent}
                                         </div>
