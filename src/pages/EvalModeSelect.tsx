@@ -1,12 +1,17 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Clock, Loader2, Eye, Lock, FlaskConical, Brain, BookOpen, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Loader2, Eye, Lock, FlaskConical, Brain, BookOpen, Sparkles, Check, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import { EvalTutorialModal } from "@/components/EvalTutorialModal";
-import { useEvalModeSelect } from "../presentation/hooks/useEvalModeSelect";
+import { useEvalModeSelect } from "@/hooks/useEvalModeSelect";
 import { getEvalModeIcon } from "@/lib/icon-mapper";
+import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { rendimientoApi } from "@/api";
+import MapaCalorTemas from "@/components/MapaCalorTemas";
+import type { GrupoCursoConocimiento } from "@/components/ConceptHeatMap";
 
 // 🛠️ Bandera de Configuración: Cambia a false para ocultar el menú de Herramientas de Test en demostración final o producción
 const SHOW_TESTING_TOOLS = true;
@@ -131,8 +136,26 @@ export default function EvalModeSelect() {
 
     const [pendingTutorial, setPendingTutorial] = useState<{ modeId: string; url: string } | null>(null);
 
+    /**
+     * Las opciones que ahora mismo no están disponibles se ocultan tras un botón, en vez
+     * de mostrarse como seis tarjetas grises con "BLOQUEADO" y "NO RECOMENDADO".
+     * Un alumno de secundaria lee esa pared de gris como un castigo, no como una guía —
+     * y además vuelve imposible ver de un vistazo qué SÍ puede hacer.
+     */
+    const [mostrarNoDisponibles, setMostrarNoDisponibles] = useState(false);
+
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const isStudent = user?.role?.toLowerCase() === "student";
+
+    const semanaTitulo = semana?.nombreTema || semana?.numSem || "esta semana";
+
+    // Mapa de calor de ESTA semana. Se pide el mapa completo del alumno (ya está en caché de
+    // TanStack Query si viene del Mapa de Conocimiento) y el componente filtra por semana.
+    const { data: mapaConocimiento = [] } = useQuery<GrupoCursoConocimiento[]>({
+        queryKey: ["mapa-conocimiento", user?.id],
+        queryFn: () => rendimientoApi.mapaConocimiento(user.id),
+        enabled: !!user?.id && isStudent,
+    });
     const savedRecsRaw = localStorage.getItem(`semantika.recomendaciones.${user?.id}.${week}`);
     const completedAdaptive = !!savedRecsRaw;
     const recommendations = savedRecsRaw ? JSON.parse(savedRecsRaw) : [];
@@ -217,6 +240,183 @@ export default function EvalModeSelect() {
     const visibleMateriales = materiales.filter((m: any) => m.visible);
     const allSubtemas = visibleMateriales.flatMap((m: any) => m.subtemas || []);
 
+
+    /** Un modo no está disponible ahora mismo (sea por bloqueo, por recomendación o porque aún no existe). */
+    const esModoNoDisponible = (m: any) => {
+        const isUnfinished = m.id === unfinishedMode;
+        const isBlockedByOtherUnfinished = !ignorarBloqueo && unfinishedMode !== null && !isUnfinished;
+        const isRecommended = isModeRecommended(m.id, recommendations);
+        // Solo se exige la evaluacion de ubicacion inicial. Una vez hecha, TODOS los modos
+        // quedan disponibles: los recomendados se destacan y dan puntos extra, pero no se
+        // bloquea ninguno.
+        //
+        // Por que se quito el bloqueo: la motivacion intrinseca se sostiene sobre la
+        // autonomia, y una pantalla con seis tarjetas apagadas y sin explicacion la elimina.
+        // Convertir la restriccion en incentivo conserva la guia del sistema y devuelve la
+        // decision al alumno. Ademas, si puede desviarse, se puede MEDIR cuanto sigue la
+        // recomendacion; si se le obliga, ese dato no existe.
+        const faltaUbicacion = !ignorarBloqueo && !completedAdaptive && m.id !== "adaptativa";
+        return m.disabled || isBlockedByOtherUnfinished || faltaUbicacion;
+    };
+
+    /** Renderiza una tarjeta de modo de evaluación. */
+    const renderModo = (m: any, i: number) => {
+const isUnfinished = m.id === unfinishedMode;
+                            const isBlockedByOtherUnfinished = !ignorarBloqueo && unfinishedMode !== null && !isUnfinished;
+                            const isRecommended = isModeRecommended(m.id, recommendations);
+                            // Ver la nota en esModoNoDisponible: solo bloquea la ubicacion inicial.
+                            const faltaUbicacion = !ignorarBloqueo && !completedAdaptive && m.id !== "adaptativa";
+
+                            const isDisabled = m.disabled || isBlockedByOtherUnfinished || faltaUbicacion;
+
+                            const cardContent = (
+                                <div
+                                    className={cn(
+                                        "group block bg-card border rounded-xl p-5 shadow-xs h-full transition-all relative overflow-hidden",
+                                        isDisabled
+                                            ? "border-border/60 opacity-70 cursor-not-allowed bg-muted/20"
+                                            : isUnfinished
+                                                ? "border-amber-500/50 shadow-sm bg-amber-500/5 hover:-translate-y-0.5 cursor-pointer"
+                                                : m.id === "adaptativa" && !completedAdaptive
+                                                    ? "border-primary/50 shadow-sm bg-primary/5 animate-pulse hover:-translate-y-0.5 cursor-pointer"
+                                                    : "border-border hover:-translate-y-0.5 cursor-pointer"
+                                    )}
+                                >
+                                    {completedAdaptive && isRecommended && m.id !== "adaptativa" && (
+                                        <div className="absolute top-3 right-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
+                                            ✨ Recomendado
+                                        </div>
+                                    )}
+                                    
+                                    {faltaUbicacion && (
+                                        <div className="absolute top-3 right-3 bg-destructive/15 border border-destructive/30 text-destructive text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
+                                            Empieza por la adaptativa
+                                        </div>
+                                    )}
+
+                                    {/* Recomendado y disponible: se destaca como incentivo, no
+                                        como restricción. Antes, no estar recomendado bloqueaba
+                                        la tarjeta; ahora suma puntos elegirla. */}
+                                    {!faltaUbicacion && isRecommended && (
+                                        <div className="absolute top-3 right-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
+                                            Recomendada · +puntos
+                                        </div>
+                                    )}
+
+                                    <div
+                                        className={cn(
+                                            "w-11 h-11 rounded-lg grid place-items-center shadow-xs mb-4",
+                                            iconColorMap[m.color] || iconColorMap.primary
+                                        )}
+                                    >
+                                        {getEvalModeIcon(m.id, "w-5 h-5")}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                        <h3 className="font-display font-bold text-xl">{m.title}</h3>
+                                        {m.disabled && (
+                                            <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
+                                                Pronto
+                                            </span>
+                                        )}
+                                        {isBlockedByOtherUnfinished && (
+                                            <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
+                                                En espera
+                                            </span>
+                                        )}
+                                        {isUnfinished && (
+                                            <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold uppercase tracking-wider animate-pulse flex items-center gap-1 shadow-sm">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" /> Continuar
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <p className="text-sm text-muted-foreground mb-4">{m.description}</p>
+
+                                    <ul className="space-y-1.5 mb-5">
+                                        {m.bullets.map((b) => (
+                                            <li key={b} className="text-xs font-semibold flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />{" "}
+                                                {b}
+                                            </li>
+                                        ))}
+                                    </ul>
+
+                                    <div className="flex items-center justify-between pt-4 border-t border-border">
+                                        <span className="text-xs font-bold text-muted-foreground inline-flex items-center gap-1.5">
+                                            <Clock className="w-3.5 h-3.5" /> {m.duration}
+                                        </span>
+                                        {!isDisabled && (
+                                            isUnfinished ? (
+                                                <span className="text-sm font-bold text-amber-500 inline-flex items-center gap-1 group-hover:gap-2 transition-all animate-pulse">
+                                                    Continuar examen <ArrowRight className="w-4 h-4" />
+                                                </span>
+                                            ) : (
+                                                <span className="text-sm font-bold text-primary inline-flex items-center gap-1 group-hover:gap-2 transition-all">
+                                                    Empezar <ArrowRight className="w-4 h-4" />
+                                                </span>
+                                            )
+                                        )}
+                                        {isBlockedByOtherUnfinished && (
+                                            <span className="text-xs font-semibold text-muted-foreground/60">
+                                                Termina la que dejaste a medias
+                                            </span>
+                                        )}
+                                        {faltaUbicacion && (
+                                            <span className="text-xs font-semibold text-muted-foreground/60">
+                                                Primero la evaluación adaptativa
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+
+                            const getTargetUrl = () => {
+                                let temaParam = selectedSubtemas.length > 0 
+                                    ? selectedSubtemas.join(", ") 
+                                    : (visibleMateriales.length > 0
+                                        ? visibleMateriales.map((m: any) => (m.nombreArchivo || "").replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim()).join(", ")
+                                        : "");
+
+                                const targetMat = visibleMateriales[0] || materiales[0];
+                                const mongoIdParam = targetMat?.mongoId || targetMat?.id || "";
+
+                                if (m.id === "adaptativa" || m.id === "avatar" || m.id === "video") {
+                                    return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?mongoId=${mongoIdParam}&tema=${encodeURIComponent(temaParam)}`;
+                                }
+                                return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${mongoIdParam}&tema=${encodeURIComponent(temaParam)}`;
+                            };
+
+                            return (
+                                <motion.div
+                                    key={m.id}
+                                    initial={{ opacity: 0, y: 12 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.06 }}
+                                >
+                                    {isDisabled ? (
+                                        <div>{cardContent}</div>
+                                    ) : (
+                                        <div
+                                            className="cursor-pointer"
+                                            onClick={() => {
+                                                const url = getTargetUrl();
+                                                const userId = user.id || "guest";
+                                                const shouldSkip = localStorage.getItem(`semantika.skip_tutorial.${userId}.${m.id}`) === "true";
+                                                if (shouldSkip) {
+                                                    navigate(url);
+                                                } else {
+                                                    setPendingTutorial({ modeId: m.id, url });
+                                                }
+                                            }}
+                                        >
+                                            {cardContent}
+                                        </div>
+                                    )}
+                                </motion.div>
+                            );
+    };
+
     return (
         <div className="space-y-8 max-w-5xl mx-auto">
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -226,6 +426,23 @@ export default function EvalModeSelect() {
                 >
                     <ArrowLeft className="w-4 h-4" /> Volver al curso
                 </Link>
+
+                {/* Acceso al mapa de calor de ESTA semana, entre los dos extremos de la
+                    cabecera. `min-w-0` en el contenedor y `truncate` en el texto son lo que
+                    hace que un titulo largo se corte con puntos suspensivos en vez de empujar
+                    el boton de la derecha fuera de la pantalla en un movil. */}
+                {isStudent && (
+                    <Link
+                        to="/app/mapa-conocimiento"
+                        title={`Mapa de calor de ${semanaTitulo}`}
+                        className="hidden sm:flex items-center gap-2 min-w-0 max-w-[46%] mx-3 px-3 py-2 rounded-xl border border-border bg-card hover:bg-muted/60 transition-colors"
+                    >
+                        <Flame className="w-4 h-4 shrink-0 text-rose-500" />
+                        <span className="text-sm font-semibold truncate">
+                            Mapa de calor de {semanaTitulo}
+                        </span>
+                    </Link>
+                )}
 
                 {SHOW_TESTING_TOOLS && (
                     <div className="relative">
@@ -355,7 +572,10 @@ export default function EvalModeSelect() {
                                                     localStorage.removeItem(key);
                                                 }
                                             });
-                                            alert("Se restablecieron todos los tutoriales.");
+                                            // El alert() nativo bloquea la página y muestra
+                                            // "localhost:8081 dice", que rompe la ilusión de
+                                            // producto. sonner ya está montado en App.tsx.
+                                            toast.success("Se restablecieron todos los tutoriales.");
                                         }}
                                         className="w-full text-center py-2 rounded-lg bg-secondary hover:bg-secondary/80 text-foreground text-xs font-bold transition-all cursor-pointer"
                                     >
@@ -368,13 +588,31 @@ export default function EvalModeSelect() {
                 )}
             </div>
 
-            <div className="text-center max-w-2xl mx-auto space-y-2">
-                <h1 className="font-display text-4xl md:text-5xl font-extrabold tracking-tight">
-                    {semana.numSem}
-                </h1>
+            <div className="text-center max-w-2xl mx-auto space-y-3">
+                {/* El nombre del tema lo define el docente (SemanaDTO.nombreTema). Si aún no lo
+                    puso, se cae al ordinal "Semana N" para no dejar la cabecera vacía. */}
+                <div>
+                    <h1 className="font-display text-3xl md:text-4xl font-extrabold tracking-tight leading-tight">
+                        {semana.nombreTema || semana.numSem}
+                    </h1>
+                    {semana.nombreTema && (
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-1">
+                            {semana.numSem}
+                        </p>
+                    )}
+                </div>
                 <p className="text-muted-foreground text-sm">
-                    Revisa los materiales asignados y elige el método de evaluación para poner a prueba tus conocimientos.
+                    Son tres pasos: lee el material, elige el tema y decide cómo quieres practicar.
                 </p>
+                {/* Atajo al paso 3: en las pruebas, los alumnos no sabían que había que
+                    seguir bajando para encontrar los métodos de evaluación. */}
+                <a
+                    href="#paso-elegir-metodo"
+                    className="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
+                >
+                    Ir directo a elegir cómo practicar
+                    <ArrowRight className="w-4 h-4 rotate-90" />
+                </a>
             </div>
 
             {/* Tarjeta de Materiales de Estudio (Estética y Profesional) */}
@@ -388,7 +626,12 @@ export default function EvalModeSelect() {
                             <BookOpen className="w-6 h-6" />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Material de lectura</span>
+                            <span className="inline-flex items-center gap-2 text-[11px] uppercase font-bold text-muted-foreground tracking-wider">
+                                <span className="w-5 h-5 rounded-md bg-primary text-primary-foreground grid place-items-center text-[10px] font-black">
+                                    1
+                                </span>
+                                Primero, lee el material
+                            </span>
                             <h3 className="font-semibold text-base truncate pr-4 text-foreground/90 mt-0.5" title={visibleMateriales.map((m: any) => m.nombreArchivo || "").join("\n")}>
                                 {visibleMateriales.length > 0
                                     ? (visibleMateriales.length === 1
@@ -418,17 +661,25 @@ export default function EvalModeSelect() {
                                                 onClick={() => mat.visible && setSelectedFile({ id: fileId || "", name: mat.nombreArchivo })}
                                                 disabled={!mat.visible}
                                                 className={cn(
-                                                    "inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all shadow-xs border cursor-pointer active:scale-95",
+                                                    // Objetivo táctil de 44px y sin animate-pulse: el parpadeo
+                                                    // constante distrae más de lo que llama la atención.
+                                                    "inline-flex items-center justify-center gap-2 px-4 min-h-[44px] text-sm font-bold rounded-lg transition-all shadow-xs border cursor-pointer active:scale-95 max-w-full",
                                                     mat.visible
-                                                        ? "bg-primary text-primary-foreground border-transparent hover:bg-primary/95 animate-pulse"
+                                                        ? "bg-primary text-primary-foreground border-transparent hover:bg-primary/95"
                                                         : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
                                                 )}
-                                                title={!mat.visible ? "Material oculto por el docente" : ""}
+                                                title={!mat.visible ? "Material oculto por el docente" : mat.nombreArchivo}
                                             >
-                                                <Eye className="w-3.5 h-3.5" />
-                                                {materiales.length === 1
-                                                    ? "Leer documento"
-                                                    : `Leer Doc ${idx + 1}`}
+                                                <Eye className="w-4 h-4 shrink-0" />
+                                                {/* "Leer Doc 2" no le dice nada al alumno: no sabe qué
+                                                    documento es el 2. Ahora se lee el nombre real. */}
+                                                <span className="truncate">
+                                                    {materiales.length === 1
+                                                        ? "Abrir y leer el material"
+                                                        : `Leer: ${(mat.nombreArchivo || `Documento ${idx + 1}`)
+                                                            .replace(/\.(pdf|docx?|pptx?)$/i, "")
+                                                            .replace(/[-_]/g, " ")}`}
+                                                </span>
                                             </button>
                                         );
                                     })}
@@ -439,18 +690,35 @@ export default function EvalModeSelect() {
                 </div>
             </div>
 
-            {/* Subtemas UI */}
+            {/* Paso 2 — Subtemas.
+                En las pruebas con alumnos, nadie descubrió que estos chips se podían tocar:
+                parecían etiquetas decorativas. Ahora cada uno lleva una casilla visible, que
+                es la señal universal de "esto se marca", y el encabezado dice explícitamente
+                que es opcional para que nadie se quede atascado creyendo que debe elegir. */}
             {completedAdaptive && allSubtemas.length > 0 && (
-                <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs text-left mt-4">
-                    <h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-primary" /> Selecciona los temas a evaluar:
-                    </h4>
+                <div className="bg-card border border-border/80 rounded-xl p-5 sm:p-6 shadow-xs text-left mt-4">
+                    <div className="flex items-start gap-3 mb-4">
+                        <span className="w-7 h-7 rounded-lg bg-primary text-primary-foreground grid place-items-center text-xs font-black shrink-0">
+                            2
+                        </span>
+                        <div>
+                            <h4 className="text-sm font-bold text-foreground leading-tight">
+                                ¿Sobre qué tema quieres que te pregunte?
+                            </h4>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Toca los que quieras practicar. Si no eliges ninguno, entran todos.
+                            </p>
+                        </div>
+                    </div>
+
                     <div className="flex flex-wrap gap-2">
                         {allSubtemas.map((subtema: string) => {
                             const isSelected = selectedSubtemas.includes(subtema);
                             return (
                                 <button
                                     key={subtema}
+                                    type="button"
+                                    aria-pressed={isSelected}
                                     onClick={() => {
                                         if (isSelected) {
                                             setSelectedSubtemas(selectedSubtemas.filter(s => s !== subtema));
@@ -459,20 +727,30 @@ export default function EvalModeSelect() {
                                         }
                                     }}
                                     className={cn(
-                                        "px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer select-none",
-                                        isSelected 
-                                            ? "bg-primary text-primary-foreground border-primary" 
-                                            : "bg-muted/50 text-muted-foreground border-border hover:bg-muted"
+                                        "inline-flex items-center gap-2 pl-2.5 pr-3.5 py-2.5 rounded-lg text-sm font-semibold border-2 transition-all cursor-pointer select-none min-h-[44px]",
+                                        isSelected
+                                            ? "bg-primary/10 text-primary border-primary"
+                                            : "bg-card text-foreground border-border hover:border-primary/50 hover:bg-muted/40"
                                     )}
                                 >
+                                    <span
+                                        aria-hidden
+                                        className={cn(
+                                            "w-5 h-5 rounded-md border-2 grid place-items-center shrink-0 transition-colors",
+                                            isSelected ? "bg-primary border-primary" : "border-muted-foreground/40 bg-background"
+                                        )}
+                                    >
+                                        {isSelected && <Check className="w-3.5 h-3.5 text-primary-foreground" strokeWidth={3} />}
+                                    </span>
                                     {subtema}
                                 </button>
                             );
                         })}
                     </div>
-                    {selectedSubtemas.length === 0 && (
-                        <p className="text-[10px] text-muted-foreground mt-2">
-                            *Si no seleccionas ninguno, se evaluará sobre todo el material por defecto.
+
+                    {selectedSubtemas.length > 0 && (
+                        <p className="text-xs text-primary font-semibold mt-3">
+                            {selectedSubtemas.length} {selectedSubtemas.length === 1 ? "tema elegido" : "temas elegidos"}
                         </p>
                     )}
                 </div>
@@ -601,6 +879,35 @@ export default function EvalModeSelect() {
                         )}
                     </div>
 
+                    {/* Cómo lleva el alumno los temas de ESTA semana, justo antes de elegir
+                        cómo practicar: es el momento en que la información le sirve para
+                        decidir, y no una pantalla aparte a la que hay que ir a buscarla. */}
+                    {isStudent && (
+                        <div className="pt-2">
+                            <h3 className="font-display font-bold text-lg mb-1">Cómo llevas esta semana</h3>
+                            <p className="text-sm text-muted-foreground mb-3">
+                                Lo azul ya lo dominas; lo rojo conviene repasarlo.
+                            </p>
+                            <MapaCalorTemas cursos={mapaConocimiento} soloSemanaId={week} compacto />
+                        </div>
+                    )}
+
+                    {/* Paso 3 — el que los alumnos no encontraban porque quedaba bajo el fold.
+                        Ahora lleva número, ancla y un encabezado propio. */}
+                    <div id="paso-elegir-metodo" className="flex items-start gap-3 pt-2 scroll-mt-24">
+                        <span className="w-7 h-7 rounded-lg bg-primary text-primary-foreground grid place-items-center text-xs font-black shrink-0">
+                            3
+                        </span>
+                        <div>
+                            <h3 className="font-display font-bold text-lg leading-tight">
+                                Elige cómo quieres practicar
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                Todas evalúan lo mismo; cambia la forma. Elige la que más te guste.
+                            </p>
+                        </div>
+                    </div>
+
                     <div className="flex items-center justify-center gap-3">
                         <span className="text-sm font-semibold text-muted-foreground">
                             Cantidad de preguntas:
@@ -623,157 +930,57 @@ export default function EvalModeSelect() {
                         </div>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 gap-5">
-                        {evalModes.map((m, i) => {
-                            const isUnfinished = m.id === unfinishedMode;
-                            const isBlockedByOtherUnfinished = !ignorarBloqueo && unfinishedMode !== null && !isUnfinished;
-                            const isRecommended = isModeRecommended(m.id, recommendations);
-                            const isLockedByAdaptive = !ignorarBloqueo && !ignorarRecomendados && (
-                                (!completedAdaptive && m.id !== "adaptativa") ||
-                                (completedAdaptive && m.id !== "adaptativa" && !isRecommended)
-                            );
+                    {/* Aviso único cuando hay algo a medio terminar, en vez de bloquear
+                        visualmente todo lo demás sin explicar por qué. */}
+                    {unfinishedMode !== null && !ignorarBloqueo && (
+                        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-800/60 rounded-xl p-4 flex items-start gap-3">
+                            <span className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 grid place-items-center shrink-0 mt-0.5">
+                                <Clock className="w-5 h-5" />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="font-bold text-sm text-amber-900 dark:text-amber-200">
+                                    Tienes una prueba a medio hacer
+                                </p>
+                                <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5 leading-relaxed">
+                                    Termínala y las demás formas de practicar se desbloquean solas.
+                                    No pierdes nada de lo que ya respondiste.
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
-                            const isDisabled = m.disabled || isBlockedByOtherUnfinished || isLockedByAdaptive;
-
-                            const cardContent = (
-                                <div
-                                    className={cn(
-                                        "group block bg-card border rounded-xl p-5 shadow-xs h-full transition-all relative overflow-hidden",
-                                        isDisabled
-                                            ? "border-border opacity-50 grayscale cursor-not-allowed bg-secondary/5"
-                                            : isUnfinished
-                                                ? "border-amber-500/50 shadow-sm bg-amber-500/5 hover:-translate-y-0.5 cursor-pointer"
-                                                : m.id === "adaptativa" && !completedAdaptive
-                                                    ? "border-primary/50 shadow-sm bg-primary/5 animate-pulse hover:-translate-y-0.5 cursor-pointer"
-                                                    : "border-border hover:-translate-y-0.5 cursor-pointer"
-                                    )}
-                                >
-                                    {completedAdaptive && isRecommended && m.id !== "adaptativa" && (
-                                        <div className="absolute top-3 right-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
-                                            ✨ Recomendado
-                                        </div>
-                                    )}
-                                    
-                                    {isLockedByAdaptive && (
-                                        <div className="absolute top-3 right-3 bg-destructive/15 border border-destructive/30 text-destructive text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
-                                            {completedAdaptive ? "🔒 No Recomendado" : "🔒 Completar Adaptativa"}
-                                        </div>
-                                    )}
-
-                                    <div
-                                        className={cn(
-                                            "w-11 h-11 rounded-lg grid place-items-center shadow-xs mb-4",
-                                            iconColorMap[m.color] || iconColorMap.primary
-                                        )}
-                                    >
-                                        {getEvalModeIcon(m.id, "w-5 h-5")}
-                                    </div>
-
-                                    <div className="flex items-center gap-2 mb-1.5">
-                                        <h3 className="font-display font-bold text-xl">{m.title}</h3>
-                                        {m.disabled && (
-                                            <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
-                                                Pronto
-                                            </span>
-                                        )}
-                                        {isBlockedByOtherUnfinished && (
-                                            <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
-                                                Bloqueado
-                                            </span>
-                                        )}
-                                        {isUnfinished && (
-                                            <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold uppercase tracking-wider animate-pulse flex items-center gap-1 shadow-sm">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" /> Continuar
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <p className="text-sm text-muted-foreground mb-4">{m.description}</p>
-
-                                    <ul className="space-y-1.5 mb-5">
-                                        {m.bullets.map((b) => (
-                                            <li key={b} className="text-xs font-semibold flex items-center gap-2">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />{" "}
-                                                {b}
-                                            </li>
-                                        ))}
-                                    </ul>
-
-                                    <div className="flex items-center justify-between pt-4 border-t border-border">
-                                        <span className="text-xs font-bold text-muted-foreground inline-flex items-center gap-1.5">
-                                            <Clock className="w-3.5 h-3.5" /> {m.duration}
-                                        </span>
-                                        {!isDisabled && (
-                                            isUnfinished ? (
-                                                <span className="text-sm font-bold text-amber-500 inline-flex items-center gap-1 group-hover:gap-2 transition-all animate-pulse">
-                                                    Continuar examen <ArrowRight className="w-4 h-4" />
-                                                </span>
-                                            ) : (
-                                                <span className="text-sm font-bold text-primary inline-flex items-center gap-1 group-hover:gap-2 transition-all">
-                                                    Empezar <ArrowRight className="w-4 h-4" />
-                                                </span>
-                                            )
-                                        )}
-                                        {isBlockedByOtherUnfinished && (
-                                            <span className="text-xs font-semibold text-muted-foreground/60">
-                                                Prueba en curso pendiente
-                                            </span>
-                                        )}
-                                        {isLockedByAdaptive && (
-                                            <span className="text-xs font-semibold text-muted-foreground/60">
-                                                {completedAdaptive ? "No recomendado" : "Requiere adaptativa primero"}
-                                            </span>
-                                        )}
-                                    </div>
+                    {(() => {
+                        // Se separan en dos grupos para que el alumno vea primero — y sin
+                        // ruido — aquello en lo que puede hacer clic ahora mismo.
+                        const disponibles = evalModes.filter((m) => !esModoNoDisponible(m));
+                        const noDisponibles = evalModes.filter((m) => esModoNoDisponible(m));
+                        return (
+                            <>
+                                <div className="grid sm:grid-cols-2 gap-5">
+                                    {disponibles.map((m, i) => renderModo(m, i))}
                                 </div>
-                            );
 
-                            const getTargetUrl = () => {
-                                let temaParam = selectedSubtemas.length > 0 
-                                    ? selectedSubtemas.join(", ") 
-                                    : (visibleMateriales.length > 0
-                                        ? visibleMateriales.map((m: any) => (m.nombreArchivo || "").replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim()).join(", ")
-                                        : "");
-
-                                const targetMat = visibleMateriales[0] || materiales[0];
-                                const mongoIdParam = targetMat?.mongoId || targetMat?.id || "";
-
-                                if (m.id === "adaptativa" || m.id === "avatar" || m.id === "video") {
-                                    return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?mongoId=${mongoIdParam}&tema=${encodeURIComponent(temaParam)}`;
-                                }
-                                return `/app/curso/${courseId}/semana/${week}/evaluacion/${m.id}?cantidad=${cantidad}&mongoId=${mongoIdParam}&tema=${encodeURIComponent(temaParam)}`;
-                            };
-
-                            return (
-                                <motion.div
-                                    key={m.id}
-                                    initial={{ opacity: 0, y: 12 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: i * 0.06 }}
-                                >
-                                    {isDisabled ? (
-                                        <div>{cardContent}</div>
-                                    ) : (
-                                        <div
-                                            className="cursor-pointer"
-                                            onClick={() => {
-                                                const url = getTargetUrl();
-                                                const userId = user.id || "guest";
-                                                const shouldSkip = localStorage.getItem(`semantika.skip_tutorial.${userId}.${m.id}`) === "true";
-                                                if (shouldSkip) {
-                                                    navigate(url);
-                                                } else {
-                                                    setPendingTutorial({ modeId: m.id, url });
-                                                }
-                                            }}
+                                {noDisponibles.length > 0 && (
+                                    <div className="pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setMostrarNoDisponibles((v) => !v)}
+                                            className="text-xs font-bold text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1.5"
                                         >
-                                            {cardContent}
-                                        </div>
-                                    )}
-                                </motion.div>
-                            );
-                        })}
-                    </div>
+                                            {mostrarNoDisponibles ? "Ocultar" : "Ver"} las otras {noDisponibles.length} formas de practicar
+                                            <ArrowRight className={cn("w-3.5 h-3.5 transition-transform", mostrarNoDisponibles && "rotate-90")} />
+                                        </button>
+                                        {mostrarNoDisponibles && (
+                                            <div className="grid sm:grid-cols-2 gap-5 mt-4">
+                                                {noDisponibles.map((m, i) => renderModo(m, i))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
+
                 </>
             )}
 

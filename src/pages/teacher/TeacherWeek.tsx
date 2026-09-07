@@ -1,11 +1,13 @@
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Upload, Trash2, FileText, BookOpen, Loader2, Eye, EyeOff, Download, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Upload, Trash2, FileText, BookOpen, Loader2, Eye, EyeOff, Download, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { semanasApi, intentosApi, coursesApi } from "@/api/courses.ts";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
+import ProgresoIngestaBarra from "@/components/ProgresoIngestaBarra";
+import CuracionTemas from "@/components/CuracionTemas";
 // 1. IMPORTAMOS EL NUEVO MODAL UNIVERSAL
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import {cn} from "@/lib/utils.ts";
@@ -41,6 +43,31 @@ export default function TeacherWeek() {
 
     // 2. ACTUALIZAMOS EL ESTADO PARA GUARDAR ID Y NOMBRE
     const [selectedFile, setSelectedFile] = useState<{ id: string, name: string } | null>(null);
+
+    // Nombre del tema de la semana, editable por el docente.
+    const [editandoNombre, setEditandoNombre] = useState(false);
+    const [nombreBorrador, setNombreBorrador] = useState("");
+    const [guardandoNombre, setGuardandoNombre] = useState(false);
+
+    const guardarNombre = async () => {
+        const nombre = nombreBorrador.trim();
+        if (!nombre) {
+            toast.warning("Escribe un nombre para el tema de esta semana.");
+            return;
+        }
+        setGuardandoNombre(true);
+        try {
+            await semanasApi.renombrar(semanaId!, nombre);
+            queryClient.invalidateQueries({ queryKey: ["semana", semanaId] });
+            queryClient.invalidateQueries({ queryKey: ["semanas", courseId] });
+            setEditandoNombre(false);
+            toast.success("Nombre del tema actualizado.");
+        } catch (e: any) {
+            toast.error(e?.message || "No se pudo actualizar el nombre.");
+        } finally {
+            setGuardandoNombre(false);
+        }
+    };
     const [expandedStudents, setExpandedStudents] = useState<Record<string, boolean>>({});
 
     const toggleStudentExpand = (email: string) => {
@@ -113,15 +140,32 @@ export default function TeacherWeek() {
         };
     });
 
+    // Ingesta en segundo plano: la petición devuelve enseguida un id y el progreso se
+    // consulta aparte. Con la ruta síncrona, una obra larga mantenía la petición abierta
+    // varios minutos y el navegador acababa cortándola con la ingesta a medias.
+    const [ingestaId, setIngestaId] = useState<string | null>(null);
+
     const uploadMutation = useMutation({
-        mutationFn: (files: File[]) => semanasApi.uploadFiles(semanaId, files),
-        onSuccess: () => {
-            toast.success("Archivos subidos y vinculados correctamente");
-            queryClient.invalidateQueries({ queryKey: ["semana", semanaId] });
-            queryClient.invalidateQueries({ queryKey: ["semanas", courseId] });
+        mutationFn: (files: File[]) => semanasApi.uploadFilesAsync(semanaId, files),
+        onSuccess: (r) => {
+            setIngestaId(r.ingestaId);
+            toast.success("Procesando el material. Puedes seguir trabajando.");
         },
         onError: () => toast.error("Error al subir los archivos"),
     });
+
+    const alTerminarIngesta = useCallback((exitoso: boolean) => {
+        if (exitoso) {
+            toast.success("Material procesado y listo");
+            queryClient.invalidateQueries({ queryKey: ["semana", semanaId] });
+            queryClient.invalidateQueries({ queryKey: ["semanas", courseId] });
+        } else {
+            toast.error("No se pudo procesar el material");
+        }
+        // Se deja la barra visible unos segundos para que el docente vea el resultado en vez
+        // de que desaparezca de golpe sin explicar qué pasó.
+        setTimeout(() => setIngestaId(null), 4000);
+    }, [queryClient, semanaId, courseId]);
 
     const deleteMutation = useMutation({
         mutationFn: (materialId: string | number) => semanasApi.deleteMaterial(materialId),
@@ -174,6 +218,10 @@ export default function TeacherWeek() {
             toast.error("No hay notas registradas para descargar");
             return;
         }
+
+        // `headers` se usaba abajo sin haberse declarado nunca: pulsar "Exportar CSV"
+        // lanzaba un ReferenceError y la descarga no ocurría.
+        const headers = ["ID intento", "Alumno", "Correo", "Técnica", "Nota", "Fecha"];
 
         const rows: any[] = [];
         groupedStudents.forEach((student: any) => {
@@ -252,10 +300,57 @@ export default function TeacherWeek() {
                 <span className="inline-block px-3 py-1 rounded-full bg-background/20 text-xs font-bold uppercase tracking-wider mb-3">
                     Gestión de material
                 </span>
-                <h1 className="font-display text-3xl md:text-4xl font-bold mb-1">
-                    {semana?.numSem ?? "Semana"}
-                </h1>
-                <p className="opacity-80 text-sm">
+                {/* Título editable: el nombre del tema lo pone el docente, no se hereda del
+                    nombre del archivo subido. Si aún no lo puso, se muestra el ordinal. */}
+                {editandoNombre ? (
+                    <div className="flex items-center gap-2 mb-1 relative z-10 max-w-xl">
+                        <input
+                            autoFocus
+                            value={nombreBorrador}
+                            onChange={(e) => setNombreBorrador(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") guardarNombre();
+                                if (e.key === "Escape") setEditandoNombre(false);
+                            }}
+                            placeholder="Ej. El signo lingüístico"
+                            className="flex-1 bg-background/20 border border-background/40 rounded-lg px-3 h-11 font-display text-2xl font-bold placeholder:text-primary-foreground/50 outline-none focus:border-background/80"
+                        />
+                        <button
+                            type="button"
+                            onClick={guardarNombre}
+                            disabled={guardandoNombre}
+                            className="h-11 px-4 rounded-lg bg-background text-foreground font-bold text-sm shrink-0 disabled:opacity-60"
+                        >
+                            {guardandoNombre ? "Guardando…" : "Guardar"}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setEditandoNombre(false)}
+                            className="h-11 px-3 rounded-lg bg-background/20 font-semibold text-sm shrink-0"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setNombreBorrador(semana?.nombreTema ?? "");
+                            setEditandoNombre(true);
+                        }}
+                        title="Cambiar el nombre del tema de esta semana"
+                        className="group flex items-center gap-2 mb-1 relative z-10 text-left"
+                    >
+                        <h1 className="font-display text-3xl md:text-4xl font-bold">
+                            {semana?.nombreTema || semana?.numSem || "Semana"}
+                        </h1>
+                        <Pencil className="w-4 h-4 opacity-0 group-hover:opacity-70 transition-opacity shrink-0" />
+                    </button>
+                )}
+                <p className="opacity-80 text-sm relative z-10">
+                    {semana?.nombreTema && (
+                        <span className="font-semibold">{semana.numSem} · </span>
+                    )}
                     {semana?.totalPreguntas ?? 0} preguntas generadas · {materiales.length} archivo(s)
                 </p>
             </motion.div>
@@ -272,17 +367,24 @@ export default function TeacherWeek() {
                     <Button
                         size="sm"
                         onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadMutation.isPending}
+                        disabled={uploadMutation.isPending || !!ingestaId}
                         className={cn("rounded-lg text-white", bgSolid)}
                     >
-                        <Upload className="w-4 h-4 mr-1" /> {uploadMutation.isPending ? "Subiendo..." : "Añadir archivos"}
+                        <Upload className="w-4 h-4 mr-1" /> {uploadMutation.isPending || ingestaId ? "Procesando..." : "Añadir archivos"}
                     </Button>
                 </div>
+
+                {ingestaId && (
+                    <div className="mb-4">
+                        <ProgresoIngestaBarra ingestaId={ingestaId} onTerminado={alTerminarIngesta} />
+                    </div>
+                )}
 
                 {materiales.length > 0 ? (
                     <div className="space-y-3">
                         {materiales.map((mat: any) => (
-                            <div key={mat.id} className={cn(
+                            <div key={mat.id} className="space-y-2">
+                            <div className={cn(
                                 "flex items-center gap-4 rounded-xl p-4 transition-all",
                                 mat.visible ? "bg-muted/50" : "bg-muted/20 opacity-60" // Si está oculto, se ve más apagado
                             )}>
@@ -338,19 +440,25 @@ export default function TeacherWeek() {
                                     <Trash2 className="w-4 h-4" />
                                 </Button>
                             </div>
+
+                            {/* Depuración de los temas que la IA extrajo de este material.
+                                Va justo debajo del archivo porque es donde el docente ya está
+                                mirando: separarlo en otra pantalla haría que nadie lo revisara. */}
+                            <CuracionTemas materialId={mat.id} nombreArchivo={mat.nombreArchivo} />
+                            </div>
                         ))}
                     </div>
                 ) : (
                     <button
                         onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadMutation.isPending}
+                        disabled={uploadMutation.isPending || !!ingestaId}
                         className="w-full border-2 border-dashed border-border rounded-xl p-10 flex flex-col items-center gap-3 hover:border-primary/50 hover:bg-primary/5 transition-all disabled:opacity-60"
                     >
                         {uploadMutation.isPending
                             ? <Loader2 className="w-8 h-8 animate-spin text-primary" />
                             : <Upload className="w-8 h-8 text-muted-foreground" />}
                         <p className="font-semibold text-sm">
-                            {uploadMutation.isPending ? "Subiendo y procesando..." : "Haz clic para subir material"}
+                            {uploadMutation.isPending || ingestaId ? "Procesando el material..." : "Haz clic para subir material"}
                         </p>
                         <p className="text-xs text-muted-foreground">Puedes seleccionar varios archivos a la vez</p>
                     </button>

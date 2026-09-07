@@ -700,6 +700,10 @@ export default function AvatarTutor() {
         }
     };
 
+    // Andamiaje socrático: intento del alumno dentro de LA MISMA pregunta (1..3).
+    // En 1 y 2 Aria repregunta sin dar la respuesta; en 3 explica y se avanza de turno.
+    const [escalon, setEscalon] = useState(1);
+
     const [turnoListo, setTurnoListo] = useState(() => {
         try {
             const saved = localStorage.getItem(storageKey);
@@ -787,6 +791,7 @@ export default function AvatarTutor() {
         setFeedback("");
         setTurnoActual(null);
         setTurnoListo(false);
+        setEscalon(1);
         setError("");
         setTipoUltimoIntento("pregunta");
 
@@ -867,6 +872,9 @@ export default function AvatarTutor() {
                     respuestaEstudiante: texto,
                     tema,
                     nivelDificultad: turno <= 2 ? "básico" : turno <= 4 ? "intermedio" : "avanzado",
+                    escalon,
+                    // Esta pista se generaba desde el principio y nunca salía de aquí.
+                    pistaDisponible: turnoActual.pistaSiNoResponde || null,
                 }),
             });
 
@@ -909,10 +917,16 @@ export default function AvatarTutor() {
                     const puntuacion = match ? parseInt(match[1], 10) : undefined;
                     const sentimientoMatch = feedbackAcumulado.match(/\[SENTIMIENTO:\s*(\w+)\]/i);
                     const sentimiento = sentimientoMatch ? sentimientoMatch[1].toLowerCase() : "neutral";
+                    const accionMatch = feedbackAcumulado.match(/\[ACCION:\s*(\w+)\]/i);
+                    // Sin etiqueta se asume AVANZAR: así, si el modelo la omite, el alumno
+                    // sigue progresando en vez de quedarse atrapado en la misma pregunta.
+                    const repregunta = (accionMatch?.[1] ?? "AVANZAR").toUpperCase() === "REPREGUNTA"
+                        && escalon < 3;
                     const veredicto = detectarVeredicto(feedbackAcumulado, puntuacion);
                     const textToSpeak = feedbackAcumulado
                         .replace(/\[PUNTUACION:\s*\d+\]/i, "")
                         .replace(/\[SENTIMIENTO:\s*\w+\]/i, "")
+                        .replace(/\[ACCION:\s*\w+\]/i, "")
                         .trim();
                     if (!textToSpeak) {
                         setError("No se pudo obtener una respuesta clara. Por favor, intenta de nuevo o escribe tu respuesta.");
@@ -921,10 +935,23 @@ export default function AvatarTutor() {
                     }
                     if (sentimiento === "frustrado") {
                         setEstado("triste");
-                        setTimeout(() => setEstado(veredicto), 2000);
+                        setTimeout(() => setEstado(repregunta ? "esperando" : veredicto), 2000);
                     } else {
-                        setEstado(veredicto);
+                        setEstado(repregunta ? "esperando" : veredicto);
                     }
+
+                    if (repregunta) {
+                        // El turno NO ha terminado: Aria ha dado una pista o ha replanteado
+                        // el problema, y el alumno vuelve a responder LA MISMA pregunta con
+                        // un escalón más de ayuda. No se guarda en el historial ni se
+                        // puntúa, porque todavía no hay un resultado que puntuar.
+                        setEscalon(e => e + 1);
+                        setTurnoActual(turnoConRespuesta);
+                        setTurnoListo(false);
+                        hablar(textToSpeak);
+                        return;
+                    }
+
                     setHistorial(h => [...h, {...turnoConRespuesta, feedback: textToSpeak, puntuacion, sentimiento}]);
                     setTurno(t => t + 1);
                     setTurnoListo(true);
@@ -1003,6 +1030,10 @@ export default function AvatarTutor() {
             formData.append("pregunta", turnoActual.pregunta);
             formData.append("tema", tema);
             formData.append("nivelDificultad", turno <= 2 ? "básico" : turno <= 4 ? "intermedio" : "avanzado");
+            formData.append("escalon", String(escalon));
+            if (turnoActual.pistaSiNoResponde) {
+                formData.append("pistaDisponible", turnoActual.pistaSiNoResponde);
+            }
 
             const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
             const res = await fetch(`${baseUrl}/archivos/tutor/analizar-audio`, {
@@ -1053,10 +1084,16 @@ export default function AvatarTutor() {
                     const puntuacion = match ? parseInt(match[1], 10) : undefined;
                     const sentimientoMatch = feedbackAcumulado.match(/\[SENTIMIENTO:\s*(\w+)\]/i);
                     const sentimiento = sentimientoMatch ? sentimientoMatch[1].toLowerCase() : "neutral";
+                    const accionMatch = feedbackAcumulado.match(/\[ACCION:\s*(\w+)\]/i);
+                    // Sin etiqueta se asume AVANZAR: así, si el modelo la omite, el alumno
+                    // sigue progresando en vez de quedarse atrapado en la misma pregunta.
+                    const repregunta = (accionMatch?.[1] ?? "AVANZAR").toUpperCase() === "REPREGUNTA"
+                        && escalon < 3;
                     const veredicto = detectarVeredicto(feedbackAcumulado, puntuacion);
                     const textToSpeak = feedbackAcumulado
                         .replace(/\[PUNTUACION:\s*\d+\]/i, "")
                         .replace(/\[SENTIMIENTO:\s*\w+\]/i, "")
+                        .replace(/\[ACCION:\s*\w+\]/i, "")
                         .trim();
                     if (!textToSpeak) {
                         setError("No se pudo obtener una respuesta clara. Por favor, intenta de nuevo o escribe tu respuesta.");
@@ -1065,10 +1102,23 @@ export default function AvatarTutor() {
                     }
                     if (sentimiento === "frustrado") {
                         setEstado("triste");
-                        setTimeout(() => setEstado(veredicto), 2000);
+                        setTimeout(() => setEstado(repregunta ? "esperando" : veredicto), 2000);
                     } else {
-                        setEstado(veredicto);
+                        setEstado(repregunta ? "esperando" : veredicto);
                     }
+
+                    if (repregunta) {
+                        // El turno NO ha terminado: Aria ha dado una pista o ha replanteado
+                        // el problema, y el alumno vuelve a responder LA MISMA pregunta con
+                        // un escalón más de ayuda. No se guarda en el historial ni se
+                        // puntúa, porque todavía no hay un resultado que puntuar.
+                        setEscalon(e => e + 1);
+                        setTurnoActual(turnoConRespuesta);
+                        setTurnoListo(false);
+                        hablar(textToSpeak);
+                        return;
+                    }
+
                     setHistorial(h => [...h, {...turnoConRespuesta, feedback: textToSpeak, puntuacion, sentimiento}]);
                     setTurno(t => t + 1);
                     setTurnoListo(true);

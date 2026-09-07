@@ -5,6 +5,7 @@ export * from "./store";
 export { apiClient, registerMock } from "./client";
 export { authApi } from "./auth";
 export { usersApi } from "./users";
-export { coursesApi, intentosApi, rendimientoApi } from "./courses";
+export { coursesApi, semanasApi, intentosApi, rendimientoApi } from "./courses";
 export { materialsApi } from "./materials";
 export { gradesApi } from "./grades";
+export { validacionJuezApi } from "./validacionJuez";

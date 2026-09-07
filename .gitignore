@@ -33,3 +33,6 @@ TallerIntegrador/
 arquitectura-agentes.png
 *.mmd
 ultimo_commit_explicacion.md
+.agents
+/playwright-report
+/test-results

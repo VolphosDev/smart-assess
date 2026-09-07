@@ -2,6 +2,21 @@ import { apiClient } from "./client";
 // Quitamos API_ENDPOINTS porque ahora usaremos las rutas directas de Spring Boot
 import type { CourseRecord } from "./store";
 
+/** Estado de una ingesta en curso, tal como lo devuelve `GET /semanas/ingesta/{id}`. */
+export interface ProgresoIngesta {
+    encontrada: boolean;
+    id?: string;
+    nombreArchivo?: string;
+    fase?: string;
+    porcentaje: number;
+    mensaje: string;
+    /** Cifra concreta del paso actual, p. ej. "120 de 513 fragmentos". */
+    detalle?: string | null;
+    terminado: boolean;
+    exitoso?: boolean;
+    error?: string | null;
+}
+
 export const evaluacionApi = {
     generarPreguntas: (mongoId: string, tipo: string, cantidad: number = 5, tema?: string) =>
         apiClient.post<any>(
@@ -9,6 +24,55 @@ export const evaluacionApi = {
             null
         ),
 };
+/**
+ * Generación de preguntas por streaming (SSE).
+ *
+ * Vivía en `infrastructure/repositories/ApiEvaluationRepository`. Se trajo aquí al unificar
+ * las dos pilas de acceso a datos que coexistían en el proyecto.
+ *
+ * No usa `apiClient` porque `EventSource` abre su propia conexión y no admite cabeceras: por
+ * eso el token viaja en la URL. Devuelve la función de cierre para que quien lo llame pueda
+ * cortar el flujo al desmontarse — sin eso, la conexión queda abierta al salir de la pantalla.
+ */
+export const generarPreguntasStream = (
+    mongoId: string,
+    tipo: string,
+    cantidad: number,
+    tema: string,
+    token: string,
+    onChunk: (chunk: string) => void,
+    onResult: (data: any) => void,
+    onError: (err: any) => void
+): (() => void) => {
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
+    const url = `${baseUrl}/archivos/stream-tecnica-pdf?mongoId=${encodeURIComponent(mongoId)}`
+        + `&tipo=${tipo}&cantidad=${cantidad}`
+        + `${tema ? `&tema=${encodeURIComponent(tema)}` : ""}&token=${token}`;
+
+    const eventSource = new EventSource(url, { withCredentials: true });
+
+    eventSource.addEventListener("chunk", (e: MessageEvent) => {
+        if (e.data) onChunk(e.data);
+    });
+
+    eventSource.addEventListener("result", (e: MessageEvent) => {
+        try {
+            onResult(JSON.parse(e.data));
+        } catch (err) {
+            onError(err);
+        } finally {
+            eventSource.close();
+        }
+    });
+
+    eventSource.onerror = (err) => {
+        onError(err);
+        eventSource.close();
+    };
+
+    return () => eventSource.close();
+};
+
 export const coursesApi = {
     // Para el dashboard del Docente
     forTeacher: (teacherId: string) =>
@@ -41,6 +105,8 @@ export const coursesApi = {
         apiClient.delete<{ message: string }>(`/cursos/${courseId}`),
     rendimiento: (teacherId: string | number) =>
         apiClient.get<any[]>(`/cursos/docente/${teacherId}/rendimiento`),
+    reordenarSemanas: (courseId: string | number, semanaIds: string[]) =>
+        apiClient.put<any>(`/cursos/${courseId}/semanas/reordenar`, semanaIds),
 };
 export const semanasApi = {
     get: (semanaId: string | number) =>
@@ -60,10 +126,41 @@ export const semanasApi = {
         files.forEach(f => form.append("archivos", f));
         return apiClient.postForm<any>(`/semanas/${semanaId}/archivos`, form);
     },
+
+    /**
+     * Subida asíncrona: devuelve enseguida un `ingestaId` y el servidor procesa en segundo
+     * plano. Es la ruta que debe usar la interfaz del docente.
+     *
+     * La ruta síncrona de arriba mantiene la petición abierta durante todo el procesado; con
+     * una obra larga eso son varios minutos y el navegador o un proxy acaban cortándola,
+     * dejando la ingesta a medias.
+     */
+    uploadFilesAsync: (semanaId: string | number, files: File[]) => {
+        const form = new FormData();
+        files.forEach(f => form.append("archivos", f));
+        return apiClient.postForm<{ ingestaId: string; mensaje: string }>(
+            `/semanas/${semanaId}/archivos-async`, form);
+    },
+
+    progresoIngesta: (ingestaId: string) =>
+        apiClient.get<ProgresoIngesta>(`/semanas/ingesta/${ingestaId}`),
     deleteMaterial: (materialId: string | number) =>
         apiClient.delete<void>(`/semanas/material/${materialId}`),
     toggleMaterialVisibility: (materialId: string | number) =>
         apiClient.patch<any>(`/semanas/material/${materialId}/visibilidad`),
+
+    /** El docente pone el nombre real del tema de la semana (no el del archivo subido). */
+    renombrar: (semanaId: string | number, nombreTema: string) =>
+        apiClient.patch<any>(`/semanas/${semanaId}/nombre-tema`, { nombreTema }),
+
+    eliminar: (semanaId: string | number) =>
+        apiClient.delete<void>(`/semanas/${semanaId}`),
+
+    crear: (courseId: string | number, nombreTema?: string) =>
+        apiClient.post<any>(`/cursos/${courseId}/semanas`, { nombreTema: nombreTema ?? null }),
+
+    toggleHabilitada: (semanaId: string | number) =>
+        apiClient.patch<any>(`/semanas/${semanaId}/toggle-habilitada`),
 };
 
 export const intentosApi = {
@@ -146,6 +243,16 @@ export interface GuardarIntentoAdaptativoRequest {
 }
 
 export const adaptiveApi = {
+    /**
+     * Guarda la prueba de UBICACION de una semana.
+     *
+     * Endpoint SEPARADO de guardarIntento a proposito: la ubicacion no es un examen, no
+     * genera nota ni intento. Enviarla por la ruta normal hundiria el promedio del alumno con
+     * un cero antes de haber estudiado.
+     */
+    guardarUbicacion: (payload: any) =>
+        apiClient.post<any>(`/adaptive/ubicacion`, payload),
+
     getEvaluacion: (usuarioId: number | string, semanaId: string) =>
         apiClient.get<any>(`/adaptive/evaluacion?usuarioId=${usuarioId}&semanaId=${semanaId}`),
     
@@ -159,4 +266,7 @@ export const adaptiveApi = {
 export const rendimientoApi = {
     mapaCalor: (usuarioId: number | string) =>
         apiClient.get<any[]>(`/rendimiento/mapa-calor/${usuarioId}`),
+    /** Mapa de conocimiento por curso: temas con probabilidad de dominio (BKT). */
+    mapaConocimiento: (usuarioId: number | string) =>
+        apiClient.get<any[]>(`/rendimiento/mapa-conocimiento/${usuarioId}`),
 };

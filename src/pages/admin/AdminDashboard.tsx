@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { motion } from "framer-motion";
 import { UserPlus, Trash2, Users, GraduationCap, BookOpenCheck, Loader2, Download, ShieldCheck, TrendingUp, BarChart2, Calendar, Filter, ChevronDown, Check, RefreshCw, Unlock, Lock, Key, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -422,7 +422,7 @@ export default function AdminDashboard() {
         <div className="space-y-8">
             <motion.section
                 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                className="bg-hero-gradient rounded-xl p-8 text-primary-foreground shadow-sm relative overflow-hidden"
+                className="bg-hero-gradient rounded-xl p-8 shadow-sm relative overflow-hidden"
             >
                 <ShieldCheck className="absolute right-6 top-1/2 -translate-y-1/2 w-32 h-32 md:w-36 md:h-36 opacity-[0.25] select-none pointer-events-none text-white" />
                 <span className="inline-block px-3 py-1 rounded-lg bg-white/10 text-xs font-semibold uppercase tracking-wider mb-3">

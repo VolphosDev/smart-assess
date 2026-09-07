@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2, AlertCircle, BookOpen, Brain, CheckSquare, CheckCircle2, XCircle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { usePractice } from "../presentation/hooks/usePractice";
-import { PreguntaCard } from "../presentation/components/practice/PreguntaCard";
-import { QuizLoading } from "../presentation/components/practice/QuizLoading";
+import { usePractice } from "@/hooks/usePractice";
+import { PreguntaCard } from "@/components/practice/PreguntaCard";
+import { QuizLoading } from "@/components/practice/QuizLoading";
 
 const modeLabels: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
     OPCION_MULTIPLE: {
@@ -250,7 +250,7 @@ export default function Practice() {
                                                 <Sparkles className="w-4.5 h-4.5 animate-pulse" />
                                             </div>
                                             <div>
-                                                <h4 className="font-display font-bold text-sm text-foreground">Retroalimentación del Tutor IA</h4>
+                                                <h4 className="font-display font-bold text-sm text-foreground">Retroalimentación de Semantika</h4>
                                                 <p className="text-[11px] text-muted-foreground font-medium">Evaluación pedagógica personalizada</p>
                                             </div>
                                         </div>

@@ -161,6 +161,9 @@ export default function AdaptivePractice() {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [startTime] = useState<number>(Date.now());
     const [isAcra, setIsAcra] = useState<boolean>(false);
+    // La prueba de ubicacion no genera nota: su resultado es un NIVEL, no una calificacion.
+    const [esUbicacion, setEsUbicacion] = useState<boolean>(false);
+    const [resultadoUbicacion, setResultadoUbicacion] = useState<any>(null);
 
     // Evaluation data
     const [evaluationData, setEvaluationData] = useState<any>(null);
@@ -205,9 +208,17 @@ export default function AdaptivePractice() {
 
                 if (response.tipo_evaluacion === "DIAGNOSTICA" && response.instrumento === "ACRA") {
                     setIsAcra(true);
+                    setEsUbicacion(false);
                     setQuestions(response.items || []);
+                } else if (response.tipo_evaluacion === "UBICACION") {
+                    // Prueba de ubicacion de la semana: 6 reactivos, 2 por nivel de Bloom,
+                    // ya mezclados por el backend. No es un examen y no lleva nota.
+                    setIsAcra(false);
+                    setEsUbicacion(true);
+                    setQuestions(normalizeFormativeQuestions(response.preguntas_json));
                 } else {
                     setIsAcra(false);
+                    setEsUbicacion(false);
                     // Normalize formative questions
                     const normalized = normalizeFormativeQuestions(response.preguntas_json);
                     setQuestions(normalized);
@@ -256,7 +267,11 @@ export default function AdaptivePractice() {
                 tipoPregunta: q.tipo_pregunta || (options.length > 0 ? "OPCION_MULTIPLE" : "ABIERTA"),
                 opciones: options,
                 respuestaCorrectaText: q.respuesta_correcta || "",
-                justificacion: q.justificacion_pregunta || ""
+                justificacion: q.justificacion_pregunta || "",
+                // Tema puntual que evalúa esta pregunta (ver PromptTemplateService.UNIVERSAL_SCHEMA
+                // en el backend). Alimenta el mapa de conocimiento por concepto — sin esto, el
+                // backend recibe la respuesta pero no puede actualizar el dominio bayesiano.
+                concepto: q.concepto || ""
             };
         });
     };
@@ -452,7 +467,14 @@ export default function AdaptivePractice() {
                     preguntaTexto: q.enunciado,
                     tipoPregunta: q.tipoPregunta,
                     respuestaEstudiante: answer,
-                    esCorrecta: isCorrect
+                    esCorrecta: isCorrect,
+                    // Alimentan el mapa de conocimiento por concepto (backend:
+                    // ConocimientoBktService). nivelBloom es el mismo para todo el lote,
+                    // tal como el backend lo generó; concepto es específico por pregunta.
+                    // En la ubicacion cada reactivo trae SU propio nivel: es lo que permite
+                    // aplicar el escalograma. En una evaluacion normal el nivel es del lote.
+                    nivelBloom: q.nivel_bloom || evaluationData?.nivel_bloom || null,
+                    conceptos: q.concepto || null
                 };
             });
 
@@ -469,6 +491,25 @@ export default function AdaptivePractice() {
             tipoEvaluacion: isAcra ? "DIAGNOSTICA" : "FORMATIVA",
             respuestas: respuestasDetalle
         };
+
+        // La ubicacion va por su propia ruta y NO pasa por el comite ni genera intento.
+        if (esUbicacion) {
+            try {
+                const r = await adaptiveApi.guardarUbicacion({
+                    ...payload,
+                    tipoEvaluacion: "UBICACION",
+                    notaFinal: 0.0,
+                });
+                setIsWaitingForDebateApi(false);
+                setResultadoUbicacion(r);
+                setPhase("results");
+                toast.success(r.mensajeAlumno || "Listo, ya ajustamos tu nivel para esta semana.");
+            } catch (err: any) {
+                setIsWaitingForDebateApi(false);
+                setErrorMsg(err?.response?.data?.error || "No se pudo guardar la ubicación.");
+            }
+            return;
+        }
 
         try {
             const res = await adaptiveApi.guardarIntento(payload);

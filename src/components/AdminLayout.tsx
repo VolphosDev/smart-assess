@@ -1,5 +1,5 @@
-import { Link, Outlet, useNavigate } from "react-router-dom";
-import { LogOut, Sparkles, ShieldCheck } from "lucide-react";
+import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
+import { LogOut, Sparkles, ShieldCheck, Activity } from "lucide-react";
 import { UserAvatar } from "@/lib/icon-mapper";
 
 export default function AdminLayout() {
@@ -14,9 +14,31 @@ export default function AdminLayout() {
             </span>
             Semantika · Admin
           </Link>
-          <span className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-bold text-muted-foreground">
-            <ShieldCheck className="w-3.5 h-3.5 text-primary" /> Panel administrador
-          </span>
+          <nav className="hidden md:flex items-center gap-1 bg-muted rounded-lg p-1 border border-border">
+            <NavLink
+              to="/admin"
+              end
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  isActive ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`
+              }
+            >
+              <ShieldCheck className="w-4 h-4" /> Usuarios
+            </NavLink>
+            <NavLink
+              to="/admin/metricas-ia"
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  isActive ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`
+              }
+            >
+              <Activity className="w-4 h-4" /> Métricas de IA
+            </NavLink>
+          </nav>
           <div className="flex items-center gap-3">
             <button
               type="button"
