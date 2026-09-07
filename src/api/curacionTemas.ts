@@ -13,7 +13,14 @@ export interface TemaCurable {
     /** null = el docente aún no ha decidido. Los no decididos SÍ se muestran al alumno. */
     aceptado: boolean | null;
     motivo: string | null;
-    /** Fragmentos del documento que originaron este tema. */
+    /**
+     * Fragmentos del documento que originaron este tema.
+     *
+     * Llega VACÍO en el listado y se pide aparte al desplegar el tema. Traerlos todos de
+     * golpe suponía una búsqueda vectorial por tema, en serie, con su llamada de embedding:
+     * con 16 temas eran ~7 segundos de panel en blanco para una información que el docente
+     * mira en dos o tres, no en los dieciséis.
+     */
     evidencia: string[];
 }
 
@@ -28,6 +35,11 @@ export interface TasaAceptacion {
 export const curacionTemasApi = {
     temasDe: (materialId: string | number) =>
         apiClient.get<TemaCurable[]>(`/curacion-temas/material/${materialId}`),
+
+    /** Evidencia de UN tema, bajo demanda. */
+    evidenciaDe: (materialId: string | number, tema: string) =>
+        apiClient.get<{ tema: string; evidencia: string[] }>(
+            `/curacion-temas/material/${materialId}/evidencia?tema=${encodeURIComponent(tema)}`),
 
     decidir: (materialId: string | number, tema: string, aceptado: boolean, motivo?: string) =>
         apiClient.post<{ mensaje: string }>(`/curacion-temas/material/${materialId}/decidir`, {

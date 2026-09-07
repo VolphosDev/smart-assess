@@ -165,7 +165,11 @@ export default function Course() {
                             <li key={id}>
                                 {/* Cabecera plegable. Toda la fila es el objetivo táctil, no
                                     solo el icono: en móvil acertar una flecha de 16 px es una
-                                    de las causas de abandono más tontas que hay. */}
+                                    de las causas de abandono más tontas que hay.
+
+                                    El hueco a la derecha (pr-*) reserva sitio para el botón de
+                                    evaluarse, que va superpuesto: así el título se corta con
+                                    puntos suspensivos en vez de pasar por debajo del botón. */}
                                 <button
                                     onClick={() => alternar(id)}
                                     aria-expanded={abierta}
@@ -257,7 +261,42 @@ export default function Course() {
                                                     )}
                                                 </div>
 
-                                                {habilitada ? (
+                                                {/* El botón de evaluarse vive ahora en la fila
+                                                    de la semana, arriba. Aquí solo queda el aviso
+                                                    de semana cerrada, que sí necesita explicarse
+                                                    con palabras: una fila sin botón, sin más,
+                                                    parecería que la aplicación está rota. */}
+                                                {/*
+                                                    La acción va ABAJO y a lo ancho, debajo del
+                                                    material.
+
+                                                    Se probó ponerla superpuesta a la derecha de
+                                                    la fila para no gastar altura, y se lee mal:
+                                                    el orden natural es leer el material y luego
+                                                    evaluarse, así que el botón tiene que estar
+                                                    después de él, no al lado del título.
+
+                                                    Un examen a medias NUNCA queda escondido: la
+                                                    semana con intento pendiente se abre sola al
+                                                    entrar al curso (ver el efecto de arriba), así
+                                                    que "Continuar" siempre está a la vista sin
+                                                    necesidad de un botón flotante.
+                                                */}
+                                                {!habilitada ? (
+                                                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                        <Lock className="w-4 h-4" />
+                                                        El profesor cerró esta semana temporalmente.
+                                                    </p>
+                                                ) : materiales.length === 0 ? (
+                                                    /* Se dice POR QUÉ no se puede practicar. Una
+                                                       fila sin botón y sin explicación parece que
+                                                       la aplicación está rota. */
+                                                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                                                        <Lock className="w-4 h-4 shrink-0" />
+                                                        Todavía no puedes evaluarte en esta semana: el profesor
+                                                        aún no ha subido material.
+                                                    </p>
+                                                ) : (
                                                     <Link
                                                         to={`/app/curso/${courseId}/semana/${id}`}
                                                         onClick={() => reproducirClic()}
@@ -270,11 +309,6 @@ export default function Course() {
                                                         {hayPendiente ? "Continuar mi prueba" : "Ponte a prueba"}
                                                         <ArrowRight className="w-4 h-4" />
                                                     </Link>
-                                                ) : (
-                                                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                                                        <Lock className="w-4 h-4" />
-                                                        El profesor cerró esta semana temporalmente.
-                                                    </p>
                                                 )}
                                             </div>
                                         </motion.div>

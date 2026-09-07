@@ -253,6 +253,26 @@ export const adaptiveApi = {
     guardarUbicacion: (payload: any) =>
         apiClient.post<any>(`/adaptive/ubicacion`, payload),
 
+    /**
+     * Estado del alumno en la semana, segun el SERVIDOR.
+     *
+     * La pantalla decidia si la evaluacion recomendadora estaba hecha mirando localStorage.
+     * Eso vive en un navegador concreto: entrar desde el movil, o limpiar el navegador, hacia
+     * reaparecer como "Pendiente" algo que ya estaba hecho y guardado en la base de datos.
+     */
+    estadoSemana: (semanaId: string) =>
+        apiClient.get<{
+            recomendadoraCompletada: boolean;
+            recomendaciones: string[];
+            /** Codigos de formato decididos por el comite (AVATAR, VIDEO, ABIERTA...). */
+            modosRecomendados: string[];
+            /** false cuando el comite no pudo deliberar y se uso el respaldo. */
+            deliberacionReal: boolean;
+            nivelAplicado?: string | null;
+            ubicacionCompletada: boolean;
+            nivelUbicacion?: string | null;
+        }>(`/adaptive/estado?semanaId=${encodeURIComponent(semanaId)}`),
+
     getEvaluacion: (usuarioId: number | string, semanaId: string) =>
         apiClient.get<any>(`/adaptive/evaluacion?usuarioId=${usuarioId}&semanaId=${semanaId}`),
     

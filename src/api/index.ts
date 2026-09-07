@@ -9,3 +9,4 @@ export { coursesApi, semanasApi, intentosApi, rendimientoApi } from "./courses";
 export { materialsApi } from "./materials";
 export { gradesApi } from "./grades";
 export { validacionJuezApi } from "./validacionJuez";
+export { bancoPreguntasApi } from "./bancoPreguntas";

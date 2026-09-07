@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import React, { useCallback, useRef, useState } from "react";
 import ProgresoIngestaBarra from "@/components/ProgresoIngestaBarra";
 import CuracionTemas from "@/components/CuracionTemas";
+import BancoPreguntas from "@/components/BancoPreguntas";
 // 1. IMPORTAMOS EL NUEVO MODAL UNIVERSAL
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import {cn} from "@/lib/utils.ts";
@@ -408,14 +409,19 @@ export default function TeacherWeek() {
                                     </div>
                                 </div>
 
-                                {/* Botón para previsualizar */}
+                {/* Abrir el material para leerlo.
+                                    Llevaba un ojo, igual que el botón de al lado, que hace algo
+                                    completamente distinto: mostrarlo u ocultarlo a los alumnos.
+                                    Dos ojos seguidos con significados opuestos se confunden. Un
+                                    libro abierto dice "leer" sin necesidad de pasar el ratón. */}
                                 <Button
                                     size="sm"
                                     variant="secondary"
                                     className="rounded-xl"
                                     onClick={() => setSelectedFile({ id: mat.mongoId, name: mat.nombreArchivo })}
+                                    title="Abrir y leer el material"
                                 >
-                                    <Eye className="w-4 h-4" />
+                                    <BookOpen className="w-4 h-4" />
                                 </Button>
 
                                 <Button
@@ -496,6 +502,23 @@ export default function TeacherWeek() {
                         </p>
                     </div>
                 </div>
+            </motion.section>
+
+            {/* Banco de preguntas: lo que la IA generó, auditable por el docente. */}
+            <motion.section
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25 }}
+                className="bg-card border border-border rounded-xl p-6 shadow-soft space-y-5"
+            >
+                <div>
+                    <h2 className="font-display font-bold text-xl">Banco de preguntas</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        Cada reactivo que generó la IA para esta semana, con su nivel de Bloom, la
+                        respuesta usada para calificar y lo que contestó cada alumno.
+                    </p>
+                </div>
+                <BancoPreguntas semanaId={semanaId} />
             </motion.section>
 
             {/* Notas de Estudiantes */}

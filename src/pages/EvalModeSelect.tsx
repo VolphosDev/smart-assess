@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Clock, Loader2, Eye, Lock, FlaskConical, Brain, BookOpen, Sparkles, Check, Flame } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Loader2, Eye, Lock, FlaskConical, Brain, BookOpen, Sparkles, Check, Flame, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import { EvalTutorialModal } from "@/components/EvalTutorialModal";
@@ -10,11 +10,23 @@ import { getEvalModeIcon } from "@/lib/icon-mapper";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { rendimientoApi } from "@/api";
+import { adaptiveApi } from "@/api/courses";
 import MapaCalorTemas from "@/components/MapaCalorTemas";
 import type { GrupoCursoConocimiento } from "@/components/ConceptHeatMap";
 
-// 🛠️ Bandera de Configuración: Cambia a false para ocultar el menú de Herramientas de Test en demostración final o producción
-const SHOW_TESTING_TOOLS = true;
+/**
+ * Herramientas de Test: visibles SOLO en desarrollo.
+ *
+ * Antes esto era `true` fijo, con un comentario recordando cambiarlo a mano antes de
+ * publicar. Ese menú deja saltarse el bloqueo de exámenes, ignorar las prácticas obligatorias
+ * y forzar la regeneración de preguntas: si llega a producción, cualquier alumno lo abre y se
+ * salta las reglas del estudio — y con ello se cae la validez de los datos de la tesis.
+ *
+ * Depender de acordarse en el momento justo es la peor garantía posible, así que ahora lo
+ * decide el modo de compilación: `npm run dev` lo enseña, `npm run build` lo elimina del
+ * bundle. No hay nada que recordar.
+ */
+const SHOW_TESTING_TOOLS = import.meta.env.DEV;
 
 const evalModes = [
     {
@@ -89,8 +101,26 @@ const evalModes = [
     },
 ];
 
-const isModeRecommended = (modeId: string, recs: string[]): boolean => {
+/**
+ * ¿Recomienda el comité este formato?
+ *
+ * Ahora se compara contra los CÓDIGOS que devuelve el comité (`modosRecomendados`). El
+ * escaneo de palabras que había antes se conserva solo como respaldo para las deliberaciones
+ * guardadas ANTES de este cambio, que no tienen códigos.
+ *
+ * Por qué se cambió: buscar "video" o "redacc" dentro de la prosa hacía que la recomendación
+ * dependiera de qué palabras eligiera el modelo. "Que escriba un ensayo" no activaba ABIERTA
+ * porque el buscador esperaba "redacc", y el alumno se quedaba sin recomendación sin que
+ * nadie lo notara.
+ */
+const isModeRecommended = (modeId: string, recs: string[], codigos?: string[]): boolean => {
     if (modeId === "adaptativa") return true; // Always unlocked
+
+    if (codigos && codigos.length > 0) {
+        return codigos.includes(modeId.toUpperCase());
+    }
+
+    // ── Respaldo heredado: solo para debates sin códigos ──────────────────
     const text = recs.join(" ").toLowerCase();
     switch (modeId) {
         case "avatar":
@@ -156,9 +186,31 @@ export default function EvalModeSelect() {
         queryFn: () => rendimientoApi.mapaConocimiento(user.id),
         enabled: !!user?.id && isStudent,
     });
+    /**
+     * Si la evaluación recomendadora ya está hecha, lo dice el SERVIDOR.
+     *
+     * Antes se leía de localStorage, que vive en un navegador concreto: al entrar desde el
+     * móvil —o tras limpiar el navegador— reaparecía como "Pendiente" algo ya hecho y
+     * guardado en la base de datos. El estado de un alumno no puede depender del dispositivo
+     * desde el que se conecte.
+     */
+    const { data: estadoSemana } = useQuery({
+        queryKey: ["estado-semana", user?.id, week],
+        queryFn: () => adaptiveApi.estadoSemana(week),
+        enabled: !!user?.id && isStudent && !!week,
+    });
+
+    // localStorage queda solo como respaldo mientras la consulta viaja, para que la tarjeta
+    // no parpadee de "Pendiente" a "hecha" en cada carga.
     const savedRecsRaw = localStorage.getItem(`semantika.recomendaciones.${user?.id}.${week}`);
-    const completedAdaptive = !!savedRecsRaw;
-    const recommendations = savedRecsRaw ? JSON.parse(savedRecsRaw) : [];
+    const completedAdaptive = estadoSemana
+        ? estadoSemana.recomendadoraCompletada
+        : !!savedRecsRaw;
+    const modosRecomendados = estadoSemana?.modosRecomendados ?? [];
+    const deliberacionReal = estadoSemana?.deliberacionReal ?? true;
+    const recommendations = estadoSemana?.recomendadoraCompletada
+        ? (estadoSemana.recomendaciones ?? [])
+        : (savedRecsRaw ? JSON.parse(savedRecsRaw) : []);
 
     const [showTestingMenu, setShowTestingMenu] = useState(false);
     const [ignorarBloqueo, setIgnorarBloqueo] = useState(() => {
@@ -200,7 +252,7 @@ export default function EvalModeSelect() {
 
     // Calculate if all recommended modes are completed
     const recommendedModeIds = evalModes
-        .filter(m => m.id !== "adaptativa" && isModeRecommended(m.id, recommendations))
+        .filter(m => m.id !== "adaptativa" && isModeRecommended(m.id, recommendations, modosRecomendados))
         .map(m => m.id);
 
     const allRecommendedCompleted = recommendedModeIds.length > 0 && recommendedModeIds.every(modeId => {
@@ -245,7 +297,7 @@ export default function EvalModeSelect() {
     const esModoNoDisponible = (m: any) => {
         const isUnfinished = m.id === unfinishedMode;
         const isBlockedByOtherUnfinished = !ignorarBloqueo && unfinishedMode !== null && !isUnfinished;
-        const isRecommended = isModeRecommended(m.id, recommendations);
+        const isRecommended = isModeRecommended(m.id, recommendations, modosRecomendados);
         // Solo se exige la evaluacion de ubicacion inicial. Una vez hecha, TODOS los modos
         // quedan disponibles: los recomendados se destacan y dan puntos extra, pero no se
         // bloquea ninguno.
@@ -263,7 +315,7 @@ export default function EvalModeSelect() {
     const renderModo = (m: any, i: number) => {
 const isUnfinished = m.id === unfinishedMode;
                             const isBlockedByOtherUnfinished = !ignorarBloqueo && unfinishedMode !== null && !isUnfinished;
-                            const isRecommended = isModeRecommended(m.id, recommendations);
+                            const isRecommended = isModeRecommended(m.id, recommendations, modosRecomendados);
                             // Ver la nota en esModoNoDisponible: solo bloquea la ubicacion inicial.
                             const faltaUbicacion = !ignorarBloqueo && !completedAdaptive && m.id !== "adaptativa";
 
@@ -282,26 +334,30 @@ const isUnfinished = m.id === unfinishedMode;
                                                     : "border-border hover:-translate-y-0.5 cursor-pointer"
                                     )}
                                 >
-                                    {completedAdaptive && isRecommended && m.id !== "adaptativa" && (
-                                        <div className="absolute top-3 right-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full">
-                                            ✨ Recomendado
-                                        </div>
-                                    )}
-                                    
-                                    {faltaUbicacion && (
+                                    {/*
+                                        UNA sola insignia por tarjeta, con prioridad explícita.
+
+                                        Antes había tres bloques independientes y dos de ellos se
+                                        activaban con la misma condición (`isRecommended`), los dos
+                                        en `absolute top-3 right-3`: se dibujaban uno encima del
+                                        otro y se leía "RECOMENDADAECOMENDADOS". Cada bloque era
+                                        correcto por separado; el fallo estaba en que nadie
+                                        decidía cuál gana cuando coinciden.
+
+                                        Con un if/else esa colisión no puede volver a ocurrir: hay
+                                        una sola ranura y siempre la ocupa exactamente uno.
+                                    */}
+                                    {faltaUbicacion ? (
                                         <div className="absolute top-3 right-3 bg-destructive/15 border border-destructive/30 text-destructive text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
                                             Empieza por la adaptativa
                                         </div>
-                                    )}
-
-                                    {/* Recomendado y disponible: se destaca como incentivo, no
-                                        como restricción. Antes, no estar recomendado bloqueaba
-                                        la tarjeta; ahora suma puntos elegirla. */}
-                                    {!faltaUbicacion && isRecommended && (
-                                        <div className="absolute top-3 right-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
-                                            Recomendada · +puntos
+                                    ) : isRecommended && m.id !== "adaptativa" ? (
+                                        /* Se destaca como incentivo, no como restricción: no estar
+                                           recomendada ya no bloquea la tarjeta, solo deja de sumar. */
+                                        <div className="absolute top-3 right-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
+                                            ✨ Recomendada · +puntos
                                         </div>
-                                    )}
+                                    ) : null}
 
                                     <div
                                         className={cn(
@@ -432,16 +488,19 @@ const isUnfinished = m.id === unfinishedMode;
                     hace que un titulo largo se corte con puntos suspensivos en vez de empujar
                     el boton de la derecha fuera de la pantalla en un movil. */}
                 {isStudent && (
-                    <Link
-                        to="/app/mapa-conocimiento"
-                        title={`Mapa de calor de ${semanaTitulo}`}
-                        className="hidden sm:flex items-center gap-2 min-w-0 max-w-[46%] mx-3 px-3 py-2 rounded-xl border border-border bg-card hover:bg-muted/60 transition-colors"
+                    <a
+                        href="#mapa-calor-semana"
+                        title={`Ver cómo llevas los temas de ${semanaTitulo}`}
+                        className="hidden sm:flex items-center gap-2 min-w-0 max-w-[46%] mx-3 pl-3 pr-2.5 py-2 rounded-xl border border-border bg-card hover:bg-muted/60 hover:border-rose-500/40 transition-colors group"
                     >
-                        <Flame className="w-4 h-4 shrink-0 text-rose-500" />
+                        <span className="w-6 h-6 rounded-lg bg-rose-500/10 grid place-items-center shrink-0">
+                            <Flame className="w-3.5 h-3.5 text-rose-500" />
+                        </span>
                         <span className="text-sm font-semibold truncate">
                             Mapa de calor de {semanaTitulo}
                         </span>
-                    </Link>
+                        <ChevronDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground group-hover:translate-y-0.5 transition-transform" />
+                    </a>
                 )}
 
                 {SHOW_TESTING_TOOLS && (
@@ -588,35 +647,92 @@ const isUnfinished = m.id === unfinishedMode;
                 )}
             </div>
 
-            <div className="text-center max-w-2xl mx-auto space-y-3">
-                {/* El nombre del tema lo define el docente (SemanaDTO.nombreTema). Si aún no lo
-                    puso, se cae al ordinal "Semana N" para no dejar la cabecera vacía. */}
-                <div>
-                    <h1 className="font-display text-3xl md:text-4xl font-extrabold tracking-tight leading-tight">
+            {/*
+                Cabecera como banda de color, igual que la vista de curso.
+
+                Antes era un título centrado suelto sobre el fondo de la página: correcto, pero
+                sin nada que anclara la vista ni la distinguiera de cualquier otra pantalla. Al
+                darle el mismo tratamiento que ya tiene el curso, el alumno reconoce dónde está
+                sin leer, y la aplicación deja de parecer una sucesión de listas.
+
+                Los colores van en blanco explícito y no con tokens de tema: este fondo es
+                siempre oscuro, así que `text-muted-foreground` — que sigue al tema claro/oscuro
+                del sistema — se volvería ilegible en modo claro.
+            */}
+            <section className="relative overflow-hidden rounded-2xl bg-primary-gradient p-6 sm:p-8">
+                <div className="absolute -right-8 -top-10 opacity-[0.12] pointer-events-none select-none">
+                    <BookOpen className="w-48 h-48" />
+                </div>
+
+                <div className="relative">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-white/15 text-[11px] font-bold uppercase tracking-wider">
+                        {semana.numSem}
+                    </span>
+
+                    {/* El nombre del tema lo define el docente (SemanaDTO.nombreTema). Si aún
+                        no lo puso, se cae al ordinal "Semana N" para no dejar esto vacío. */}
+                    <h1 className="font-display text-3xl md:text-4xl font-extrabold tracking-tight leading-tight mt-3 max-w-2xl">
                         {semana.nombreTema || semana.numSem}
                     </h1>
-                    {semana.nombreTema && (
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mt-1">
-                            {semana.numSem}
-                        </p>
-                    )}
+                    {/* Blanco puro, no `text-white/75`. Sobre --primary en modo oscuro
+                        (250 85% 65%) hasta el blanco puro se queda en 4.70:1, asi que
+                        cualquier transparencia baja de 4.5:1 y este texto de 14px dejaria de
+                        cumplir AA. La jerarquia la da el tamano, no la opacidad. */}
+                    <p className="text-sm text-white mt-2 max-w-xl">
+                        Son tres pasos: lee el material, elige el tema y decide cómo quieres
+                        practicar.
+                    </p>
+
+                    {/* Los tres pasos, navegables. NO indican cuáles llevas hechos: la
+                        aplicación no sabe si de verdad leíste el material, y pintar un paso
+                        como completado sin saberlo sería mentirle al alumno en la cara. */}
+                    <nav className="flex flex-wrap items-center gap-1.5 mt-5">
+                        {[
+                            { n: 1, texto: "Lee el material", ancla: "#paso-material", activo: true },
+                            {
+                                n: 2,
+                                texto: "Elige el tema",
+                                ancla: "#paso-elegir-tema",
+                                activo: completedAdaptive && allSubtemas.length > 0,
+                            },
+                            { n: 3, texto: "Practica", ancla: "#paso-elegir-metodo", activo: true },
+                        ].map((paso, i, todos) => (
+                            <div key={paso.n} className="flex items-center gap-1.5">
+                                {paso.activo ? (
+                                    <a
+                                        href={paso.ancla}
+                                        className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                                    >
+                                        <span className="w-6 h-6 rounded-lg bg-white/25 grid place-items-center text-[11px] font-black">
+                                            {paso.n}
+                                        </span>
+                                        <span className="text-xs font-bold">{paso.texto}</span>
+                                    </a>
+                                ) : (
+                                    /* Un paso que todavía no existe en la página se muestra
+                                       apagado en vez de ocultarse: si desapareciera, el alumno
+                                       vería "1 y 3" y creería haberse saltado algo. */
+                                    <span
+                                        title="Disponible después del diagnóstico"
+                                        className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-xl bg-white/5 text-white/70"
+                                    >
+                                        <span className="w-6 h-6 rounded-lg bg-white/10 grid place-items-center text-[11px] font-black">
+                                            {paso.n}
+                                        </span>
+                                        <span className="text-xs font-bold">{paso.texto}</span>
+                                    </span>
+                                )}
+                                {i < todos.length - 1 && (
+                                    <span className="w-3 h-px bg-white/25 hidden sm:block" />
+                                )}
+                            </div>
+                        ))}
+                    </nav>
                 </div>
-                <p className="text-muted-foreground text-sm">
-                    Son tres pasos: lee el material, elige el tema y decide cómo quieres practicar.
-                </p>
-                {/* Atajo al paso 3: en las pruebas, los alumnos no sabían que había que
-                    seguir bajando para encontrar los métodos de evaluación. */}
-                <a
-                    href="#paso-elegir-metodo"
-                    className="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline"
-                >
-                    Ir directo a elegir cómo practicar
-                    <ArrowRight className="w-4 h-4 rotate-90" />
-                </a>
-            </div>
+            </section>
 
             {/* Tarjeta de Materiales de Estudio (Estética y Profesional) */}
-            <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs text-left relative overflow-hidden">
+            <div id="paso-material" className="bg-card border border-border/80 rounded-xl p-6 shadow-xs text-left relative overflow-hidden scroll-mt-24">
                 {/* Decoración lateral discreta */}
                 <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-primary" />
                 
@@ -696,7 +812,7 @@ const isUnfinished = m.id === unfinishedMode;
                 es la señal universal de "esto se marca", y el encabezado dice explícitamente
                 que es opcional para que nadie se quede atascado creyendo que debe elegir. */}
             {completedAdaptive && allSubtemas.length > 0 && (
-                <div className="bg-card border border-border/80 rounded-xl p-5 sm:p-6 shadow-xs text-left mt-4">
+                <div id="paso-elegir-tema" className="bg-card border border-border/80 rounded-xl p-5 sm:p-6 shadow-xs text-left mt-4 scroll-mt-24">
                     <div className="flex items-start gap-3 mb-4">
                         <span className="w-7 h-7 rounded-lg bg-primary text-primary-foreground grid place-items-center text-xs font-black shrink-0">
                             2
@@ -815,7 +931,15 @@ const isUnfinished = m.id === unfinishedMode;
                                         {recommendations.length > 0 && (
                                              <div className="bg-background/40 border border-border/60 rounded-lg p-4 mt-2 grid md:grid-cols-2 gap-4">
                                                  <div>
-                                                     <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-wider mb-1.5">Recomendaciones del Comité:</h4>
+                                                     {/* El rótulo cambia si la deliberación no llegó a ocurrir.
+                                                         Llamar "Recomendaciones del Comité" a un texto de
+                                                         emergencia hacía que dos frases fijas, idénticas para
+                                                         todos los alumnos, pasaran por una decisión personalizada. */}
+                                                     <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-wider mb-1.5">
+                                                         {deliberacionReal
+                                                             ? "Recomendaciones del Comité:"
+                                                             : "Sugerencia general (el comité no pudo revisar tu evaluación):"}
+                                                     </h4>
                                                      <ul className="space-y-1">
                                                          {recommendations.slice(0, 3).map((rec: string, index: number) => (
                                                              <li key={index} className="text-[11px] text-muted-foreground font-bold list-disc list-inside leading-normal text-balance">
@@ -827,7 +951,7 @@ const isUnfinished = m.id === unfinishedMode;
                                                  <div className="border-t md:border-t-0 md:border-l border-border/60 pt-2.5 md:pt-0 md:pl-4">
                                                      <h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-wider mb-1.5">Progreso de Prácticas Recomendadas:</h4>
                                                      <div className="space-y-1.5">
-                                                         {evalModes.filter(m => m.id !== "adaptativa" && isModeRecommended(m.id, recommendations)).map((m) => {
+                                                         {evalModes.filter(m => m.id !== "adaptativa" && isModeRecommended(m.id, recommendations, modosRecomendados)).map((m) => {
                                                              const isDone = localStorage.getItem(`semantika.completed_mode.${user.id}.${week}.${m.id}`) === "true";
                                                              return (
                                                                  <div key={m.id} className="flex items-center gap-2 text-[11px] font-bold">
@@ -883,18 +1007,70 @@ const isUnfinished = m.id === unfinishedMode;
                         cómo practicar: es el momento en que la información le sirve para
                         decidir, y no una pantalla aparte a la que hay que ir a buscarla. */}
                     {isStudent && (
-                        <div className="pt-2">
-                            <h3 className="font-display font-bold text-lg mb-1">Cómo llevas esta semana</h3>
-                            <p className="text-sm text-muted-foreground mb-3">
-                                Lo azul ya lo dominas; lo rojo conviene repasarlo.
-                            </p>
+                        <div id="mapa-calor-semana" className="pt-2 scroll-mt-24">
+                            <div className="flex items-start gap-3 mb-3">
+                                <span className="w-9 h-9 rounded-xl bg-rose-500/10 grid place-items-center shrink-0">
+                                    <Flame className="w-4.5 h-4.5 text-rose-500" />
+                                </span>
+                                <div className="min-w-0">
+                                    <h3 className="font-display font-bold text-lg leading-tight">
+                                        Cómo llevas esta semana
+                                    </h3>
+                                    <p className="text-sm text-muted-foreground">
+                                        Solo los temas de {semanaTitulo}. Lo azul ya lo dominas; lo rojo
+                                        conviene repasarlo.
+                                    </p>
+                                </div>
+                            </div>
                             <MapaCalorTemas cursos={mapaConocimiento} soloSemanaId={week} compacto />
+                            {/* La vista completa sigue estando, pero como salida explicita y
+                                secundaria: desde aqui el alumno decide si quiere comparar con
+                                el resto del curso. Antes esto era el destino del boton de
+                                arriba, que es lo que hacia parecer que la semana no tenia
+                                mapa propio. */}
+                            <Link
+                                to="/app/mapa-conocimiento"
+                                className="inline-flex items-center gap-1.5 mt-3 text-xs font-bold text-muted-foreground hover:text-foreground"
+                            >
+                                Ver el mapa completo del curso
+                                <ArrowRight className="w-3.5 h-3.5" />
+                            </Link>
                         </div>
                     )}
 
                     {/* Paso 3 — el que los alumnos no encontraban porque quedaba bajo el fold.
                         Ahora lleva número, ancla y un encabezado propio. */}
-                    <div id="paso-elegir-metodo" className="flex items-start gap-3 pt-2 scroll-mt-24">
+                    {/*
+                        Sin material no hay nada sobre lo que evaluar.
+
+                        Las preguntas se generan a partir del contenido que subió el profesor.
+                        Si no hay, el servidor se niega — y con razón: buscar sin material
+                        producía evaluaciones armadas con fragmentos de OTRA semana, que
+                        parecían correctas y entraban en el historial del alumno como suyas.
+
+                        Aquí se corta antes, para que el alumno lea una explicación en vez de
+                        chocar con un error después de elegir un método.
+                    */}
+                    {visibleMateriales.length === 0 && (
+                        <div className="rounded-xl border border-dashed border-border bg-muted/30 p-6 text-center space-y-2">
+                            <Lock className="w-6 h-6 mx-auto text-muted-foreground" />
+                            <h3 className="font-display font-bold">
+                                Todavía no puedes practicar esta semana
+                            </h3>
+                            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                                Las preguntas se crean a partir del material de tu profesor, y esta
+                                semana aún no tiene ninguno disponible. Vuelve cuando lo suba.
+                            </p>
+                        </div>
+                    )}
+
+                    <div
+                        id="paso-elegir-metodo"
+                        className={cn(
+                            "flex items-start gap-3 pt-2 scroll-mt-24",
+                            visibleMateriales.length === 0 && "hidden"
+                        )}
+                    >
                         <span className="w-7 h-7 rounded-lg bg-primary text-primary-foreground grid place-items-center text-xs font-black shrink-0">
                             3
                         </span>

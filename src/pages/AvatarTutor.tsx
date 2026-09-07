@@ -5,6 +5,7 @@ import {motion, AnimatePresence} from "framer-motion";
 import {intentosApi} from "@/api/courses";
 import {toast} from "sonner";
 import {cn} from "@/lib/utils";
+import { limpiarEtiquetas, leerEtiquetas } from "@/lib/tutorEtiquetas";
 
 type EstadoAvatar = "idle" | "pensando" | "hablando" | "esperando" | "escuchando" | "feliz" | "triste";
 
@@ -356,7 +357,20 @@ function useTTS() {
 
         speechSynthesis.addEventListener("voiceschanged", seleccionar);
 
-        return () => speechSynthesis.removeEventListener("voiceschanged", seleccionar);
+        return () => {
+            speechSynthesis.removeEventListener("voiceschanged", seleccionar);
+
+            // Callar al desmontar.
+            //
+            // `speechSynthesis` pertenece a la PAGINA, no al componente: React puede
+            // desmontar toda la vista y la voz sigue leyendo el ultimo feedback encima de la
+            // pantalla siguiente. Pasaba al pulsar "ver resultados", y pasaria igual con el
+            // boton de atras o saliendo de la tutoria por cualquier otra via.
+            //
+            // Va aqui y no en el manejador de ese boton a proposito: asi cubre TODAS las
+            // salidas, incluidas las que se anadan mas adelante.
+            speechSynthesis.cancel();
+        };
 
     }, []);
 
@@ -672,6 +686,16 @@ export default function AvatarTutor() {
         return "";
     });
 
+    /**
+     * Veredicto del turno tal como lo decide el SERVIDOR (evento SSE "turno").
+     *
+     * La nota ya no se lee del texto de Aria. El modelo la escribia dentro de su respuesta y
+     * se mostraba sin comprobar: llego a dar 4 de 4 sin que el alumno aportara nada. Ahora el
+     * servidor le aplica un techo segun cuanto andamiaje hizo falta y cuanta evidencia hay, y
+     * manda el resultado por su propio evento.
+     */
+    const [veredicto, setVeredicto] = useState<{ cerrado: boolean; puntuacion?: number } | null>(null);
+
     const [cargando, setCargando] = useState(false);
     const [error, setErrorState] = useState("");
     const setError = (rawMsg: string) => {
@@ -789,6 +813,7 @@ export default function AvatarTutor() {
         setCargando(true);
         setEstado("pensando");
         setFeedback("");
+        setVeredicto(null);
         setTurnoActual(null);
         setTurnoListo(false);
         setEscalon(1);
@@ -912,6 +937,15 @@ export default function AvatarTutor() {
                     } catch (e) {
                         console.error("Error al parsear avatar_state:", e);
                     }
+                } else if (name === "turno") {
+                    // Decision autoritativa del servidor. Si no llega, mas abajo hay respaldo
+                    // leyendo las etiquetas: perder las estrellas es molesto, perder la
+                    // tutoria por un dato accesorio no.
+                    try {
+                        setVeredicto(JSON.parse(data));
+                    } catch {
+                        // Un veredicto ilegible no puede cortar la sesion.
+                    }
                 } else if (name === "done") {
                     const match = feedbackAcumulado.match(/\[PUNTUACION:\s*(\d+)\]/i);
                     const puntuacion = match ? parseInt(match[1], 10) : undefined;
@@ -923,11 +957,7 @@ export default function AvatarTutor() {
                     const repregunta = (accionMatch?.[1] ?? "AVANZAR").toUpperCase() === "REPREGUNTA"
                         && escalon < 3;
                     const veredicto = detectarVeredicto(feedbackAcumulado, puntuacion);
-                    const textToSpeak = feedbackAcumulado
-                        .replace(/\[PUNTUACION:\s*\d+\]/i, "")
-                        .replace(/\[SENTIMIENTO:\s*\w+\]/i, "")
-                        .replace(/\[ACCION:\s*\w+\]/i, "")
-                        .trim();
+                    const textToSpeak = limpiarEtiquetas(feedbackAcumulado);
                     if (!textToSpeak) {
                         setError("No se pudo obtener una respuesta clara. Por favor, intenta de nuevo o escribe tu respuesta.");
                         setEstado("esperando");
@@ -1079,6 +1109,15 @@ export default function AvatarTutor() {
                     } catch (e) {
                         console.error("Error al parsear avatar_state:", e);
                     }
+                } else if (name === "turno") {
+                    // Decision autoritativa del servidor. Si no llega, mas abajo hay respaldo
+                    // leyendo las etiquetas: perder las estrellas es molesto, perder la
+                    // tutoria por un dato accesorio no.
+                    try {
+                        setVeredicto(JSON.parse(data));
+                    } catch {
+                        // Un veredicto ilegible no puede cortar la sesion.
+                    }
                 } else if (name === "done") {
                     const match = feedbackAcumulado.match(/\[PUNTUACION:\s*(\d+)\]/i);
                     const puntuacion = match ? parseInt(match[1], 10) : undefined;
@@ -1090,11 +1129,7 @@ export default function AvatarTutor() {
                     const repregunta = (accionMatch?.[1] ?? "AVANZAR").toUpperCase() === "REPREGUNTA"
                         && escalon < 3;
                     const veredicto = detectarVeredicto(feedbackAcumulado, puntuacion);
-                    const textToSpeak = feedbackAcumulado
-                        .replace(/\[PUNTUACION:\s*\d+\]/i, "")
-                        .replace(/\[SENTIMIENTO:\s*\w+\]/i, "")
-                        .replace(/\[ACCION:\s*\w+\]/i, "")
-                        .trim();
+                    const textToSpeak = limpiarEtiquetas(feedbackAcumulado);
                     if (!textToSpeak) {
                         setError("No se pudo obtener una respuesta clara. Por favor, intenta de nuevo o escribe tu respuesta.");
                         setEstado("esperando");
@@ -1199,7 +1234,9 @@ export default function AvatarTutor() {
         if (!turnoActual) return;
         let textoARepetir = "";
         if (turnoListo && feedback) {
-            textoARepetir = feedback.replace(/\[PUNTUACION:\s*\d+\]/i, "").trim();
+            // Con el helper: antes esto solo quitaba [PUNTUACION:], asi que la voz llegaba
+            // a leer en alto "corchete accion avanzar".
+            textoARepetir = limpiarEtiquetas(feedback);
         } else {
             textoARepetir = turnoActual.pregunta;
         }
@@ -1476,8 +1513,15 @@ export default function AvatarTutor() {
                     {/* Feedback */}
                     <AnimatePresence>
                         {feedback && (() => {
-                            const match = feedback.match(/\[PUNTUACION:\s*(\d+)\]/i);
-                            const puntuacionActual = match ? parseInt(match[1], 10) : undefined;
+                            // La nota SOLO se ensena con el turno cerrado. En una repregunta
+                            // el alumno aun no ha dado su respuesta final, asi que la cifra es
+                            // un juicio a medio hacer: se veia "Fundamentacion: 0 de 4" justo
+                            // cuando Aria le decia que iba bien y le pedia profundizar.
+                            const respaldo = leerEtiquetas(feedback);
+                            const cerrado = veredicto ? veredicto.cerrado : respaldo.cerrado;
+                            const puntuacionActual = cerrado
+                                ? (veredicto ? veredicto.puntuacion : respaldo.puntuacion)
+                                : undefined;
                             return (
                                 <motion.div
                                     key="feedback-card"
@@ -1517,7 +1561,7 @@ export default function AvatarTutor() {
                                             )}
                                         </div>
                                     </div>
-                                    <p className="text-sm leading-relaxed">{feedback.replace(/\[PUNTUACION:\s*\d+\]/i, "").replace(/\[SENTIMIENTO:\s*\w+\]/i, "").trim()}</p>
+                                    <p className="text-sm leading-relaxed">{limpiarEtiquetas(feedback)}</p>
                                 </motion.div>
                             );
                         })()}

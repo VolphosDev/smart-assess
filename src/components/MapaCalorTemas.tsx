@@ -118,6 +118,15 @@ export const ESTILOS: Array<{ id: EstiloMapa; nombre: string; descripcion: strin
 interface Punto {
     x: number;
     y: number;
+    /**
+     * Ancho máximo de la etiqueta, en fracción del contenedor.
+     *
+     * Sin esto las píldoras se pisaban: son de ancho variable y van centradas en su punto,
+     * así que dos temas de nombre largo en la misma fila se montaban uno sobre otro. Limitar
+     * cada una al hueco que de verdad le toca lo hace imposible por construcción, sin tener
+     * que medir nada en el DOM ni recolocar etiquetas a posteriori.
+     */
+    anchoMax: number;
     intensidad: number;
     tema: TemaConSemana;
     etiquetaSemana: string;
@@ -207,7 +216,11 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
                 const x = inicioBanda + anchoBanda * ((col + 1) / (enEstaFila + 1));
                 const y = (fila + 1) / (filasEnBanda + 1);
 
-                pts.push({ x, y, intensidad: tema.intensidadCalor, tema, etiquetaSemana: clave });
+                // Separación real entre dos puntos vecinos de esta fila. El 0.92 deja un
+                // respiro visual para que no se toquen justo en el borde.
+                const anchoMax = (anchoBanda / (enEstaFila + 1)) * 0.92;
+
+                pts.push({ x, y, anchoMax, intensidad: tema.intensidadCalor, tema, etiquetaSemana: clave });
             });
         });
 
@@ -372,8 +385,16 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
                         <button
                             key={i}
                             onClick={() => setSeleccionado(p)}
-                            style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%` }}
-                            className="absolute -translate-x-1/2 -translate-y-1/2 max-w-[30%] px-2 py-1 rounded-md text-[11px] sm:text-xs font-bold leading-tight text-white bg-black/45 hover:bg-black/70 backdrop-blur-[2px] transition-colors text-center"
+                            style={{
+                                left: `${p.x * 100}%`,
+                                top: `${p.y * 100}%`,
+                                maxWidth: `${p.anchoMax * 100}%`,
+                            }}
+                            // Dos líneas como mucho: un nombre largo se parte en vez de
+                            // ensanchar la píldora hasta chocar con la vecina. Si aun así no
+                            // cabe, se corta y queda el nombre completo en el `title` y en el
+                            // panel de detalle al pulsar.
+                            className="absolute -translate-x-1/2 -translate-y-1/2 px-1.5 py-1 rounded-md text-[10px] sm:text-[11px] font-bold leading-tight text-white bg-black/50 hover:bg-black/75 backdrop-blur-[2px] transition-colors text-center line-clamp-2 break-words"
                             title={`${p.tema.concepto} · ${p.etiquetaSemana}`}
                         >
                             <span className="line-clamp-2">{p.tema.concepto}</span>

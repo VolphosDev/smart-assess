@@ -1,5 +1,6 @@
 import { X, Loader2, AlertCircle, Download, FileText, Image as ImageIcon, Video as VideoIcon, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 // mammoth (conversor de .docx a HTML) pesa ~500 KB sin comprimir. Se importa de forma
 // DINÁMICA, dentro del if que lo necesita: solo se descarga si el usuario abre la vista
 // previa de un archivo Word. Importado arriba de forma estática, entraba en el paquete de
@@ -116,9 +117,33 @@ export function UniversalPreviewModal({ mongoId, fileName, isOpen, onClose }: Un
         window.open(fileBlobUrl, "_blank", "noopener,noreferrer");
     };
 
+    /*
+       Aquí hubo un bloqueo del scroll del fondo (`body.style.overflow = "hidden"` mientras el
+       modal estaba abierto) y se quitó: al cerrar, la barra de desplazamiento de la página
+       desaparecía y ya no volvía.
+
+       Guardar y restaurar el valor anterior parece correcto, pero deja el estado del `body`
+       —que es global— dependiendo de que cada apertura y cierre se emparejen perfectamente.
+       En cuanto un ciclo se descuadra, la página se queda sin scroll y el alumno no puede
+       moverse por ella.
+
+       El overlay ya lleva `overscroll-contain`, que evita el efecto molesto de arrastrar el
+       fondo, y eso se consigue sin tocar ningún estado global.
+    */
+
     if (!isOpen) return null;
 
-    return (
+    /*
+       Se dibuja con un portal, colgado directamente de <body>.
+
+       `position: fixed` se mide respecto a la ventana SOLO si ningún ancestro tiene
+       `transform`, `filter`, `backdrop-filter` o `contain`. Cualquiera de esas propiedades
+       —y este proyecto usa animaciones y desenfoques por todas partes— convierte a ese
+       ancestro en el marco de referencia, y entonces `inset-0` deja de significar "toda la
+       pantalla" para significar "todo ESE elemento". De ahí la franja sin cubrir arriba.
+       Colgando el modal de <body> no hay ancestro que pueda atraparlo.
+    */
+    return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4 md:p-8 overscroll-contain">
             <div className="bg-card w-full h-[100dvh] sm:h-[90vh] max-w-6xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-border/50">
 
@@ -265,6 +290,7 @@ export function UniversalPreviewModal({ mongoId, fileName, isOpen, onClose }: Un
                     )}
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

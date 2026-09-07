@@ -185,19 +185,27 @@ All colors MUST be HSL.
    contenedor de la página: ocultar los ancestros con display lo ocultaría
    también a él. Con visibility se puede volver a hacer visible al hijo. */
 @media print {
-    body * {
-        visibility: hidden;
-    }
+    /*
+       Se oculta lo que NO forma parte de la hoja, y se deja la hoja en el flujo normal.
 
-    #hoja-imprimible,
-    #hoja-imprimible * {
-        visibility: visible;
+       Antes esto usaba `body * { visibility: hidden }` mas `position: absolute` en la hoja.
+       Es un truco muy repetido y falla justo al imprimir varias paginas: `visibility: hidden`
+       oculta el elemento pero le SIGUE reservando su espacio, y `position: absolute` saca la
+       hoja del flujo, con lo que el navegador no sabe cuanto mide para paginarla. Resultado:
+       a partir de la segunda pagina el texto se monta encima de si mismo.
+
+       Con `display: none` el espacio desaparece de verdad, y sin `absolute` la hoja pagina
+       como cualquier documento.
+
+       El selector recorre la rama: para cada ancestro de la hoja, esconde a sus hijos que ni
+       son la hoja ni la contienen. Asi no se toca ninguna propiedad `display` de dentro de la
+       hoja, que es lo que romperia los `flex` y `grid` de Tailwind al imprimir.
+    */
+    :is(body, body *):has(#hoja-imprimible) > *:not(:has(#hoja-imprimible), #hoja-imprimible) {
+        display: none !important;
     }
 
     #hoja-imprimible {
-        position: absolute;
-        left: 0;
-        top: 0;
         width: 100%;
         max-width: none;
         max-height: none;

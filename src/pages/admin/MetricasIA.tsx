@@ -23,7 +23,7 @@ import { reproducirClic } from "@/lib/sonidos";
 
 const BLOQUES: Array<{ clave: string; titulo: string; icono: any; explicacion: string }> = [
     {
-        clave: "conformidadBloom",
+        clave: "generacion_bloom",
         titulo: "Conformidad con Bloom",
         icono: Layers,
         explicacion: "Qué proporción de las preguntas generadas declara cada nivel cognitivo, "
@@ -44,7 +44,7 @@ const BLOQUES: Array<{ clave: string; titulo: string; icono: any; explicacion: s
             + "porcentaje hubo que conformarse con contexto degradado.",
     },
     {
-        clave: "calidadTextual",
+        clave: "calidad_textual",
         titulo: "Calidad del texto",
         icono: Type,
         explicacion: "Legibilidad (Fernández-Huerta) y riqueza léxica de los enunciados. "
@@ -58,7 +58,7 @@ const BLOQUES: Array<{ clave: string; titulo: string; icono: any; explicacion: s
             + "crítico antes de mostrarse.",
     },
     {
-        clave: "guardiaEnunciado",
+        clave: "guardia_enunciado",
         titulo: "Guardia de enunciado",
         icono: ShieldAlert,
         explicacion: "Preguntas rechazadas por referirse a algo que el alumno no puede ver "
@@ -94,7 +94,19 @@ function formatear(v: unknown): string {
 function Bloque({ titulo, icono: Icono, explicacion, datos }: {
     titulo: string; icono: any; explicacion: string; datos?: BloqueMetrica;
 }) {
-    if (!datos) return null;
+    // Antes esto devolvia null. Un bloque que no llega desaparecia de la pantalla sin dejar
+    // rastro, asi que un nombre de clave mal escrito se veia igual que "todavia no hay datos".
+    // Se declara en pantalla: si falta, se ve que falta.
+    if (!datos) {
+        return (
+            <section className="bg-card border border-dashed border-border rounded-xl p-5">
+                <h3 className="font-display font-bold text-muted-foreground">{titulo}</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                    El backend no devolvió este bloque en <code>/metricas/resumen</code>.
+                </p>
+            </section>
+        );
+    }
 
     const { interpretacion, ...cifras } = datos;
     const entradas = Object.entries(cifras).filter(([, v]) => typeof v !== "object" || v === null);

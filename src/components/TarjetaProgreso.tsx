@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Flame, Target, Trophy } from "lucide-react";
+import { Flame, Target, Trophy, TrendingUp, TrendingDown } from "lucide-react";
 import { apiClient } from "@/api";
+import { cn } from "@/lib/utils";
 
 /**
  * Puntos, rango y marca personal del alumno.
@@ -26,6 +27,11 @@ interface Progreso {
     puntosParaSiguiente: number | null;
     progresoEnRango: number;
     mejorNota: number | null;
+    mediaReciente: number | null;
+    mediaAnterior: number | null;
+    /** Diferencia entre la media reciente y la anterior. null si aún faltan intentos. */
+    progreso: number | null;
+    intentosParaProgreso: number;
     ultimaNota: number | null;
     superoSuMarca: boolean;
     racha: number;
@@ -94,16 +100,59 @@ export default function TarjetaProgreso({ usuarioId }: { usuarioId: number | str
                         temas dominados
                     </div>
                 </div>
+                {/*
+                    TU PROGRESO, no "tu mejor marca".
+
+                    La mejor nota histórica es un techo que deja de moverse: tras un buen día
+                    solo se puede igualar, y un intento con suerte la fija para siempre. Lo que
+                    sostiene la motivación en quien va justo es ver que MEJORA, no cuál fue su
+                    récord. La mejor nota sigue ahí, en pequeño, porque a algunos les gusta.
+                */}
                 <div className="bg-muted/40 rounded-lg p-2.5">
-                    <Trophy className="w-4 h-4 mx-auto text-amber-500 mb-1" />
-                    <div className="font-display font-bold">
-                        {p.mejorNota != null ? p.mejorNota.toFixed(1) : "—"}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                        tu mejor marca
-                    </div>
+                    {p.progreso == null ? (
+                        <>
+                            <TrendingUp className="w-4 h-4 mx-auto text-muted-foreground mb-1" />
+                            <div className="font-display font-bold text-muted-foreground">—</div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                                {p.intentosParaProgreso === 1
+                                    ? "1 prueba más"
+                                    : `${p.intentosParaProgreso} pruebas más`}
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            {p.progreso >= 0
+                                ? <TrendingUp className="w-4 h-4 mx-auto text-emerald-600 mb-1" />
+                                : <TrendingDown className="w-4 h-4 mx-auto text-amber-600 mb-1" />}
+                            <div className={cn(
+                                "font-display font-bold",
+                                p.progreso >= 0 ? "text-emerald-600" : "text-amber-600"
+                            )}>
+                                {p.progreso >= 0 ? "+" : ""}{p.progreso.toFixed(1)}
+                            </div>
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                                tu progreso
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
+
+            {p.progreso != null && p.mediaReciente != null && p.mediaAnterior != null && (
+                <p className="text-xs text-muted-foreground text-center">
+                    Media de tus últimas 3 pruebas <span className="font-bold text-foreground">{p.mediaReciente.toFixed(1)}</span>
+                    {" frente a las 3 anteriores "}
+                    <span className="font-bold text-foreground">{p.mediaAnterior.toFixed(1)}</span>
+                    {p.mejorNota != null && <> · tu mejor nota fue {p.mejorNota.toFixed(1)}</>}
+                </p>
+            )}
+
+            {/* Una bajada se dice sin dramatizar: es información para actuar, no un castigo. */}
+            {p.progreso != null && p.progreso < 0 && (
+                <p className="text-xs text-center text-muted-foreground">
+                    Has bajado un poco. Repasa los temas en rojo de tu mapa y vuelve a intentarlo.
+                </p>
+            )}
 
             {p.superoSuMarca && p.ultimaNota != null && (
                 <p className="text-sm font-semibold text-emerald-600 text-center">

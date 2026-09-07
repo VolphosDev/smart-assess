@@ -25,6 +25,16 @@ interface Props {
 export default function CuracionTemas({ materialId, nombreArchivo }: Props) {
     const [abierto, setAbierto] = useState(false);
     const [expandido, setExpandido] = useState<string | null>(null);
+
+    // La evidencia del tema desplegado se pide sola, no viene en el listado.
+    const { data: evidencia, isLoading: cargandoEvidencia } = useQuery({
+        queryKey: ["curacion-evidencia", materialId, expandido],
+        queryFn: () => curacionTemasApi.evidenciaDe(materialId, expandido!),
+        enabled: !!expandido,
+        // La evidencia de un tema no cambia mientras no se reingiera el material, así que
+        // volver a abrirlo no debe costar otra búsqueda vectorial.
+        staleTime: 10 * 60_000,
+    });
     const queryClient = useQueryClient();
 
     const { data: temas = [], isLoading } = useQuery({
@@ -33,16 +43,49 @@ export default function CuracionTemas({ materialId, nombreArchivo }: Props) {
         enabled: abierto,
     });
 
+    const clave = ["curacion-temas", materialId];
+
     const decidir = useMutation({
         mutationFn: ({ tema, aceptado }: { tema: string; aceptado: boolean }) =>
             curacionTemasApi.decidir(materialId, tema, aceptado),
+
+        /**
+         * Pinta la decisión ANTES de que conteste el servidor.
+         *
+         * Antes el color solo cambiaba cuando volvía la respuesta y se recargaba la lista
+         * entera. Con 16 temas y una recarga por clic, el docente pulsaba la X, veía el aviso
+         * "tema descartado" y la fila seguía exactamente igual un buen rato: parece que no
+         * funcionó y se vuelve a pulsar.
+         *
+         * Si la petición falla se deshace y se avisa, asi que no se llega a mentir sobre algo
+         * que no se guardó.
+         */
+        onMutate: async ({ tema, aceptado }) => {
+            await queryClient.cancelQueries({ queryKey: clave });
+            const previo = queryClient.getQueryData<any[]>(clave);
+
+            queryClient.setQueryData<any[]>(clave, (actual) =>
+                (actual ?? []).map((t) => (t.tema === tema ? { ...t, aceptado } : t)));
+
+            return { previo };
+        },
+
+        onError: (_e, _vars, contexto: any) => {
+            // Devolver la lista a como estaba: dejar el color puesto sería afirmar que se
+            // guardó algo que no se guardó.
+            if (contexto?.previo) queryClient.setQueryData(clave, contexto.previo);
+            toast.error("No se pudo guardar la decisión.");
+        },
+
         onSuccess: (r) => {
             toast.success(r.mensaje);
-            queryClient.invalidateQueries({ queryKey: ["curacion-temas", materialId] });
             // La lista de temas del alumno cambia, así que se invalida también.
             queryClient.invalidateQueries({ queryKey: ["semana"] });
         },
-        onError: () => toast.error("No se pudo guardar la decisión."),
+
+        // Se confirma contra el servidor al final, gane o pierda: si la actualización
+        // optimista se desvió de lo real, aquí se corrige.
+        onSettled: () => queryClient.invalidateQueries({ queryKey: clave }),
     });
 
     const revisados = temas.filter((t) => t.aceptado !== null).length;
@@ -145,12 +188,17 @@ export default function CuracionTemas({ materialId, nombreArchivo }: Props) {
                                                 <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                                                     Texto del documento que originó este tema
                                                 </p>
-                                                {t.evidencia.length === 0 ? (
+                                                {cargandoEvidencia ? (
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                        Buscando el texto de origen...
+                                                    </div>
+                                                ) : !evidencia || evidencia.evidencia.length === 0 ? (
                                                     <p className="text-xs text-muted-foreground italic">
                                                         No se pudo recuperar el texto de origen.
                                                     </p>
                                                 ) : (
-                                                    t.evidencia.map((frag, i) => (
+                                                    evidencia.evidencia.map((frag, i) => (
                                                         <p key={i} className="text-xs bg-muted/60 rounded p-2 leading-relaxed">
                                                             {frag}
                                                         </p>
