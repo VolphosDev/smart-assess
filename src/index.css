@@ -66,6 +66,33 @@ All colors MUST be HSL.
     --sidebar-ring: 250 85% 58%;
   }
 
+
+  /*
+   * Tema "suave": mismo diseño, menos fatiga visual.
+   *
+   * El tema claro usa blanco puro en las tarjetas (--card: 0 0% 100%) sobre un fondo gris
+   * muy claro. En una sesión de 15 minutos leyendo textos y respondiendo preguntas —que es
+   * exactamente lo que la plataforma le pide a un alumno— el blanco puro a brillo alto
+   * cansa la vista. Este tema baja la luminancia y calienta el tono (crema en vez de
+   * blanco), manteniendo el contraste de texto por encima del mínimo AA de WCAG.
+   */
+  .tema-suave {
+    --background: 40 30% 92%;
+    --foreground: 30 25% 15%;
+
+    --card: 42 45% 97%;
+    --card-foreground: 30 25% 15%;
+
+    --popover: 42 45% 97%;
+    --popover-foreground: 30 25% 15%;
+
+    --muted: 40 22% 88%;
+    --muted-foreground: 30 12% 38%;
+
+    --border: 38 22% 84%;
+    --input: 38 22% 84%;
+  }
+
   .dark {
     --background: 224 45% 10%;
     --foreground: 210 40% 98%;
@@ -122,12 +149,79 @@ All colors MUST be HSL.
 
 @layer utilities {
   .bg-mesh { background-image: none; background-color: hsl(var(--background)); }
-  .bg-hero-gradient { background-image: none; background-color: hsl(250 60% 38%); }
-  .bg-primary-gradient { background-image: none; background-color: hsl(var(--primary)); }
-  .bg-lime-gradient { background-image: none; background-color: hsl(142.1 76.2% 36.3%); }
-  .bg-coral-gradient { background-image: none; background-color: hsl(354 84% 57%); }
+  /* Fondos de acento con color de texto PROPIO.
+   *
+   * Estos cuatro fondos son fijos: no cambian entre tema claro y oscuro. Por eso llevan
+   * aquí su propio `color` en vez de dejar que el componente elija.
+   *
+   * El defecto que corrige: los componentes los emparejaban con `text-primary-foreground`,
+   * que en tema oscuro se redefine a casi negro (224 45% 10%). Resultado medido en el panel
+   * de bienvenida: texto rgb(14,20,37) sobre morado rgb(58,39,155) = **contraste 1,70:1**,
+   * muy por debajo del 4,5:1 que exige WCAG AA. El saludo era prácticamente ilegible en modo
+   * oscuro. En modo claro daba 10,33:1, así que el fallo solo aparecía en un tema — la razón
+   * de que pasara desapercibido.
+   *
+   * Al vivir el color junto al fondo, cualquier componente que use estas clases queda
+   * correcto en ambos temas sin tener que acordarse de nada. */
+  .bg-hero-gradient { background-image: none; background-color: hsl(250 60% 38%); color: hsl(210 40% 98%); }
+  .bg-primary-gradient { background-image: none; background-color: hsl(var(--primary)); color: hsl(210 40% 98%); }
+  .bg-lime-gradient { background-image: none; background-color: hsl(142.1 76.2% 36.3%); color: hsl(210 40% 98%); }
+  .bg-coral-gradient { background-image: none; background-color: hsl(354 84% 57%); color: hsl(210 40% 98%); }
   .shadow-glow { box-shadow: var(--shadow-glow); }
   .shadow-soft { box-shadow: var(--shadow-soft); }
   .shadow-pop { box-shadow: var(--shadow-pop); }
   .text-balance { text-wrap: balance; }
+}
+
+/* --------------------------------------------------------------------------
+   Impresión: hoja de repaso de un intento
+   --------------------------------------------------------------------------
+   El botón "Imprimir o guardar PDF" del historial llama a window.print(), que
+   por defecto imprimiría la página entera —barra lateral, gráfico de notas y
+   la lista de intentos incluidos— con el modal recortado a 85vh. Estas reglas
+   dejan en el papel solo la hoja del intento abierto.
+
+   Se usa visibility y no display:none porque el modal es descendiente del
+   contenedor de la página: ocultar los ancestros con display lo ocultaría
+   también a él. Con visibility se puede volver a hacer visible al hijo. */
+@media print {
+    /*
+       Se oculta lo que NO forma parte de la hoja, y se deja la hoja en el flujo normal.
+
+       Antes esto usaba `body * { visibility: hidden }` mas `position: absolute` en la hoja.
+       Es un truco muy repetido y falla justo al imprimir varias paginas: `visibility: hidden`
+       oculta el elemento pero le SIGUE reservando su espacio, y `position: absolute` saca la
+       hoja del flujo, con lo que el navegador no sabe cuanto mide para paginarla. Resultado:
+       a partir de la segunda pagina el texto se monta encima de si mismo.
+
+       Con `display: none` el espacio desaparece de verdad, y sin `absolute` la hoja pagina
+       como cualquier documento.
+
+       El selector recorre la rama: para cada ancestro de la hoja, esconde a sus hijos que ni
+       son la hoja ni la contienen. Asi no se toca ninguna propiedad `display` de dentro de la
+       hoja, que es lo que romperia los `flex` y `grid` de Tailwind al imprimir.
+    */
+    :is(body, body *):has(#hoja-imprimible) > *:not(:has(#hoja-imprimible), #hoja-imprimible) {
+        display: none !important;
+    }
+
+    #hoja-imprimible {
+        width: 100%;
+        max-width: none;
+        max-height: none;
+        overflow: visible;
+        box-shadow: none;
+        border: none;
+    }
+
+    /* Los botones no tienen sentido en papel. */
+    .no-imprimir {
+        display: none !important;
+    }
+
+    /* Que no se parta una pregunta entre dos páginas. */
+    #hoja-imprimible li {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
 }

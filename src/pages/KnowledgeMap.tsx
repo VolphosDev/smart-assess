@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { getCourseIcon } from "@/lib/icon-mapper";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { GrupoCursoConocimiento } from "@/components/ConceptHeatMap";
+import MapaCalorTemas from "@/components/MapaCalorTemas";
 import {
     ResponsiveContainer,
     AreaChart,
@@ -72,6 +74,12 @@ export default function KnowledgeMap() {
     const { data: mapaCalor = [], isLoading } = useQuery({
         queryKey: ["mapa-calor", studentId],
         queryFn: () => rendimientoApi.mapaCalor(studentId),
+        enabled: !!studentId,
+    });
+
+    const { data: mapaConocimiento = [] } = useQuery<GrupoCursoConocimiento[]>({
+        queryKey: ["mapa-conocimiento", studentId],
+        queryFn: () => rendimientoApi.mapaConocimiento(studentId),
         enabled: !!studentId,
     });
 
@@ -156,7 +164,8 @@ export default function KnowledgeMap() {
                     Mapa de Conocimiento
                 </h1>
                 <p className="text-muted-foreground text-sm ml-14 max-w-2xl leading-relaxed">
-                    Visualiza y haz clic en cada celda del mapa de calor para obtener un diagnóstico pedagógico preciso de tus fortalezas y debilidades.
+                    Cada burbuja es un tema puntual de tus cursos. Cuanto más grande y roja, más
+                    te conviene repasarlo — tócala para ver el detalle.
                 </p>
             </div>
 
@@ -185,124 +194,13 @@ export default function KnowledgeMap() {
                 </div>
             )}
 
+            {/* ── MAPA DE CALOR POR TEMA (nuevo) ──────────────────────────── */}
+            <MapaCalorTemas cursos={mapaConocimiento} />
+
             {totalTemas > 0 && (
                 <div className="grid lg:grid-cols-3 gap-8">
                     {/* Heatmap Matrix Block */}
                     <div className="lg:col-span-2 space-y-6">
-                        {/* ── TRUE HEAT MAP ───────────────────────────────────── */}
-                        <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs">
-                            <div className="flex items-center justify-between mb-5">
-                                <h3 className="font-display font-bold text-lg flex items-center gap-2">
-                                    <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary grid place-items-center text-xs">🔥</span>
-                                    Mapa de Calor de Conocimiento
-                                </h3>
-                                <span className="text-[10px] text-muted-foreground font-mono">
-                                    Menor ← intensidad → Mayor dominio
-                                </span>
-                            </div>
-
-                            {/* Heatmap Grid: rows = cursos, cols = semanas */}
-                            <div className="overflow-x-auto">
-                                <div className="min-w-[400px] space-y-2.5 pb-1">
-                                    {/* Column headers (semanas) */}
-                                    <div className="flex items-center gap-2 pl-[148px] mb-1">
-                                        {semanasLista.map((sem) => (
-                                            <div key={sem} className="w-14 text-center text-[10px] font-black text-muted-foreground/70 uppercase tracking-widest shrink-0">
-                                                S{sem.replace(/\D/g, "")}
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Row = curso */}
-                                    {cursosLista.map((curso) => (
-                                        <div key={curso.name} className="flex items-center gap-2">
-                                            {/* Row label */}
-                                            <div className="w-[140px] shrink-0 flex items-center gap-1.5 pr-2">
-                                                <span className="text-lg shrink-0">{curso.emoji}</span>
-                                                <span className="text-[11px] font-bold text-foreground/80 truncate leading-tight" title={curso.name}>{curso.name}</span>
-                                            </div>
-
-                                            {/* Cells */}
-                                            {semanasLista.map((sem) => {
-                                                const entry = getMatrixEntry(curso.name, sem);
-                                                const pct = entry ? entry.porcentaje : null;
-                                                const isSelected = selectedCell && entry && selectedCell.semanaId === entry.semanaId;
-
-                                                // Color intensity based on percentage
-                                                const cellBg = pct === null
-                                                    ? "bg-muted/30 dark:bg-muted/10 border border-border/30"
-                                                    : pct >= 85
-                                                    ? "bg-emerald-500 dark:bg-emerald-500 shadow-emerald-500/30 shadow-sm"
-                                                    : pct >= 75
-                                                    ? "bg-emerald-400 dark:bg-emerald-400"
-                                                    : pct >= 65
-                                                    ? "bg-amber-400 dark:bg-amber-400"
-                                                    : pct >= 50
-                                                    ? "bg-amber-500 dark:bg-amber-500"
-                                                    : pct >= 35
-                                                    ? "bg-rose-400 dark:bg-rose-400"
-                                                    : "bg-rose-600 dark:bg-rose-600";
-
-                                                return (
-                                                    <button
-                                                        key={sem}
-                                                        onClick={() => entry && setSelectedCell(entry)}
-                                                        disabled={!entry}
-                                                        title={entry ? `${curso.name} · ${sem}: ${pct}% aciertos` : "Sin datos"}
-                                                        className={cn(
-                                                            "w-14 h-14 shrink-0 rounded-lg transition-all duration-200 relative group flex flex-col items-center justify-center gap-0.5",
-                                                            cellBg,
-                                                            entry ? "cursor-pointer hover:scale-105 hover:z-10 hover:shadow-lg" : "cursor-not-allowed opacity-40",
-                                                            isSelected && "ring-2 ring-primary ring-offset-2 dark:ring-offset-background scale-105 z-10"
-                                                        )}
-                                                    >
-                                                        {entry ? (
-                                                            <>
-                                                                <span className="text-[11px] font-black text-white leading-none">{pct}%</span>
-                                                                <span className="text-[8px] text-white/70 font-semibold leading-none">{entry.totalIntentos}int</span>
-                                                            </>
-                                                        ) : (
-                                                            <HelpCircle className="w-4 h-4 text-muted-foreground/30" />
-                                                        )}
-                                                        {/* Tooltip */}
-                                                        {entry && (
-                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-foreground text-background rounded-lg text-[10px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-xl">
-                                                                {curso.name} · {sem}<br/><span className="font-black text-sm">{pct}%</span> aciertos
-                                                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-foreground" />
-                                                            </div>
-                                                        )}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Heatmap gradient legend */}
-                            <div className="flex items-center gap-3 mt-6 pt-4 border-t border-border/40">
-                                <span className="text-[10px] text-muted-foreground font-semibold">Sin datos / Bajo</span>
-                                <div className="flex gap-1 items-center">
-                                    {[
-                                        { bg: "bg-muted/40 border border-border/40", label: "Sin datos" },
-                                        { bg: "bg-rose-600", label: "<35%" },
-                                        { bg: "bg-rose-400", label: "35%" },
-                                        { bg: "bg-amber-500", label: "50%" },
-                                        { bg: "bg-amber-400", label: "65%" },
-                                        { bg: "bg-emerald-400", label: "75%" },
-                                        { bg: "bg-emerald-500", label: "≥85%" },
-                                    ].map((item, i) => (
-                                        <div key={i} className="flex flex-col items-center gap-0.5">
-                                            <div className={cn("w-6 h-6 rounded", item.bg)} />
-                                            <span className="text-[8px] text-muted-foreground/60 font-semibold">{item.label}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <span className="text-[10px] text-muted-foreground font-semibold">Alto dominio</span>
-                            </div>
-                        </div>
-                        {/* ── END TRUE HEAT MAP ───────────────────────────────── */}
-
                         <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs relative overflow-hidden">
 
                             <div className="flex items-center justify-between mb-6">
@@ -316,7 +214,10 @@ export default function KnowledgeMap() {
 
                             {/* Matrix Table */}
                             <div className="overflow-x-auto">
-                                <div className="min-w-[500px] space-y-3 pb-2">
+                                {/* Antes tenía min-w-[500px]: en un celular (360–430 px de
+                                    ancho) eso forzaba scroll horizontal en toda la tabla.
+                                    Ahora solo lo exige desde tablet en adelante. */}
+                                <div className="sm:min-w-[500px] space-y-3 pb-2">
                                     {/* Weeks Header Row */}
                                     <div className="grid grid-cols-12 items-center text-center">
                                         <div className="col-span-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider pl-2">

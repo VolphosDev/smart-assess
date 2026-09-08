@@ -1,7 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+﻿import { useQuery } from "@tanstack/react-query";
 import { intentosApi } from "@/api/courses";
 import { useState } from "react";
-import { Loader2, Eye } from "lucide-react";
+import { Loader2, Eye, Download, Printer, CheckCircle2, XCircle, Lightbulb } from "lucide-react";
+import { toast } from "sonner";
+import {
+    etiquetaTecnica,
+    exportarHistorialCompleto,
+    exportarIntento,
+    totalPreguntas,
+} from "@/lib/exportar-historial";
 import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis} from "recharts";
 import { motion } from "framer-motion";
 import { getCourseIcon } from "@/lib/icon-mapper";
@@ -25,20 +32,9 @@ export default function HistoryPage() {
         ? (intentos.reduce((a: number, b: any) => a + b.nota, 0) / intentos.length).toFixed(1)
         : "0.0";
 
-    const getTecnicaLabel = (tecnica: string) => {
-        if (!tecnica) return "Práctica";
-        switch (tecnica.toLowerCase()) {
-            case "opcion_multiple": return "Opción múltiple";
-            case "verdadero_falso": return "Verdadero / Falso";
-            case "abierta": return "Pregunta abierta";
-            case "deteccion_errores": return "Detección de errores";
-            case "visual_quiz": return "Visual Quiz";
-            case "avatar": return "Avatar Tutor";
-            case "video": return "Video Tutor";
-            case "adaptativa": return "Evaluación Recomendadora";
-            default: return tecnica;
-        }
-    };
+    // `etiquetaTecnica` vive ahora en lib/exportar-historial: la usan también las descargas,
+    // y tener dos copias del mismo switch era garantía de que se separaran con el tiempo.
+    const getTecnicaLabel = etiquetaTecnica;
 
     const sortedChronological = [...intentos].reverse();
     const counters: Record<string, number> = {};
@@ -52,6 +48,15 @@ export default function HistoryPage() {
     });
     const intentosProcesados = [...processedChronological].reverse();
 
+    const descargarTodo = () => {
+        if (totalPreguntas(intentosProcesados) === 0) {
+            toast.warning("Todavía no tienes preguntas registradas para descargar.");
+            return;
+        }
+        exportarHistorialCompleto(intentosProcesados, user?.nombre);
+        toast.success("Descargamos tus preguntas y respuestas.");
+    };
+
     const data = processedChronological.map((h: any) => ({
         name: `Sem ${h.semana}`,
         score: h.nota,
@@ -61,9 +66,18 @@ export default function HistoryPage() {
 
     return (
         <div className="space-y-8">
-            <div>
-                <h1 className="font-display text-4xl font-bold mb-1">Tu progreso</h1>
-                <p className="text-muted-foreground text-sm">Revisa cada intento y descubre tus puntos a reforzar.</p>
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                <div>
+                    <h1 className="font-display text-4xl font-bold mb-1">Tu progreso</h1>
+                    <p className="text-muted-foreground text-sm">Revisa cada intento y descubre tus puntos a reforzar.</p>
+                </div>
+                <button
+                    onClick={descargarTodo}
+                    className="inline-flex items-center justify-center gap-2 shrink-0 min-h-[44px] px-4 rounded-xl border border-border bg-card font-semibold text-sm hover:bg-muted/60 transition-colors shadow-xs"
+                >
+                    <Download className="w-4 h-4" />
+                    Descargar mis preguntas y respuestas
+                </button>
             </div>
 
             <div className="grid lg:grid-cols-3 gap-5">
@@ -90,7 +104,7 @@ export default function HistoryPage() {
                         </ResponsiveContainer>
                     </div>
                 </div>
-                <div className="bg-hero-gradient rounded-xl p-6 shadow-sm text-primary-foreground flex flex-col justify-center">
+                <div className="bg-hero-gradient rounded-xl p-6 shadow-sm flex flex-col justify-center">
                     <div className="text-xs font-bold uppercase tracking-wider opacity-90 mb-2">Promedio general</div>
                     <div className="font-display font-bold text-5xl mb-1">{avg}</div>
                     <div className="opacity-90 text-sm">de un total de 20 puntos · Avance constante</div>
@@ -140,7 +154,8 @@ export default function HistoryPage() {
             {intentoAbierto && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
                      onClick={() => setIntentoAbierto(null)}>
-                    <div className="bg-card rounded-xl shadow-lg max-w-lg w-full max-h-[80vh] overflow-y-auto p-6 space-y-4"
+                    <div id="hoja-imprimible"
+                         className="bg-card rounded-xl shadow-lg max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-4"
                          onClick={e => e.stopPropagation()}>
                         <div className="flex flex-col gap-1 border-b border-border pb-3">
                             <div className="flex items-center justify-between">
@@ -151,24 +166,81 @@ export default function HistoryPage() {
                                 <span className="font-bold text-primary text-lg shrink-0">{intentoAbierto.nota}/20</span>
                             </div>
                             <p className="text-xs text-muted-foreground font-semibold">
-                                {intentoAbierto.semana} · {getTecnicaLabel(intentoAbierto.tecnica)} (Intento #{intentoAbierto.attemptNumber})
+                                {intentoAbierto.nombreTema || intentoAbierto.semana} · {getTecnicaLabel(intentoAbierto.tecnica)} (Intento #{intentoAbierto.attemptNumber})
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                {new Date(intentoAbierto.fecha).toLocaleString("es-PE")}{" · "}
+                                {intentoAbierto.respuestas.filter((r: any) => r.esCorrecta).length} de{" "}
+                                {intentoAbierto.respuestas.length} correctas
                             </p>
                         </div>
+
                         <ul className="space-y-3">
                             {intentoAbierto.respuestas.map((r: any, i: number) => (
-                                <li key={i} className={`p-4 rounded-xl border text-sm space-y-1 ${r.esCorrecta ? "border-green-200 bg-green-50/50" : "border-red-200 bg-red-50/50"}`}>
-                                    <p className="font-semibold text-foreground">{i + 1}. {r.pregunta}</p>
-                                    <p className="text-muted-foreground">Tu respuesta: <span className="font-medium text-foreground">{r.respuesta}</span></p>
-                                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${r.esCorrecta ? "bg-green-200 text-green-800" : "bg-red-200 text-red-800"}`}>
-                                        {r.esCorrecta ? "Correcto" : "Incorrecto"}
-                                    </span>
+                                <li key={i} className={`p-4 rounded-xl border text-sm space-y-2 ${r.esCorrecta ? "border-green-300 bg-green-50/60" : "border-red-300 bg-red-50/60"}`}>
+                                    <div className="flex items-start gap-2">
+                                        {r.esCorrecta
+                                            ? <CheckCircle2 className="w-4 h-4 text-green-700 shrink-0 mt-0.5" />
+                                            : <XCircle className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />}
+                                        <p className="font-semibold text-foreground flex-1">{i + 1}. {r.pregunta}</p>
+                                    </div>
+
+                                    <p className="text-muted-foreground">
+                                        Tu respuesta: <span className="font-medium text-foreground">{r.respuesta}</span>
+                                    </p>
+
+                                    {/* Lo que antes faltaba: saber que fallaste no enseña nada;
+                                        lo que enseña es ver cuál era la correcta. Solo se muestra
+                                        cuando el alumno falló — repetirla cuando acertó es ruido. */}
+                                    {!r.esCorrecta && r.respuestaCorrecta && (
+                                        <p className="text-green-900 bg-green-100/70 border border-green-200 rounded-lg px-3 py-2">
+                                            <span className="font-bold">Lo correcto era:</span> {r.respuestaCorrecta}
+                                        </p>
+                                    )}
+
+                                    {r.retroalimentacion && (
+                                        <p className="flex items-start gap-2 text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+                                            <Lightbulb className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                                            <span>{r.retroalimentacion}</span>
+                                        </p>
+                                    )}
+
+                                    <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${r.esCorrecta ? "bg-green-200 text-green-900" : "bg-red-200 text-red-900"}`}>
+                                            {r.esCorrecta ? "Correcto" : "Incorrecto"}
+                                        </span>
+                                        {r.conceptos && (
+                                            <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-muted text-muted-foreground">
+                                                {r.conceptos}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Aviso solo para intentos anteriores a que se guardara este dato:
+                                        una tarjeta sin "lo correcto era" parecería un fallo de la app. */}
+                                    {!r.esCorrecta && !r.respuestaCorrecta && (
+                                        <p className="text-xs text-muted-foreground italic">
+                                            Este intento es anterior a que guardáramos la respuesta correcta, por eso no aparece aquí.
+                                        </p>
+                                    )}
                                 </li>
                             ))}
                         </ul>
-                        <button onClick={() => setIntentoAbierto(null)}
-                                className="w-full py-2.5 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold shadow-xs">
-                            Cerrar
-                        </button>
+
+                        <div className="flex flex-col sm:flex-row gap-2 no-imprimir">
+                            <button onClick={() => { exportarIntento(intentoAbierto); toast.success("Descargamos este intento."); }}
+                                    className="flex-1 inline-flex items-center justify-center gap-2 min-h-[44px] rounded-xl border border-border bg-card font-semibold text-sm hover:bg-muted/60 transition-colors">
+                                <Download className="w-4 h-4" /> Descargar
+                            </button>
+                            <button onClick={() => window.print()}
+                                    className="flex-1 inline-flex items-center justify-center gap-2 min-h-[44px] rounded-xl border border-border bg-card font-semibold text-sm hover:bg-muted/60 transition-colors">
+                                <Printer className="w-4 h-4" /> Imprimir o guardar PDF
+                            </button>
+                            <button onClick={() => setIntentoAbierto(null)}
+                                    className="flex-1 min-h-[44px] rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-semibold shadow-xs">
+                                Cerrar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

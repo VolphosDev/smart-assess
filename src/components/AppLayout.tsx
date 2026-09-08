@@ -4,6 +4,7 @@ import { Home, History, Sparkles, LogOut, Loader2, ShieldAlert, Check, Brain } f
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/lib/icon-mapper";
 import { authApi } from "@/api/auth";
+import { SelectorTema } from "./SelectorTema";
 
 const nav = [
   { to: "/app", icon: Home, label: "Inicio", end: true },
@@ -149,7 +150,8 @@ export default function AppLayout() {
               </NavLink>
             ))}
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <SelectorTema />
             <button
               type="button"
               onClick={() => {
@@ -157,9 +159,10 @@ export default function AppLayout() {
                 localStorage.removeItem("user");
                 navigate("/");
               }}
-              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground mr-1"
+              className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
             >
-              <LogOut className="w-4 h-4" /> Salir
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Salir</span>
             </button>
             <UserAvatar name={user.nombre || user.name || "Estudiante"} className="w-9 h-9" />
           </div>

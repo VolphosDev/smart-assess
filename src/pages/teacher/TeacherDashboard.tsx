@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, ArrowRight, BookOpen, Plus, X, MoreVertical, Edit2, Trash2, AlertTriangle, Loader2, GraduationCap, TrendingUp, BarChart2, Calendar, Filter, ChevronDown, Check, RefreshCw } from "lucide-react";
@@ -204,7 +204,7 @@ export default function TeacherDashboard() {
 
     return (
         <div className="space-y-8 pb-20">
-            <section className="bg-hero-gradient rounded-xl p-8 text-primary-foreground relative overflow-hidden shadow-sm">
+            <section className="bg-hero-gradient rounded-xl p-8 relative overflow-hidden shadow-sm">
                 <GraduationCap className="absolute right-6 top-1/2 -translate-y-1/2 w-32 h-32 md:w-36 md:h-36 opacity-[0.25] select-none pointer-events-none text-white" />
                 <span className="inline-block px-3 py-1 rounded-lg bg-white/10 text-xs font-semibold uppercase tracking-wider mb-4">
                     Hola, profesor 👋

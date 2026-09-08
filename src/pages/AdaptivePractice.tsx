@@ -8,6 +8,7 @@ import {
     Brain,
     Clock,
     Sparkles,
+    ArrowRight,
     ChevronRight,
     ChevronLeft,
     BookOpen,
@@ -161,6 +162,9 @@ export default function AdaptivePractice() {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [startTime] = useState<number>(Date.now());
     const [isAcra, setIsAcra] = useState<boolean>(false);
+    // La prueba de ubicacion no genera nota: su resultado es un NIVEL, no una calificacion.
+    const [esUbicacion, setEsUbicacion] = useState<boolean>(false);
+    const [resultadoUbicacion, setResultadoUbicacion] = useState<any>(null);
 
     // Evaluation data
     const [evaluationData, setEvaluationData] = useState<any>(null);
@@ -205,9 +209,17 @@ export default function AdaptivePractice() {
 
                 if (response.tipo_evaluacion === "DIAGNOSTICA" && response.instrumento === "ACRA") {
                     setIsAcra(true);
+                    setEsUbicacion(false);
                     setQuestions(response.items || []);
+                } else if (response.tipo_evaluacion === "UBICACION") {
+                    // Prueba de ubicacion de la semana: 6 reactivos, 2 por nivel de Bloom,
+                    // ya mezclados por el backend. No es un examen y no lleva nota.
+                    setIsAcra(false);
+                    setEsUbicacion(true);
+                    setQuestions(normalizeFormativeQuestions(response.preguntas_json));
                 } else {
                     setIsAcra(false);
+                    setEsUbicacion(false);
                     // Normalize formative questions
                     const normalized = normalizeFormativeQuestions(response.preguntas_json);
                     setQuestions(normalized);
@@ -227,15 +239,55 @@ export default function AdaptivePractice() {
         if (!pregJson || !Array.isArray(pregJson.preguntas)) return [];
         return pregJson.preguntas.map((q: any, idx: number) => {
             let options: { texto: string; esCorrecta: boolean }[] = [];
-            if (Array.isArray(q.opciones)) {
+
+            /*
+               En una pregunta ABIERTA, `opciones_o_respuesta` NO son opciones: es la rúbrica
+               con la que se va a calificar. Sin esta comprobación se pintaba como si fuera la
+               alternativa "A", así que el alumno leía:
+
+                   A — Rubrica: 1. Identifica la contradicción... 2. Evalúa el impacto...
+
+               O sea, se le entregaban los criterios de corrección como si fueran una respuesta
+               que puede marcar. Además de absurdo, le regala la respuesta a una pregunta que
+               precisamente pide argumentar por su cuenta.
+            */
+            const alternativas: string[] = Array.isArray(q.opciones_o_respuesta)
+                ? q.opciones_o_respuesta.map((o: any) => String(o ?? "").trim())
+                : [];
+
+            /*
+               Se detecta la pregunta abierta por TRES señales, no solo por `tipo_pregunta`.
+
+               Fiarse del campo de tipo no bastó: el reactivo seguía pintando la rúbrica como
+               alternativa "A". El modelo no siempre devuelve ese campo, o lo devuelve con otro
+               valor, y basta con que falle una vez para que al alumno se le entreguen los
+               criterios de corrección de una pregunta que le pide argumentar.
+
+               Las otras dos señales vienen del propio esquema del backend, que para ABIERTA
+               especifica exactamente `["Rubrica: criterio1. criterio2. criterio3."]`:
+
+                 - el texto empieza por "Rubrica"/"Rúbrica";
+                 - hay UNA sola alternativa, y una pregunta de opción múltiple con una sola
+                   opción no existe.
+            */
+            const tipoDeclarado = String(q.tipo_pregunta || "").toUpperCase() === "ABIERTA";
+            const pareceRubrica = alternativas.length > 0
+                && /^r[uú]brica\s*:/i.test(alternativas[0]);
+            const unaSolaAlternativa = alternativas.length === 1;
+
+            const esAbierta = tipoDeclarado || pareceRubrica || unaSolaAlternativa;
+
+            if (esAbierta) {
+                options = [];
+            } else if (Array.isArray(q.opciones)) {
                 // Static database format
                 options = q.opciones.map((o: any) => ({
                     texto: o.texto,
                     esCorrecta: !!o.esCorrecta
                 }));
-            } else if (Array.isArray(q.opciones_o_respuesta)) {
+            } else if (alternativas.length > 0) {
                 // Dynamic Gemini format
-                options = q.opciones_o_respuesta.map((o: string) => {
+                options = alternativas.map((o: string) => {
                     const label = o.trim();
                     // Match letters like A) or check if correct text matches
                     const isCorrect = q.respuesta_correcta && (
@@ -254,9 +306,30 @@ export default function AdaptivePractice() {
                 id: q.id || idx,
                 enunciado: q.enunciado,
                 tipoPregunta: q.tipo_pregunta || (options.length > 0 ? "OPCION_MULTIPLE" : "ABIERTA"),
+                // La rúbrica se guarda aparte para poder calificar, pero NO se muestra: es el
+                // criterio de corrección, no material para el alumno.
+                rubrica: esAbierta ? alternativas.join(" ") : "",
                 opciones: options,
                 respuestaCorrectaText: q.respuesta_correcta || "",
-                justificacion: q.justificacion_pregunta || ""
+                justificacion: q.justificacion_pregunta || "",
+                // Tema puntual que evalúa esta pregunta (ver PromptTemplateService.UNIVERSAL_SCHEMA
+                // en el backend). Alimenta el mapa de conocimiento por concepto — sin esto, el
+                // backend recibe la respuesta pero no puede actualizar el dominio bayesiano.
+                concepto: q.concepto || "",
+
+                // Estrato de Bloom de ESTA pregunta.
+                //
+                // Este normalizador arma un objeto nuevo, y hasta ahora se dejaba el campo por
+                // el camino. En la prueba de ubicación eso la inutilizaba por completo: cada
+                // reactivo viene etiquetado con su estrato justamente para poder aplicar
+                // Guttman al recibir las respuestas, y al llegar todas sin nivel el servidor
+                // no tenía nada que escalonar. Devolvía PRINCIPIANTE "por defecto" a todo el
+                // mundo, con la apariencia de haber evaluado.
+                //
+                // El respaldo al nivel del lote sirve para las evaluaciones normales, donde
+                // todas las preguntas comparten estrato; en la de ubicación NO vale, porque
+                // ahí conviven los tres.
+                nivelBloom: q.nivel_bloom || null
             };
         });
     };
@@ -452,7 +525,16 @@ export default function AdaptivePractice() {
                     preguntaTexto: q.enunciado,
                     tipoPregunta: q.tipoPregunta,
                     respuestaEstudiante: answer,
-                    esCorrecta: isCorrect
+                    esCorrecta: isCorrect,
+                    // Alimentan el mapa de conocimiento por concepto (backend:
+                    // ConocimientoBktService). nivelBloom es el mismo para todo el lote,
+                    // tal como el backend lo generó; concepto es específico por pregunta.
+                    // En la ubicacion cada reactivo trae SU propio nivel: es lo que permite
+                    // aplicar el escalograma. En una evaluacion normal el nivel es del lote.
+                    // Primero el de la pregunta (lo trae el normalizador); el del lote solo
+                    // como respaldo para las evaluaciones de un único estrato.
+                    nivelBloom: q.nivelBloom || q.nivel_bloom || evaluationData?.nivel_bloom || null,
+                    conceptos: q.concepto || null
                 };
             });
 
@@ -469,6 +551,25 @@ export default function AdaptivePractice() {
             tipoEvaluacion: isAcra ? "DIAGNOSTICA" : "FORMATIVA",
             respuestas: respuestasDetalle
         };
+
+        // La ubicacion va por su propia ruta y NO pasa por el comite ni genera intento.
+        if (esUbicacion) {
+            try {
+                const r = await adaptiveApi.guardarUbicacion({
+                    ...payload,
+                    tipoEvaluacion: "UBICACION",
+                    notaFinal: 0.0,
+                });
+                setIsWaitingForDebateApi(false);
+                setResultadoUbicacion(r);
+                setPhase("results");
+                toast.success(r.mensajeAlumno || "Listo, ya ajustamos tu nivel para esta semana.");
+            } catch (err: any) {
+                setIsWaitingForDebateApi(false);
+                setErrorMsg(err?.response?.data?.error || "No se pudo guardar la ubicación.");
+            }
+            return;
+        }
 
         try {
             const res = await adaptiveApi.guardarIntento(payload);
@@ -963,6 +1064,90 @@ export default function AdaptivePractice() {
                             )}
                         </button>
                     </div>
+                </div>
+            )}
+
+            {/*
+                Resultado de la PRUEBA DE UBICACIÓN.
+
+                Tiene su propia pantalla porque no es un examen: no hay nota, no hay comité y
+                no hay recomendaciones. Lo único que produce es el nivel de partida del alumno
+                para esta semana.
+
+                Antes esto no existía. Al terminar la ubicación se pasaba a `phase = "results"`,
+                pero el bloque de resultados se pinta con `debateData`, que en esta ruta es
+                null — así que la pantalla se quedaba EN BLANCO y el alumno no sabía si su
+                prueba se había guardado.
+            */}
+            {phase === "results" && !debateData && resultadoUbicacion && (
+                <div className="max-w-2xl mx-auto space-y-6 animate-fade-in text-center">
+                    <div className="space-y-2">
+                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
+                            <Sparkles className="w-3.5 h-3.5" /> Prueba de ubicación
+                        </span>
+                        <h1 className="font-display text-3xl font-extrabold">
+                            Ya sabemos por dónde empezar
+                        </h1>
+                        <p className="text-muted-foreground">
+                            {resultadoUbicacion.mensajeAlumno}
+                        </p>
+                    </div>
+
+                    <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                Tu nivel en este tema
+                            </p>
+                            <p className="font-display text-4xl font-black text-primary mt-1">
+                                {resultadoUbicacion.nivel}
+                            </p>
+                        </div>
+
+                        {/* El desglose por estrato es lo que hace auditable la decisión: se ve
+                            qué se superó y qué no, en vez de un nivel caído del cielo. */}
+                        {resultadoUbicacion.desempenoPorEstrato
+                            && Object.keys(resultadoUbicacion.desempenoPorEstrato).length > 0 && (
+                            <div className="text-left space-y-2 pt-2 border-t border-border">
+                                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                    Cómo te fue en cada tipo de pregunta
+                                </p>
+                                {Object.entries(resultadoUbicacion.desempenoPorEstrato).map(
+                                    ([estrato, proporcion]: [string, any]) => (
+                                        <div key={estrato} className="flex items-center gap-3">
+                                            <span className="text-sm font-semibold w-28 shrink-0">{estrato}</span>
+                                            <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                                                <div
+                                                    className="h-full bg-primary rounded-full"
+                                                    style={{ width: `${Math.round((Number(proporcion) || 0) * 100)}%` }}
+                                                />
+                                            </div>
+                                            <span className="text-xs font-bold tabular-nums w-10 text-right">
+                                                {Math.round((Number(proporcion) || 0) * 100)}%
+                                            </span>
+                                        </div>
+                                    ))}
+                            </div>
+                        )}
+
+                        <p className="text-xs text-muted-foreground text-left pt-2 border-t border-border">
+                            {resultadoUbicacion.justificacion}
+                        </p>
+
+                        {/* Si el servidor avisa de que no pudo ubicar sobre evidencia, se dice.
+                            Callarlo dejaría al alumno creyendo que fue evaluado de verdad. */}
+                        {resultadoUbicacion.advertencia && (
+                            <p className="text-xs text-left bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                                {resultadoUbicacion.advertencia}
+                            </p>
+                        )}
+                    </div>
+
+                    <button
+                        onClick={() => navigate(`/app/curso/${courseId}/semana/${semanaId}`)}
+                        className="inline-flex items-center justify-center gap-2 min-h-[48px] px-6 rounded-xl bg-primary text-primary-foreground font-bold text-sm hover:opacity-90 transition-opacity"
+                    >
+                        Ir a practicar esta semana <ArrowRight className="w-4 h-4" />
+                    </button>
                 </div>
             )}
 

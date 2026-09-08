@@ -1,5 +1,5 @@
 import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
-import { Home, LogOut, Sparkles } from "lucide-react";
+import { Home, LogOut, Sparkles, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/lib/icon-mapper";
 
@@ -29,6 +29,17 @@ export default function TeacherLayout() {
               }
             >
               <Home className="w-4 h-4" /> Mis cursos
+            </NavLink>
+            <NavLink
+              to="/docente/validacion-juez"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+                  isActive ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )
+              }
+            >
+              <ShieldCheck className="w-4 h-4" /> Validar calificador
             </NavLink>
           </nav>
           <div className="flex items-center gap-3">
