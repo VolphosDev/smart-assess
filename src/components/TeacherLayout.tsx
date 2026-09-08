@@ -1,5 +1,6 @@
 import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
 import { Home, LogOut, Sparkles, ShieldCheck } from "lucide-react";
+import { SelectorTema } from "./SelectorTema";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/lib/icon-mapper";
 
@@ -43,6 +44,11 @@ export default function TeacherLayout() {
             </NavLink>
           </nav>
           <div className="flex items-center gap-3">
+            {/* El selector de tema solo estaba en el layout del alumno, asi que el
+                docente se quedaba con lo que dijera su sistema operativo y sin
+                manera de cambiarlo. La preferencia se guarda en la misma clave, de modo
+                que elegirla aqui vale tambien para el resto de vistas. */}
+            <SelectorTema />
             <button
               type="button"
               onClick={() => {

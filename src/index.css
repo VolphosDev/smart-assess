@@ -77,49 +77,56 @@ All colors MUST be HSL.
    * blanco), manteniendo el contraste de texto por encima del mínimo AA de WCAG.
    */
   .tema-suave {
-    --background: 40 30% 92%;
+    --background: 44 58% 88%;
     --foreground: 30 25% 15%;
 
-    --card: 42 45% 97%;
+    --card: 45 70% 94%;
     --card-foreground: 30 25% 15%;
 
     --popover: 42 45% 97%;
     --popover-foreground: 30 25% 15%;
 
-    --muted: 40 22% 88%;
+    --muted: 44 42% 84%;
     --muted-foreground: 30 12% 38%;
 
     --border: 38 22% 84%;
     --input: 38 22% 84%;
   }
 
+  /*
+     Modo oscuro NEUTRO, no azul noche.
+     Los grises llevaban saturacion 45 y 30 sobre un tono azul (224/220), y por eso el panel
+     entero se leia como "azul marino" en vez de como gris oscuro. Se baja la SATURACION y se
+     deja la luminosidad: el contraste con el texto no cambia (foreground sigue en 98%), solo
+     desaparece el tinte.
+  */
   .dark {
-    --background: 224 45% 10%;
+    --background: 220 12% 11%;
     --foreground: 210 40% 98%;
 
-    --card: 224 45% 12%;
+    --card: 220 11% 14%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 224 45% 12%;
+    --popover: 220 11% 14%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 250 85% 65%;
-    --primary-foreground: 224 45% 10%;
+    --primary-foreground: 220 12% 11%;
 
-    --secondary: 220 30% 18%;
+    --secondary: 220 10% 20%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 220 30% 18%;
+    --muted: 220 10% 20%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 220 30% 18%;
+    --accent: 220 10% 20%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 220 30% 18%;
-    --input: 220 30% 18%;
+    --border: 220 9% 22%;
+    --input: 220 9% 22%;
     --ring: 250 85% 65%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;

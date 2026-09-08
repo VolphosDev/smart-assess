@@ -21,6 +21,22 @@ const iconColorMap = {
 const emojis = ["📘", "🧬", "🏛️", "📐", "📚", "🧪", "🌍", "🎨", "💻", "🎵"];
 const colors: Array<"primary" | "lime" | "coral"> = ["primary", "lime", "coral"];
 
+/**
+ * Colores SOLIDOS para el selector del modal.
+ *
+ * Antes reutilizaba `iconColorMap`, que en modo oscuro es `dark:bg-indigo-950/20`: un tono casi
+ * negro al 20% de opacidad. Es correcto como fondo de un icono, pero en un selector de color
+ * deja los tres cuadros practicamente invisibles — habia que adivinar cual se estaba eligiendo.
+ *
+ * Un selector de color tiene que MOSTRAR el color, saturado y en los dos temas. Son los mismos
+ * tonos que luego identifican al curso en las tarjetas.
+ */
+const swatchColorMap: Record<"primary" | "lime" | "coral", string> = {
+    primary: "bg-indigo-600",
+    lime: "bg-emerald-500",
+    coral: "bg-rose-500",
+};
+
 export default function TeacherDashboard() {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const teacherId = user.id;
@@ -674,7 +690,7 @@ export default function TeacherDashboard() {
             {/* Modal de Crear / Editar */}
             <AnimatePresence>
                 {(openModal === "create" || openModal === "edit") && (
-                    <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/45 p-4" onClick={() => setOpenModal(null)}>
+                    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setOpenModal(null)}>
                         <motion.form
                             initial={{ scale: 0.97, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
@@ -717,7 +733,16 @@ export default function TeacherDashboard() {
                                     <div className="flex gap-2 h-11 items-center">
                                         {colors.map((col) => (
                                             <button key={col} type="button" onClick={() => setForm({ ...form, color: col })}
-                                                    className={cn("w-9 h-9 rounded-lg border transition-all", iconColorMap[col], form.color === col ? "ring-2 ring-primary" : "")} />
+                                                    className={cn(
+                                                        "w-9 h-9 rounded-lg transition-all shadow-sm",
+                                                        swatchColorMap[col],
+                                                        // El anillo se separa con offset para que se vea
+                                                        // sobre el propio color y no se funda con el.
+                                                        form.color === col
+                                                            ? "ring-2 ring-offset-2 ring-primary ring-offset-card scale-110"
+                                                            : "hover:scale-105 opacity-80 hover:opacity-100"
+                                                    )}
+                                                    title={col === "lime" ? "Verde" : col === "coral" ? "Rojo" : "Índigo"} />
                                         ))}
                                     </div>
                                 </div>
@@ -750,7 +775,7 @@ export default function TeacherDashboard() {
             {/* Modal de Confirmar Eliminación */}
             <AnimatePresence>
                 {openModal === "delete" && (
-                    <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/45 p-4" onClick={() => setOpenModal(null)}>
+                    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setOpenModal(null)}>
                         <motion.div
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
