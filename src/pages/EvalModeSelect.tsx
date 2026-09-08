@@ -15,18 +15,34 @@ import MapaCalorTemas from "@/components/MapaCalorTemas";
 import type { GrupoCursoConocimiento } from "@/components/ConceptHeatMap";
 
 /**
- * Herramientas de Test: visibles SOLO en desarrollo.
+ * Herramientas de Test: en desarrollo siempre; en un build publicado, solo si se pide.
  *
- * Antes esto era `true` fijo, con un comentario recordando cambiarlo a mano antes de
- * publicar. Ese menú deja saltarse el bloqueo de exámenes, ignorar las prácticas obligatorias
- * y forzar la regeneración de preguntas: si llega a producción, cualquier alumno lo abre y se
- * salta las reglas del estudio — y con ello se cae la validez de los datos de la tesis.
+ * QUÉ PERMITE ESTE MENÚ. Saltarse el bloqueo de exámenes, ignorar las prácticas
+ * obligatorias y forzar la regeneración de preguntas. Si un alumno lo abre durante el
+ * estudio, se salta las reglas y con ello se cae la validez de los datos de la tesis.
  *
- * Depender de acordarse en el momento justo es la peor garantía posible, así que ahora lo
- * decide el modo de compilación: `npm run dev` lo enseña, `npm run build` lo elimina del
- * bundle. No hay nada que recordar.
+ * POR QUÉ NO ES UN `true` FIJO. Lo fue, con un comentario que recordaba cambiarlo a mano
+ * antes de publicar. Depender de acordarse en el momento justo es la peor garantía posible:
+ * basta un despliegue con prisa para que llegue a los alumnos.
+ *
+ * CÓMO SE ENCIENDE AHORA. En `npm run dev` sale siempre. En un build publicado hay que
+ * pedirlo explícitamente al compilar:
+ *
+ *     VITE_TESTING_TOOLS=true npm run build
+ *
+ * Así puedes tenerlo en tu servidor de pruebas o durante una demostración, pero el build
+ * normal —el que verán los alumnos— sigue saliendo sin él. La diferencia con el `true` fijo
+ * es que ahora encenderlo es un acto deliberado, y apagarlo no depende de la memoria de
+ * nadie: se apaga solo.
  */
-const SHOW_TESTING_TOOLS = import.meta.env.DEV;
+const SHOW_TESTING_TOOLS =
+    // ⚠️ ENCENDIDO A MANO, mientras se prueba el despliegue.
+    //
+    // ANTES DEL ESTUDIO CON ALUMNOS hay que devolverlo a la linea comentada de abajo. Con
+    // `true`, cualquier alumno abre el menu y se salta el bloqueo de examenes y las practicas
+    // obligatorias; los datos que salgan de ahi no sirven para sustentar nada.
+    true;
+    // import.meta.env.DEV || import.meta.env.VITE_TESTING_TOOLS === "true";
 
 const evalModes = [
     {
