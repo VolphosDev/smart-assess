@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/lib/icon-mapper";
 import { authApi } from "@/api/auth";
 import { SelectorTema } from "./SelectorTema";
+import AriaHelpWidget from "./AriaHelpWidget";
 
 const nav = [
   { to: "/app", icon: Home, label: "Inicio", end: true },
@@ -192,6 +193,9 @@ export default function AppLayout() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Asistente de Ayuda de Aria flotante (Solo para Alumnos) */}
+      <AriaHelpWidget />
     </div>
   );
 }
