@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/lib/icon-mapper";
 import { authApi } from "@/api/auth";
 import { SelectorTema } from "./SelectorTema";
-import AriaHelpWidget from "./AriaHelpWidget";
+import AriaGuideWidget from "./AriaGuideWidget";
 
 const nav = [
   { to: "/app", icon: Home, label: "Inicio", end: true },
@@ -132,12 +132,13 @@ export default function AppLayout() {
             </span>
             Semantika
           </Link>
-          <nav className="hidden md:flex items-center gap-1 bg-muted rounded-lg p-1 border border-border">
+          <nav data-guide="nav-desktop" className="hidden md:flex items-center gap-1 bg-muted rounded-lg p-1 border border-border">
             {nav.map(({ to, icon: Icon, label, end }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={end}
+                data-guide={to === "/app" ? "nav-inicio" : to === "/app/mapa-conocimiento" ? "nav-mapa" : "nav-historial"}
                 className={({ isActive }) =>
                   cn(
                     "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
@@ -194,8 +195,8 @@ export default function AppLayout() {
         ))}
       </nav>
 
-      {/* Asistente de Ayuda de Aria flotante (Solo para Alumnos) */}
-      <AriaHelpWidget />
+      {/* Asistente de Guía Interactiva Aria estilo videojuego */}
+      <AriaGuideWidget />
     </div>
   );
 }

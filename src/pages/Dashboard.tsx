@@ -1,4 +1,4 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Flame, Target, ArrowRight, BookOpen, Sparkles, Play, CheckCircle2, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,7 @@ export default function Dashboard() {
         <div className="space-y-6 md:space-y-8">
             {/* ── Saludo + el ÚNICO paso siguiente ──────────────────────────── */}
             <motion.section
+                data-guide="hero-banner"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-hero-gradient rounded-2xl p-6 md:p-8 shadow-sm"
@@ -127,6 +128,7 @@ export default function Dashboard() {
             {/* ── Temas para reforzar, con nombre concreto ──────────────────── */}
             {temasParaRepasar.length > 0 && (
                 <motion.section
+                    data-guide="temas-reforzar"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.05 }}
@@ -181,7 +183,7 @@ export default function Dashboard() {
             )}
 
             {/* ── Progreso: tres números, sin jerga ─────────────────────────── */}
-            <section className="grid grid-cols-3 gap-3 md:gap-4">
+            <section data-guide="stats-cards" className="grid grid-cols-3 gap-3 md:gap-4">
                 <StatCard icon={Flame} label="Días seguidos" value={String(streakDays)} tone="rose" />
                 <StatCard icon={Target} label="Tu promedio" value={averageGrade} tone="emerald" />
                 <StatCard icon={CheckCircle2} label="Prácticas" value={String(attempts.length)} tone="indigo" />
@@ -194,13 +196,14 @@ export default function Dashboard() {
 
             {/* ── Cursos ────────────────────────────────────────────────────── */}
             {courses.length > 0 && (
-            <section>
+                <section data-guide="seccion-cursos">
                     <h2 className="font-display text-xl md:text-2xl font-bold mb-4">Tus cursos</h2>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div data-guide="lista-cursos" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {courses.map((c) => (
                             <Link
                                 key={c.id}
                                 to={`/app/curso/${c.id}`}
+                                data-guide="tarjeta-curso"
                                 className="group bg-card border border-border/80 rounded-2xl p-5 hover:border-border hover:shadow-sm transition-all flex items-center gap-4 min-h-[80px]"
                             >
                                 <div

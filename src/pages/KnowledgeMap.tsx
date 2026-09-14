@@ -67,21 +67,60 @@ const nivelConfig = {
     },
 } as const;
 
+import { useIsAriaTourActive, useAriaTourStep } from "@/lib/useIsAriaTourActive";
+
+const DEMO_MAPA_CONOCIMIENTO: GrupoCursoConocimiento[] = [
+    {
+        cursoId: "demo-1",
+        cursoNombre: "Biología General",
+        cursoEmoji: "🧬",
+        cursoColor: "lime",
+        temas: [
+            { concepto: "Fotosíntesis y Cloroplastos", nivel: "DOMINADO", porcentajeDominio: 92, intentosCount: 5, confiable: true, intensidadCalor: 0.92 },
+            { concepto: "Respiración Celular", nivel: "EN_PROGRESO", porcentajeDominio: 74, intentosCount: 3, confiable: true, intensidadCalor: 0.74 },
+            { concepto: "Genética Mendeliana", nivel: "DEBIL", porcentajeDominio: 45, intentosCount: 2, confiable: true, intensidadCalor: 0.45 },
+            { concepto: "Mitosis y Meiosis", nivel: "DEBIL", porcentajeDominio: 30, intentosCount: 1, confiable: true, intensidadCalor: 0.30 },
+        ],
+    },
+    {
+        cursoId: "demo-2",
+        cursoNombre: "Química Orgánica",
+        cursoEmoji: "🧪",
+        cursoColor: "coral",
+        temas: [
+            { concepto: "Hidrocarburos y Enlaces", nivel: "DOMINADO", porcentajeDominio: 88, intentosCount: 4, confiable: true, intensidadCalor: 0.88 },
+            { concepto: "Grupos Funcionales", nivel: "EN_PROGRESO", porcentajeDominio: 65, intentosCount: 3, confiable: true, intensidadCalor: 0.65 },
+        ],
+    },
+];
+
+const DEMO_MAPA_CALOR = [
+    { cursoNombre: "Biología General", cursoEmoji: "🧬", cursoColor: "lime", numSem: "Semana 1", nivel: "DOMINADO", porcentaje: 92, correctas: 9, totalPreguntas: 10, totalIntentos: 3, promedioNota: 18.5, semanaId: "demo-s1" },
+    { cursoNombre: "Biología General", cursoEmoji: "🧬", cursoColor: "lime", numSem: "Semana 2", nivel: "EN_PROGRESO", porcentaje: 74, correctas: 7, totalPreguntas: 10, totalIntentos: 2, promedioNota: 15.0, semanaId: "demo-s2" },
+    { cursoNombre: "Química Orgánica", cursoEmoji: "🧪", cursoColor: "coral", numSem: "Semana 1", nivel: "DOMINADO", porcentaje: 88, correctas: 9, totalPreguntas: 10, totalIntentos: 2, promedioNota: 17.5, semanaId: "demo-s3" },
+    { cursoNombre: "Química Orgánica", cursoEmoji: "🧪", cursoColor: "coral", numSem: "Semana 2", nivel: "DEBIL", porcentaje: 45, correctas: 4, totalPreguntas: 10, totalIntentos: 1, promedioNota: 9.0, semanaId: "demo-s4" },
+];
+
 export default function KnowledgeMap() {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const studentId = user.id;
+    const tourStep = useAriaTourStep();
+    const isExplainingMapa = tourStep === "resumen-mapa-stats" || tourStep === "explicacion-mapa" || tourStep === "matriz-cursos" || tourStep === "curva-progreso" || tourStep === "desglose-panel";
 
-    const { data: mapaCalor = [], isLoading } = useQuery({
+    const { data: rawMapaCalor = [], isLoading } = useQuery({
         queryKey: ["mapa-calor", studentId],
         queryFn: () => rendimientoApi.mapaCalor(studentId),
         enabled: !!studentId,
     });
 
-    const { data: mapaConocimiento = [] } = useQuery<GrupoCursoConocimiento[]>({
+    const { data: rawMapaConocimiento = [] } = useQuery<GrupoCursoConocimiento[]>({
         queryKey: ["mapa-conocimiento", studentId],
         queryFn: () => rendimientoApi.mapaConocimiento(studentId),
         enabled: !!studentId,
     });
+
+    const mapaCalor = rawMapaCalor.length === 0 && isExplainingMapa ? DEMO_MAPA_CALOR : rawMapaCalor;
+    const mapaConocimiento = rawMapaConocimiento.length === 0 && isExplainingMapa ? DEMO_MAPA_CONOCIMIENTO : rawMapaConocimiento;
 
     const [selectedCell, setSelectedCell] = useState<any>(null);
 
@@ -172,6 +211,7 @@ export default function KnowledgeMap() {
             {/* Stats summary */}
             {totalTemas > 0 && (
                 <motion.div
+                    data-guide="resumen-mapa-stats"
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="grid grid-cols-2 md:grid-cols-4 gap-4"
@@ -195,10 +235,12 @@ export default function KnowledgeMap() {
             )}
 
             {/* ── MAPA DE CALOR POR TEMA (nuevo) ──────────────────────────── */}
-            <MapaCalorTemas cursos={mapaConocimiento} />
+            <div data-guide="mapa-nodos">
+                <MapaCalorTemas cursos={mapaConocimiento} />
+            </div>
 
             {totalTemas > 0 && (
-                <div className="grid lg:grid-cols-3 gap-8">
+                <div data-guide="matriz-cursos" className="grid lg:grid-cols-3 gap-8">
                     {/* Heatmap Matrix Block */}
                     <div className="lg:col-span-2 space-y-6">
                         <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs relative overflow-hidden">
@@ -307,7 +349,7 @@ export default function KnowledgeMap() {
 
                         {/* Weekly Progression Chart Card */}
                         {chartData.length > 0 && (
-                            <div className="bg-card border border-border/80 rounded-xl p-6 shadow-xs text-left">
+                            <div data-guide="curva-progreso" className="bg-card border border-border/80 rounded-xl p-6 shadow-xs text-left">
                                 <h3 className="font-display font-bold text-lg mb-1 flex items-center gap-2">
                                     <Award className="w-5 h-5 text-indigo-500" /> Curva de Progreso Académico
                                 </h3>
@@ -350,7 +392,7 @@ export default function KnowledgeMap() {
                     </div>
 
                     {/* Detailed Sidebar Block */}
-                    <div className="lg:col-span-1">
+                    <div data-guide="desglose-panel" className="lg:col-span-1">
                         <AnimatePresence mode="wait">
                             {selectedCell ? (
                                 <motion.div
