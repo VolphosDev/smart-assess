@@ -40,8 +40,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             if (guardado === "claro" || guardado === "suave" || guardado === "oscuro") {
                 return guardado;
             }
-            // Sin preferencia guardada, se respeta la del sistema.
-            if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) return "oscuro";
+            // Sin preferencia guardada se entra en CLARO, no en lo que diga el sistema.
+            //
+            // Antes se respetaba `prefers-color-scheme`, que es lo correcto en una aplicación
+            // de uso general. Aquí no: el primer contacto de un alumno de 2do de secundaria
+            // —o de un jurado abriendo el enlace— no debería depender de cómo tenga
+            // configurado su portátil. Un docente abría el panel y lo veía en azul oscuro sin
+            // haber elegido nada, y sin saber que podía cambiarlo.
+            //
+            // La preferencia manual SÍ se respeta y persiste: quien quiera oscuro lo elige una
+            // vez con el selector y no se le vuelve a preguntar.
         } catch {
             // localStorage puede fallar en modo privado; no es motivo para romper la app.
         }

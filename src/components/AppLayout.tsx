@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/lib/icon-mapper";
 import { authApi } from "@/api/auth";
 import { SelectorTema } from "./SelectorTema";
+import { TutorialAria } from "./TutorialAria";
+import { HelpCircle } from "lucide-react";
 
 const nav = [
   { to: "/app", icon: Home, label: "Inicio", end: true },
@@ -13,6 +15,11 @@ const nav = [
 ];
 
 export default function AppLayout() {
+  // Permite volver a ver el recorrido sin borrar el navegador: un alumno que se pierde
+  // en la semana 3 no deberia tener que limpiar datos del sitio para que Aria se lo
+  // vuelva a explicar.
+  const [tutorialManual, setTutorialManual] = useState(false);
+
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -151,6 +158,14 @@ export default function AppLayout() {
             ))}
           </nav>
           <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => setTutorialManual(true)}
+              title="Ver el tutorial otra vez"
+              className="h-9 w-9 grid place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <HelpCircle className="w-4.5 h-4.5" />
+            </button>
             <SelectorTema />
             <button
               type="button"
@@ -192,6 +207,13 @@ export default function AppLayout() {
           </NavLink>
         ))}
       </nav>
-    </div>
+      {/* Aria recibe al alumno en su primer ingreso. Va aqui, en el layout, y no en una
+          pagina concreta: el recorrido explica la aplicacion entera. */}
+      <TutorialAria
+        abiertoForzado={tutorialManual}
+        onCerrar={() => setTutorialManual(false)}
+      />
+
+      </div>
   );
 }

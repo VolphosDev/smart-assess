@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, AlertCircle, BookOpen, Brain, CheckSquare, CheckCir
 import { cn } from "@/lib/utils";
 import { usePractice } from "@/hooks/usePractice";
 import { PreguntaCard } from "@/components/practice/PreguntaCard";
+import { ResumenDeteccionErrores } from "@/components/practice/ResumenDeteccionErrores";
 import { QuizLoading } from "@/components/practice/QuizLoading";
 
 const modeLabels: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
@@ -359,12 +360,27 @@ export default function Practice() {
                                         </div>
                                         <div className="flex-1 space-y-1 text-left">
                                             <p className="text-sm font-semibold text-foreground leading-snug">{p.enunciado}</p>
-                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                                                <span className="text-muted-foreground font-semibold">Tu respuesta:</span>
-                                                <span className={cn("font-bold", esCorrecto ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
-                                                    {respuestas[idx] || "No respondió"}
-                                                </span>
-                                            </div>
+                                            {/* La deteccion de errores necesita su propia
+                                                presentacion: su respuesta es un mapa
+                                                {fragmento: correccion} y aqui se pintaba
+                                                serializado, obligando al alumno a leer JSON
+                                                para saber que hizo mal. */}
+                                            {String(p.tipo_pregunta || "").toUpperCase() === "DETECCION_ERRORES" ? (
+                                                <ResumenDeteccionErrores
+                                                    respuesta={respuestas[idx] || ""}
+                                                    fragmentos={Array.isArray(p.opciones_o_respuesta)
+                                                        ? p.opciones_o_respuesta
+                                                        : []}
+                                                    esperadas={p.respuesta_correcta || ""}
+                                                />
+                                            ) : (
+                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                                                    <span className="text-muted-foreground font-semibold">Tu respuesta:</span>
+                                                    <span className={cn("font-bold", esCorrecto ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+                                                        {respuestas[idx] || "No respondió"}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );
