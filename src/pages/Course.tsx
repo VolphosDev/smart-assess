@@ -10,6 +10,8 @@ import { useEffect, useState } from "react";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import { getCourseIcon } from "@/lib/icon-mapper";
 import { reproducirClic } from "@/lib/sonidos";
+import { precargarMaterial } from "@/lib/cacheMateriales";
+import { CURSO_DEMO, SEMANA_DEMO, esCursoDemo } from "@/lib/tourDemo";
 
 const colorMap = {
     primary: "bg-primary-gradient",
@@ -52,13 +54,16 @@ export default function Course() {
         queryFn: () => coursesApi.forStudent(user.id),
         enabled: !!user.id,
     });
-    const course = courses.find((c: any) => String(c.id) === String(courseId));
+    // El curso de ejemplo del recorrido de Aria no existe en el servidor: ver lib/tourDemo.
+    const esDemo = esCursoDemo(courseId);
+    const course = esDemo ? CURSO_DEMO : courses.find((c: any) => String(c.id) === String(courseId));
 
-    const { data: weeks = [], isLoading: loadingWeeks } = useQuery({
+    const { data: weeksServidor = [], isLoading: loadingWeeks } = useQuery({
         queryKey: ["semanas", courseId],
         queryFn: () => coursesApi.weeks(courseId),
-        enabled: !!courseId,
+        enabled: !!courseId && !esDemo,
     });
+    const weeks: any[] = esDemo ? [SEMANA_DEMO] : weeksServidor;
 
     /**
      * Se abre sola la semana en curso, o la primera con material si no hay ninguna empezada.
@@ -89,7 +94,7 @@ export default function Course() {
         });
     };
 
-    if (loadingCourses) {
+    if (loadingCourses && !esDemo) {
         return (
             <div className="flex items-center justify-center py-32 text-muted-foreground font-semibold">
                 Cargando información del curso...
@@ -115,6 +120,7 @@ export default function Course() {
             </Link>
 
             <motion.section
+                data-guide="curso-hero"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={cn(
@@ -129,7 +135,7 @@ export default function Course() {
                     Curso · Semestre 2026-1
                 </span>
                 <h1 className="font-display text-4xl md:text-5xl font-bold mb-3 max-w-2xl">{course.name}</h1>
-                <p className="opacity-90 max-w-xl text-sm">{weeks.length} semanas</p>
+                <p className="opacity-90 max-w-xl text-sm">{weeks.length} {weeks.length === 1 ? "semana" : "semanas"}</p>
             </motion.section>
 
             <section>
@@ -171,6 +177,7 @@ export default function Course() {
                                     evaluarse, que va superpuesto: así el título se corta con
                                     puntos suspensivos en vez de pasar por debajo del botón. */}
                                 <button
+                                    data-guide={i === 0 ? "semana-fila" : undefined}
                                     onClick={() => alternar(id)}
                                     aria-expanded={abierta}
                                     className="w-full flex items-center gap-4 p-4 sm:p-5 text-left hover:bg-muted/40 transition-colors min-h-[64px]"
@@ -240,6 +247,11 @@ export default function Course() {
                                                                 <li key={m.id}>
                                                                     {m.visible ? (
                                                                         <button
+                                                                            data-guide="material-item"
+                                                                            data-ext={(m.nombreArchivo || "").split(".").pop()?.toLowerCase()}
+                                                                            onMouseEnter={() => precargarMaterial(m.mongoId, m.nombreArchivo)}
+                                                                            onFocus={() => precargarMaterial(m.mongoId, m.nombreArchivo)}
+                                                                            onTouchStart={() => precargarMaterial(m.mongoId, m.nombreArchivo)}
                                                                             onClick={() => {
                                                                                 reproducirClic();
                                                                                 setSelectedFile({ id: m.mongoId, name: m.nombreArchivo });
@@ -298,6 +310,7 @@ export default function Course() {
                                                     </p>
                                                 ) : (
                                                     <Link
+                                                        data-guide="boton-ponte-a-prueba"
                                                         to={`/app/curso/${courseId}/semana/${id}`}
                                                         onClick={() => reproducirClic()}
                                                         className={cn(

@@ -1,6 +1,7 @@
 import { X, Loader2, AlertCircle, Download, FileText, Image as ImageIcon, Video as VideoIcon, ExternalLink } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { obtenerMaterial, htmlWordEnCache, guardarHtmlWord } from "@/lib/cacheMateriales";
 // mammoth (conversor de .docx a HTML) pesa ~500 KB sin comprimir. Se importa de forma
 // DINÁMICA, dentro del if que lo necesita: solo se descarga si el usuario abre la vista
 // previa de un archivo Word. Importado arriba de forma estática, entraba en el paquete de
@@ -19,6 +20,7 @@ export function UniversalPreviewModal({ mongoId, fileName, isOpen, onClose }: Un
     const [docxHtml, setDocxHtml] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [progreso, setProgreso] = useState<{ cargado: number; total: number | null } | null>(null);
 
     // Evitar que el fondo se mueva/desplace mientras el modal está abierto
     useEffect(() => {
@@ -37,63 +39,61 @@ export function UniversalPreviewModal({ mongoId, fileName, isOpen, onClose }: Un
     const isPdf = extension === "pdf";
     const isWord = ["doc", "docx"].includes(extension);
 
+    /*
+       La descarga la gestiona `cacheMateriales`, no este componente.
+
+       Antes el modal hacía su propio fetch y, al cerrarse, intentaba revocar la URL del blob
+       — pero leía `fileBlobUrl` desde el cierre del efecto, que siempre valía null, así que
+       nunca liberaba nada y cada apertura dejaba un archivo entero huérfano en memoria. Y
+       aun así volvía a descargarlo todo en la siguiente apertura.
+
+       Ahora la caché es dueña de las URLs (las revoca al expulsar) y el modal solo las usa.
+       Tampoco se aborta la descarga al cerrar: si el alumno cierra y reabre enseguida, la
+       descarga que ya iba por la mitad se aprovecha.
+    */
     useEffect(() => {
         if (!isOpen || !mongoId) return;
+        let vigente = true;
 
-        const abortController = new AbortController();
-
-        const fetchFile = async () => {
+        const cargar = async () => {
             setLoading(true);
             setError(null);
             setDocxHtml(null);
+            setProgreso(null);
 
             try {
-                const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
-                const token = localStorage.getItem("token");
-
-                const response = await fetch(`${baseUrl}/cursos/ver-archivo/${mongoId}`, {
-                    method: 'GET',
-                    headers: {
-                        "Authorization": `Bearer ${token}`
-                    },
-                    signal: abortController.signal
+                const { blob, url } = await obtenerMaterial(mongoId, (cargado, total) => {
+                    if (vigente) setProgreso({ cargado, total });
                 });
+                if (!vigente) return;
+                setFileBlobUrl(url);
 
-                if (!response.ok) {
-                    throw new Error("No se pudo cargar el documento.");
-                }
-
-                const blob = await response.blob();
-                const objectUrl = URL.createObjectURL(blob);
-                setFileBlobUrl(objectUrl);
-
-                // Conversión nativa de Word a HTML con Mammoth
                 if (isWord) {
-                    const arrayBuffer = await blob.arrayBuffer();
-                    const mammoth = await import("mammoth");
-                    const result = await mammoth.convertToHtml({ arrayBuffer });
-                    setDocxHtml(result.value);
+                    const enCache = htmlWordEnCache(mongoId);
+                    if (enCache) {
+                        setDocxHtml(enCache);
+                    } else {
+                        const arrayBuffer = await blob.arrayBuffer();
+                        const mammoth = await import("mammoth");
+                        const result = await mammoth.convertToHtml({ arrayBuffer });
+                        guardarHtmlWord(mongoId, result.value);
+                        if (vigente) setDocxHtml(result.value);
+                    }
                 }
-
-            } catch (err: any) {
-                if (err.name !== 'AbortError') {
-                    console.error("Error fetching file:", err);
-                    setError(err.message || "Error desconocido");
-                }
+            } catch (err) {
+                console.error("Error fetching file:", err);
+                if (vigente) setError(err instanceof Error ? err.message : "Error desconocido");
             } finally {
-                setLoading(false);
+                if (vigente) setLoading(false);
             }
         };
 
-        fetchFile();
-
-        return () => {
-            abortController.abort();
-            if (fileBlobUrl) {
-                URL.revokeObjectURL(fileBlobUrl);
-            }
-        };
+        cargar();
+        return () => { vigente = false; };
     }, [isOpen, mongoId, isWord]);
+
+    const formatoMB = (bytes: number) => `${(bytes / (1024 * 1024)).toLocaleString("es-PE", { maximumFractionDigits: 1 })} MB`;
+    const porcentaje = progreso?.total ? Math.min(100, Math.round((progreso.cargado / progreso.total) * 100)) : null;
 
     const handleClose = () => {
         setFileBlobUrl(null);
@@ -145,7 +145,7 @@ export function UniversalPreviewModal({ mongoId, fileName, isOpen, onClose }: Un
     */
     return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4 md:p-8 overscroll-contain">
-            <div className="bg-card w-full h-[100dvh] sm:h-[90vh] max-w-6xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-border/50">
+            <div data-guide="visor-material" className="bg-card w-full h-[100dvh] sm:h-[90vh] max-w-6xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden relative border border-border/50">
 
                 {/* Header optimizado para celular y escritorio */}
                 <div className="flex items-center justify-between px-3 sm:px-5 py-3 border-b border-border bg-muted/40 shrink-0 gap-2">
@@ -162,7 +162,7 @@ export function UniversalPreviewModal({ mongoId, fileName, isOpen, onClose }: Un
                         </h3>
                     </div>
 
-                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <div data-guide="visor-acciones" className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         {fileBlobUrl && (
                             <>
                                 <button
@@ -185,6 +185,7 @@ export function UniversalPreviewModal({ mongoId, fileName, isOpen, onClose }: Un
                         )}
                         <button
                             onClick={handleClose}
+                            data-guide="visor-cerrar"
                             className="p-2 bg-destructive/10 text-destructive hover:bg-destructive hover:text-white rounded-xl transition-colors inline-flex items-center justify-center"
                             title="Cerrar visor"
                         >
@@ -195,10 +196,27 @@ export function UniversalPreviewModal({ mongoId, fileName, isOpen, onClose }: Un
 
                 {/* Body */}
                 <div className="flex-1 w-full bg-muted/50 relative flex items-center justify-center overflow-auto p-0 sm:p-2 md:p-4">
-                    {loading && !fileBlobUrl && (
-                        <div className="flex flex-col items-center justify-center space-y-3 animate-in fade-in zoom-in duration-300 p-6 text-center">
+                    {loading && (
+                        <div className="flex flex-col items-center justify-center space-y-3 animate-in fade-in zoom-in duration-300 p-6 text-center w-full max-w-xs">
                             <Loader2 className="w-10 h-10 animate-spin text-primary" />
-                            <p className="font-semibold text-sm sm:text-base text-muted-foreground">Descargando y procesando archivo...</p>
+                            <p className="font-semibold text-sm sm:text-base text-muted-foreground">
+                                {fileBlobUrl && isWord ? "Preparando el documento..." : "Descargando el material..."}
+                            </p>
+                            {/* Progreso real: un spinner mudo con un PDF de 20 MB parece colgado. */}
+                            {progreso && !fileBlobUrl && (
+                                <div className="w-full space-y-1.5">
+                                    <div className="h-1.5 w-full rounded-full bg-border overflow-hidden">
+                                        <div
+                                            className="h-full bg-primary rounded-full transition-[width] duration-200"
+                                            style={{ width: porcentaje !== null ? `${porcentaje}%` : "35%" }}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground tabular-nums">
+                                        {formatoMB(progreso.cargado)}
+                                        {progreso.total ? ` de ${formatoMB(progreso.total)}` : ""}
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     )}
 

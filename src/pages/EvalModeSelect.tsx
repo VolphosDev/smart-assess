@@ -12,6 +12,10 @@ import { useQuery } from "@tanstack/react-query";
 import { rendimientoApi } from "@/api";
 import { adaptiveApi } from "@/api/courses";
 import MapaCalorTemas from "@/components/MapaCalorTemas";
+import { AriaSvg, type ExpresionAria } from "@/components/Aria";
+import { coursesApi } from "@/api";
+import { precargarMaterial } from "@/lib/cacheMateriales";
+import { CURSO_DEMO, ESTADO_SEMANA_DEMO, RUTA_PRACTICA_DEMO } from "@/lib/tourDemo";
 import type { GrupoCursoConocimiento } from "@/components/ConceptHeatMap";
 
 /**
@@ -165,6 +169,20 @@ const iconColorMap = {
     muted: "bg-muted text-muted-foreground",
 } as const;
 
+/**
+ * Color de la semana = color del curso del que viene.
+ *
+ * Antes la cabecera era siempre morada: el alumno entraba desde un curso verde y aterrizaba
+ * en una banda de otro color, como si hubiera cambiado de asignatura. Con el mismo color la
+ * continuidad se lee sin palabras. Clases literales por el motivo que explica Course.tsx:
+ * Tailwind purga las clases armadas con plantillas.
+ */
+const ACENTOS_SEMANA = {
+    primary: { hero: "bg-primary-gradient", barra: "bg-primary", boton: "bg-primary text-primary-foreground hover:bg-primary/95", numero: "bg-primary text-primary-foreground" },
+    lime: { hero: "bg-lime-gradient", barra: "bg-emerald-600", boton: "bg-emerald-600 text-white hover:bg-emerald-700", numero: "bg-emerald-600 text-white" },
+    coral: { hero: "bg-coral-gradient", barra: "bg-rose-600", boton: "bg-rose-600 text-white hover:bg-rose-700", numero: "bg-rose-600 text-white" },
+} as const;
+
 export default function EvalModeSelect() {
     const navigate = useNavigate();
     const {
@@ -178,6 +196,7 @@ export default function EvalModeSelect() {
         setSelectedSubtemas,
         semana,
         isLoading,
+        esDemo,
     } = useEvalModeSelect();
 
     const [pendingTutorial, setPendingTutorial] = useState<{ modeId: string; url: string } | null>(null);
@@ -210,11 +229,21 @@ export default function EvalModeSelect() {
      * guardado en la base de datos. El estado de un alumno no puede depender del dispositivo
      * desde el que se conecte.
      */
-    const { data: estadoSemana } = useQuery({
+    const { data: estadoSemanaServidor } = useQuery({
         queryKey: ["estado-semana", user?.id, week],
         queryFn: () => adaptiveApi.estadoSemana(week),
-        enabled: !!user?.id && isStudent && !!week,
+        enabled: !!user?.id && isStudent && !!week && !esDemo,
     });
+    const estadoSemana = esDemo ? ESTADO_SEMANA_DEMO : estadoSemanaServidor;
+
+    // Mismo queryKey que Course y Dashboard: si el alumno viene del curso, ya está en caché.
+    const { data: cursosAlumno = [] } = useQuery({
+        queryKey: ["student-courses", user?.id],
+        queryFn: () => coursesApi.forStudent(user.id),
+        enabled: !!user?.id && isStudent && !esDemo,
+    });
+    const cursoActual: any = esDemo ? CURSO_DEMO : cursosAlumno.find((c: any) => String(c.id) === String(courseId));
+    const acento = ACENTOS_SEMANA[cursoActual?.color as keyof typeof ACENTOS_SEMANA] ?? ACENTOS_SEMANA.primary;
 
     // localStorage queda solo como respaldo mientras la consulta viaja, para que la tarjeta
     // no parpadee de "Pendiente" a "hecha" en cada carga.
@@ -284,6 +313,16 @@ export default function EvalModeSelect() {
         const parts = unfinishedKeys[0].split(".");
         unfinishedMode = parts[parts.length - 1];
     }
+
+    /** Qué dice y qué cara pone Aria en la cabecera, según lo siguiente que le toca al alumno. */
+    const ariaSemana: { estado: ExpresionAria; mensaje: string } =
+        unfinishedMode
+            ? { estado: "esperando", mensaje: "Tienes una prueba a medias. ¡Termínala y seguimos!" }
+            : !completedAdaptive
+                ? { estado: "guino", mensaje: "Lee el material y haz el diagnóstico: así sé por dónde empezar contigo." }
+                : allRecommendedCompleted
+                    ? { estado: "orgullosa", mensaje: "¡Hiciste todas las prácticas recomendadas! Puedes volver a evaluarte." }
+                    : { estado: "feliz", mensaje: "Abajo te marqué las formas de practicar que más te convienen." };
 
     if (isLoading) {
         return (
@@ -471,7 +510,14 @@ const isUnfinished = m.id === unfinishedMode;
                                     ) : (
                                         <div
                                             className="cursor-pointer"
+                                            data-guide={`modo-${m.id}`}
                                             onClick={() => {
+                                                // En el curso de ejemplo no se genera nada con IA:
+                                                // se va a la práctica simulada del recorrido.
+                                                if (esDemo) {
+                                                    navigate(RUTA_PRACTICA_DEMO);
+                                                    return;
+                                                }
                                                 const url = getTargetUrl();
                                                 const userId = user.id || "guest";
                                                 const shouldSkip = localStorage.getItem(`semantika.skip_tutorial.${userId}.${m.id}`) === "true";
@@ -675,12 +721,23 @@ const isUnfinished = m.id === unfinishedMode;
                 siempre oscuro, así que `text-muted-foreground` — que sigue al tema claro/oscuro
                 del sistema — se volvería ilegible en modo claro.
             */}
-            <section className="relative overflow-hidden rounded-2xl bg-primary-gradient p-6 sm:p-8">
-                <div className="absolute -right-8 -top-10 opacity-[0.12] pointer-events-none select-none">
+            <section data-guide="semana-hero" className={cn("relative overflow-hidden rounded-2xl p-6 sm:p-8", acento.hero)}>
+                <div className="absolute -right-8 -top-10 opacity-[0.12] pointer-events-none select-none md:hidden">
                     <BookOpen className="w-48 h-48" />
                 </div>
 
-                <div className="relative">
+                {/* Aria en la ENTRADA de la semana, nunca dentro de las preguntas (ver Aria.tsx).
+                    Su cara cambia con lo que le toca hacer al alumno, así que no es solo adorno:
+                    es la misma indicación del bocadillo dicha con un gesto. Oculta en móvil,
+                    donde robaría el ancho que necesita el título. */}
+                <div className="hidden md:flex absolute right-4 lg:right-8 bottom-0 items-end gap-2 pointer-events-none select-none">
+                    <div className="mb-24 max-w-[210px] rounded-2xl rounded-br-sm bg-white text-slate-800 px-3.5 py-2.5 text-xs font-semibold leading-snug shadow-lg">
+                        {ariaSemana.mensaje}
+                    </div>
+                    <AriaSvg estado={ariaSemana.estado} className="w-36 lg:w-40 h-auto -mb-10 drop-shadow-xl" />
+                </div>
+
+                <div className="relative md:pr-72 lg:pr-80">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-white/15 text-[11px] font-bold uppercase tracking-wider">
                         {semana.numSem}
                     </span>
@@ -702,7 +759,7 @@ const isUnfinished = m.id === unfinishedMode;
                     {/* Los tres pasos, navegables. NO indican cuáles llevas hechos: la
                         aplicación no sabe si de verdad leíste el material, y pintar un paso
                         como completado sin saberlo sería mentirle al alumno en la cara. */}
-                    <nav className="flex flex-wrap items-center gap-1.5 mt-5">
+                    <nav data-guide="semana-pasos" className="flex flex-wrap items-center gap-1.5 mt-5">
                         {[
                             { n: 1, texto: "Lee el material", ancla: "#paso-material", activo: true },
                             {
@@ -748,9 +805,9 @@ const isUnfinished = m.id === unfinishedMode;
             </section>
 
             {/* Tarjeta de Materiales de Estudio (Estética y Profesional) */}
-            <div id="paso-material" className="bg-card border border-border/80 rounded-xl p-6 shadow-xs text-left relative overflow-hidden scroll-mt-24">
+            <div id="paso-material" data-guide="semana-material" className="bg-card border border-border/80 rounded-xl p-6 shadow-xs text-left relative overflow-hidden scroll-mt-24">
                 {/* Decoración lateral discreta */}
-                <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-primary" />
+                <div className={cn("absolute top-0 bottom-0 left-0 w-1.5", acento.barra)} />
                 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 pl-2">
                     <div className="flex items-start gap-4 flex-1">
@@ -759,7 +816,7 @@ const isUnfinished = m.id === unfinishedMode;
                         </div>
                         <div className="min-w-0 flex-1">
                             <span className="inline-flex items-center gap-2 text-[11px] uppercase font-bold text-muted-foreground tracking-wider">
-                                <span className="w-5 h-5 rounded-md bg-primary text-primary-foreground grid place-items-center text-[10px] font-black">
+                                <span className={cn("w-5 h-5 rounded-md grid place-items-center text-[10px] font-black", acento.numero)}>
                                     1
                                 </span>
                                 Primero, lee el material
@@ -790,6 +847,11 @@ const isUnfinished = m.id === unfinishedMode;
                                         return (
                                             <button
                                                 key={fileId || idx}
+                                                data-guide="leer-material"
+                                                data-ext={(mat.nombreArchivo || "").split(".").pop()?.toLowerCase()}
+                                                onMouseEnter={() => mat.visible && precargarMaterial(fileId, mat.nombreArchivo)}
+                                                onFocus={() => mat.visible && precargarMaterial(fileId, mat.nombreArchivo)}
+                                                onTouchStart={() => mat.visible && precargarMaterial(fileId, mat.nombreArchivo)}
                                                 onClick={() => mat.visible && setSelectedFile({ id: fileId || "", name: mat.nombreArchivo })}
                                                 disabled={!mat.visible}
                                                 className={cn(
@@ -797,7 +859,7 @@ const isUnfinished = m.id === unfinishedMode;
                                                     // constante distrae más de lo que llama la atención.
                                                     "inline-flex items-center justify-center gap-2 px-4 min-h-[44px] text-sm font-bold rounded-lg transition-all shadow-xs border cursor-pointer active:scale-95 max-w-full",
                                                     mat.visible
-                                                        ? "bg-primary text-primary-foreground border-transparent hover:bg-primary/95"
+                                                        ? cn(acento.boton, "border-transparent")
                                                         : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
                                                 )}
                                                 title={!mat.visible ? "Material oculto por el docente" : mat.nombreArchivo}
@@ -828,7 +890,7 @@ const isUnfinished = m.id === unfinishedMode;
                 es la señal universal de "esto se marca", y el encabezado dice explícitamente
                 que es opcional para que nadie se quede atascado creyendo que debe elegir. */}
             {completedAdaptive && allSubtemas.length > 0 && (
-                <div id="paso-elegir-tema" className="bg-card border border-border/80 rounded-xl p-5 sm:p-6 shadow-xs text-left mt-4 scroll-mt-24">
+                <div id="paso-elegir-tema" data-guide="elegir-tema" className="bg-card border border-border/80 rounded-xl p-5 sm:p-6 shadow-xs text-left mt-4 scroll-mt-24">
                     <div className="flex items-start gap-3 mb-4">
                         <span className="w-7 h-7 rounded-lg bg-primary text-primary-foreground grid place-items-center text-xs font-black shrink-0">
                             2
@@ -907,7 +969,7 @@ const isUnfinished = m.id === unfinishedMode;
             ) : (
                 <>
                     {/* Banner de Evaluación Recomendadora */}
-                    <div className="mb-8">
+                    <div className="mb-8" data-guide="banner-diagnostico">
                         {!completedAdaptive ? (
                             <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs">
                                 <div className="flex items-start gap-4 text-left">
@@ -1023,7 +1085,7 @@ const isUnfinished = m.id === unfinishedMode;
                         cómo practicar: es el momento en que la información le sirve para
                         decidir, y no una pantalla aparte a la que hay que ir a buscarla. */}
                     {isStudent && (
-                        <div id="mapa-calor-semana" className="pt-2 scroll-mt-24">
+                        <div id="mapa-calor-semana" data-guide="mapa-calor-semana" className="pt-2 scroll-mt-24">
                             <div className="flex items-start gap-3 mb-3">
                                 <span className="w-9 h-9 rounded-xl bg-rose-500/10 grid place-items-center shrink-0">
                                     <Flame className="w-4.5 h-4.5 text-rose-500" />
@@ -1082,6 +1144,7 @@ const isUnfinished = m.id === unfinishedMode;
 
                     <div
                         id="paso-elegir-metodo"
+                        data-guide="elegir-metodo"
                         className={cn(
                             "flex items-start gap-3 pt-2 scroll-mt-24",
                             visibleMateriales.length === 0 && "hidden"
@@ -1100,7 +1163,7 @@ const isUnfinished = m.id === unfinishedMode;
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-center gap-3">
+                    <div data-guide="cantidad-preguntas" className="flex items-center justify-center gap-3">
                         <span className="text-sm font-semibold text-muted-foreground">
                             Cantidad de preguntas:
                         </span>
@@ -1148,7 +1211,7 @@ const isUnfinished = m.id === unfinishedMode;
                         const noDisponibles = evalModes.filter((m) => esModoNoDisponible(m));
                         return (
                             <>
-                                <div className="grid sm:grid-cols-2 gap-5">
+                                <div data-guide="tarjetas-modos" className="grid sm:grid-cols-2 gap-5">
                                     {disponibles.map((m, i) => renderModo(m, i))}
                                 </div>
 

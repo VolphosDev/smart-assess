@@ -6,6 +6,8 @@ import { UserAvatar } from "@/lib/icon-mapper";
 import { authApi } from "@/api/auth";
 import { SelectorTema } from "./SelectorTema";
 import AriaGuideWidget from "./AriaGuideWidget";
+import { abrirBienvenidaAria } from "@/lib/ariaEventos";
+import { HelpCircle } from "lucide-react";
 
 const nav = [
   { to: "/app", icon: Home, label: "Inicio", end: true },
@@ -153,6 +155,18 @@ export default function AppLayout() {
             ))}
           </nav>
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Permite volver a ver el recorrido sin borrar el navegador: un alumno que se
+                pierde en la semana 3 no deberia tener que limpiar datos del sitio para que
+                Aria se lo vuelva a explicar. */}
+            <button
+              type="button"
+              data-guide="boton-ayuda"
+              onClick={abrirBienvenidaAria}
+              title="Ver el tutorial otra vez"
+              className="h-9 w-9 grid place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <HelpCircle className="w-4.5 h-4.5" />
+            </button>
             <SelectorTema />
             <button
               type="button"
@@ -182,6 +196,7 @@ export default function AppLayout() {
             key={to}
             to={to}
             end={end}
+            data-guide={to === "/app" ? "nav-inicio" : to === "/app/mapa-conocimiento" ? "nav-mapa" : "nav-historial"}
             className={({ isActive }) =>
               cn(
                 "flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg text-[11px] font-semibold flex-1",
@@ -195,8 +210,14 @@ export default function AppLayout() {
         ))}
       </nav>
 
-      {/* Asistente de Guía Interactiva Aria estilo videojuego */}
-      <AriaGuideWidget />
+      {/* Aria recibe al alumno en su primer ingreso y guía el recorrido. Va aqui, en el
+          layout, y no en una pagina concreta: el recorrido explica la aplicacion entera.
+
+          Es la UNICA bienvenida. main traia ademas TutorialAria, que tambien se abre solo
+          en el primer ingreso: con los dos montados el alumno recibia dos modales
+          superpuestos. Su contenido (los tres pasos, "equivocarse no pasa nada") quedo
+          incorporado a las misiones de AriaGuideWidget. */}
+      <AriaGuideWidget pausado={showConsent} />
     </div>
   );
 }

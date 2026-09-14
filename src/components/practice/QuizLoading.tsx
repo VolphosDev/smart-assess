@@ -14,15 +14,23 @@ export function QuizLoading() {
                 }}
                 className="w-20 h-20 rounded-3xl bg-primary grid place-items-center text-4xl shadow-glow"
             >
-                🧠
+                📖
             </motion.div>
             
             <div className="space-y-3">
+                {/* Tono informativo, no festivo.
+                    Decía "¡Tu tutora IA está preparando el juego!" y prometía preguntas
+                    "divertidas". Esto es una evaluación cuyos resultados sustentan un estudio:
+                    anunciarla como un juego resta seriedad a lo que el alumno está a punto de
+                    hacer, y desentona en la pantalla de un docente o de un jurado.
+                    El texto de abajo dice lo que de verdad está pasando, que además explica
+                    por qué tarda. */}
                 <h2 className="font-display font-bold text-2xl md:text-3xl text-balance">
-                    ¡Tu tutora IA está preparando el juego! ✨
+                    Generando tus preguntas
                 </h2>
                 <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                    Leyendo el material y redactando preguntas de evaluación divertidas para medir tu nivel de aprendizaje.
+                    Estamos analizando el material de la semana para redactar preguntas sobre su
+                    contenido. Esto suele tardar unos segundos.
                 </p>
             </div>
 

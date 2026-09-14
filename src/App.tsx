@@ -35,6 +35,8 @@ const AvatarTutor = lazy(() => import("./pages/AvatarTutor"));
 const VideoTutor = lazy(() => import("./pages/VideoTutor"));
 const AdaptivePractice = lazy(() => import("./pages/AdaptivePractice"));
 const KnowledgeMap = lazy(() => import("./pages/KnowledgeMap"));
+// Práctica simulada del recorrido de Aria: no llama al servidor (ver lib/tourDemo).
+const PracticaDemo = lazy(() => import("./pages/PracticaDemo"));
 
 const TeacherDashboard = lazy(() => import("./pages/teacher/TeacherDashboard"));
 const TeacherCourse = lazy(() => import("./pages/teacher/TeacherCourse"));
@@ -95,6 +97,7 @@ const App = () => (
                 <Route path="curso/:courseId/semana/:semanaId/evaluacion/adaptativa" element={<AdaptivePractice />} />
                 <Route path="mapa-conocimiento" element={<KnowledgeMap />} />
                 <Route path="historial" element={<HistoryPage />} />
+                <Route path="tour/practica" element={<PracticaDemo />} />
               </Route>
             </Route>
 
