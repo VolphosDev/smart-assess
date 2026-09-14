@@ -8,6 +8,7 @@ import { SelectorTema } from "./SelectorTema";
 import AriaGuideWidget from "./AriaGuideWidget";
 import { abrirBienvenidaAria } from "@/lib/ariaEventos";
 import { HelpCircle } from "lucide-react";
+import { ModalPortal } from "@/components/ModalPortal";
 
 const nav = [
   { to: "/app", icon: Home, label: "Inicio", end: true },
@@ -43,6 +44,7 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen bg-background">
       {showConsent && (
+          <ModalPortal>
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md p-4 overflow-y-auto">
           <div className="w-full max-w-lg bg-card border border-border shadow-2xl rounded-2xl p-6 sm:p-8 space-y-6 text-left animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3 pb-3 border-b border-border">
@@ -125,6 +127,7 @@ export default function AppLayout() {
             </div>
           </div>
         </div>
+          </ModalPortal>
       )}
       <header className="sticky top-0 z-30 bg-card border-b border-border/80 shadow-xs">
         <div className="container flex h-16 items-center justify-between">

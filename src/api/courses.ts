@@ -107,6 +107,15 @@ export const coursesApi = {
         apiClient.get<any[]>(`/cursos/docente/${teacherId}/rendimiento`),
     reordenarSemanas: (courseId: string | number, semanaIds: string[]) =>
         apiClient.put<any>(`/cursos/${courseId}/semanas/reordenar`, semanaIds),
+
+    /** Portada del curso (ver lib/bannerCurso: se sube ya recortada y comprimida). */
+    subirBanner: (courseId: string | number, imagen: Blob) => {
+        const form = new FormData();
+        form.append("imagen", imagen, "portada.jpg");
+        return apiClient.postForm<{ bannerVersion: number }>(`/cursos/${courseId}/banner`, form);
+    },
+    eliminarBanner: (courseId: string | number) =>
+        apiClient.delete<{ message: string }>(`/cursos/${courseId}/banner`),
 };
 export const semanasApi = {
     get: (semanaId: string | number) =>

@@ -15,8 +15,10 @@ import MapaCalorTemas from "@/components/MapaCalorTemas";
 import { AriaSvg, type ExpresionAria } from "@/components/Aria";
 import { coursesApi } from "@/api";
 import { precargarMaterial } from "@/lib/cacheMateriales";
-import { CURSO_DEMO, ESTADO_SEMANA_DEMO, RUTA_PRACTICA_DEMO } from "@/lib/tourDemo";
+import { CURSO_DEMO, ESTADO_SEMANA_DEMO, MAPA_CONOCIMIENTO_DEMO, RUTA_PRACTICA_DEMO } from "@/lib/tourDemo";
 import type { GrupoCursoConocimiento } from "@/components/ConceptHeatMap";
+import { fondoCabeceraCurso, variablesCurso } from "@/lib/colorCurso";
+import { useBannerCurso } from "@/lib/bannerCurso";
 
 /**
  * Herramientas de Test: en desarrollo siempre; en un build publicado, solo si se pide.
@@ -169,20 +171,6 @@ const iconColorMap = {
     muted: "bg-muted text-muted-foreground",
 } as const;
 
-/**
- * Color de la semana = color del curso del que viene.
- *
- * Antes la cabecera era siempre morada: el alumno entraba desde un curso verde y aterrizaba
- * en una banda de otro color, como si hubiera cambiado de asignatura. Con el mismo color la
- * continuidad se lee sin palabras. Clases literales por el motivo que explica Course.tsx:
- * Tailwind purga las clases armadas con plantillas.
- */
-const ACENTOS_SEMANA = {
-    primary: { hero: "bg-primary-gradient", barra: "bg-primary", boton: "bg-primary text-primary-foreground hover:bg-primary/95", numero: "bg-primary text-primary-foreground" },
-    lime: { hero: "bg-lime-gradient", barra: "bg-emerald-600", boton: "bg-emerald-600 text-white hover:bg-emerald-700", numero: "bg-emerald-600 text-white" },
-    coral: { hero: "bg-coral-gradient", barra: "bg-rose-600", boton: "bg-rose-600 text-white hover:bg-rose-700", numero: "bg-rose-600 text-white" },
-} as const;
-
 export default function EvalModeSelect() {
     const navigate = useNavigate();
     const {
@@ -243,7 +231,9 @@ export default function EvalModeSelect() {
         enabled: !!user?.id && isStudent && !esDemo,
     });
     const cursoActual: any = esDemo ? CURSO_DEMO : cursosAlumno.find((c: any) => String(c.id) === String(courseId));
-    const acento = ACENTOS_SEMANA[cursoActual?.color as keyof typeof ACENTOS_SEMANA] ?? ACENTOS_SEMANA.primary;
+    // La semana hereda color y portada de su curso: el alumno entra desde una cabecera verde
+    // con su foto y aterriza en la misma, sin sentir que cambió de asignatura.
+    const bannerSemana = useBannerCurso(esDemo ? null : cursoActual?.id, cursoActual?.bannerVersion);
 
     // localStorage queda solo como respaldo mientras la consulta viaja, para que la tarjeta
     // no parpadee de "Pendiente" a "hecha" en cada carga.
@@ -536,7 +526,7 @@ const isUnfinished = m.id === unfinishedMode;
     };
 
     return (
-        <div className="space-y-8 max-w-5xl mx-auto">
+        <div className="space-y-8 max-w-5xl mx-auto" style={variablesCurso(cursoActual?.color)}>
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <Link
                     to={`/app/curso/${courseId}`}
@@ -721,7 +711,7 @@ const isUnfinished = m.id === unfinishedMode;
                 siempre oscuro, así que `text-muted-foreground` — que sigue al tema claro/oscuro
                 del sistema — se volvería ilegible en modo claro.
             */}
-            <section data-guide="semana-hero" className={cn("relative overflow-hidden rounded-2xl p-6 sm:p-8", acento.hero)}>
+            <section data-guide="semana-hero" className="relative overflow-hidden rounded-2xl p-6 sm:p-8" style={fondoCabeceraCurso(cursoActual?.color, bannerSemana)}>
                 <div className="absolute -right-8 -top-10 opacity-[0.12] pointer-events-none select-none md:hidden">
                     <BookOpen className="w-48 h-48" />
                 </div>
@@ -807,7 +797,7 @@ const isUnfinished = m.id === unfinishedMode;
             {/* Tarjeta de Materiales de Estudio (Estética y Profesional) */}
             <div id="paso-material" data-guide="semana-material" className="bg-card border border-border/80 rounded-xl p-6 shadow-xs text-left relative overflow-hidden scroll-mt-24">
                 {/* Decoración lateral discreta */}
-                <div className={cn("absolute top-0 bottom-0 left-0 w-1.5", acento.barra)} />
+                <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-[var(--curso-fuerte)]" />
                 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 pl-2">
                     <div className="flex items-start gap-4 flex-1">
@@ -816,7 +806,7 @@ const isUnfinished = m.id === unfinishedMode;
                         </div>
                         <div className="min-w-0 flex-1">
                             <span className="inline-flex items-center gap-2 text-[11px] uppercase font-bold text-muted-foreground tracking-wider">
-                                <span className={cn("w-5 h-5 rounded-md grid place-items-center text-[10px] font-black", acento.numero)}>
+                                <span className="w-5 h-5 rounded-md grid place-items-center text-[10px] font-black bg-[var(--curso-fuerte)] text-white">
                                     1
                                 </span>
                                 Primero, lee el material
@@ -859,7 +849,7 @@ const isUnfinished = m.id === unfinishedMode;
                                                     // constante distrae más de lo que llama la atención.
                                                     "inline-flex items-center justify-center gap-2 px-4 min-h-[44px] text-sm font-bold rounded-lg transition-all shadow-xs border cursor-pointer active:scale-95 max-w-full",
                                                     mat.visible
-                                                        ? cn(acento.boton, "border-transparent")
+                                                        ? "bg-[var(--curso-fuerte)] text-white hover:brightness-110 border-transparent"
                                                         : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
                                                 )}
                                                 title={!mat.visible ? "Material oculto por el docente" : mat.nombreArchivo}
@@ -1100,7 +1090,7 @@ const isUnfinished = m.id === unfinishedMode;
                                     </p>
                                 </div>
                             </div>
-                            <MapaCalorTemas cursos={mapaConocimiento} soloSemanaId={week} compacto />
+                            <MapaCalorTemas cursos={esDemo ? MAPA_CONOCIMIENTO_DEMO : mapaConocimiento} soloSemanaId={week} compacto />
                             {/* La vista completa sigue estando, pero como salida explicita y
                                 secundaria: desde aqui el alumno decide si quiere comparar con
                                 el resto del curso. Antes esto era el destino del boton de

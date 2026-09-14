@@ -133,8 +133,8 @@ const PASOS: PasoTour[] = [
     titulo: "Primero, el diagnóstico", texto: "En tus cursos reales verás «Realizar diagnóstico»: unas preguntas cortas, sin nota, para saber por dónde empezar contigo. Aquí ya está hecho para que veas el resultado." },
   { id: "elegir-tema", mision: "semana", ruta: RUTA_SEMANA, objetivo: '[data-guide="elegir-tema"]', interactivo: true, estado: "idle", saltarSiFalta: true,
     titulo: "Elige sobre qué te pregunto", texto: "Marca los temas que quieras practicar. Si no marcas ninguno, entran todos." },
-  { id: "mapa-calor-semana", mision: "semana", ruta: RUTA_SEMANA, objetivo: '[data-guide="mapa-calor-semana"]', estado: "idle", saltarSiFalta: true,
-    titulo: "Cómo llevas esta semana", texto: "Cuando practiques, aquí verás tus temas: lo azul ya lo dominas y lo rojo conviene repasarlo." },
+  { id: "mapa-calor-semana", mision: "semana", ruta: RUTA_SEMANA, objetivo: '[data-guide="mapa-calor-semana"]', estado: "pensando", saltarSiFalta: true, interactivo: true,
+    titulo: "Tu mapa de calor de la semana", texto: "Así se ve cuando ya practicaste (estos datos son de ejemplo). Lo azul ya lo dominas; lo rojo y lo naranja conviene repasarlo. Toca un tema para ver su detalle." },
   { id: "cantidad-preguntas", mision: "semana", ruta: RUTA_SEMANA, objetivo: '[data-guide="cantidad-preguntas"]', interactivo: true, estado: "guino",
     titulo: "¿Cuántas preguntas?", texto: "Cinco para un repaso rápido, diez si tienes más tiempo." },
   { id: "tarjetas-modos", mision: "semana", ruta: RUTA_SEMANA, objetivo: '[data-guide="tarjetas-modos"]', estado: "feliz",
@@ -200,6 +200,37 @@ function leerCompletadas(): MisionId[] {
   try { return JSON.parse(localStorage.getItem(CLAVE_COMPLETADAS) || "[]"); } catch { return []; }
 }
 
+/**
+ * Voz en español, de preferencia latinoamericana y femenina. Sin elegirla, Chrome en una PC
+ * configurada en inglés leía el texto en español con acento inglés, que no se entiende.
+ */
+function elegirVozEspanol(): SpeechSynthesisVoice | undefined {
+  if (!("speechSynthesis" in window)) return undefined;
+  const voces = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith("es"));
+  if (voces.length === 0) return undefined;
+  const puntuar = (v: SpeechSynthesisVoice) => {
+    const lang = v.lang.toLowerCase().replace("_", "-");
+    const nombre = v.name.toLowerCase();
+    let p = 0;
+    if (["es-pe", "es-419", "es-mx", "es-us", "es-co"].some((l) => lang.startsWith(l))) p += 4;
+    if (/natural|neural|online|google/.test(nombre)) p += 3;
+    if (/paulina|sabina|dalia|helena|elvira|camila|lupe|monica|mónica|female|mujer/.test(nombre)) p += 2;
+    return p;
+  };
+  return [...voces].sort((a, b) => puntuar(b) - puntuar(a))[0];
+}
+
+// Chrome carga la lista de voces de forma asíncrona: se pide una vez al cargar el módulo.
+if (typeof window !== "undefined" && "speechSynthesis" in window) {
+  window.speechSynthesis.getVoices();
+}
+
+/** Subtrazado de un rectángulo con esquinas redondeadas (para el hueco de la máscara). */
+function rectRedondeado(x: number, y: number, w: number, h: number, r: number) {
+  const k = Math.min(r, w / 2, h / 2);
+  return `M${x + k} ${y}H${x + w - k}A${k} ${k} 0 0 1 ${x + w} ${y + k}V${y + h - k}A${k} ${k} 0 0 1 ${x + w - k} ${y + h}H${x + k}A${k} ${k} 0 0 1 ${x} ${y + h - k}V${y + k}A${k} ${k} 0 0 1 ${x + k} ${y}Z`;
+}
+
 function buscarVisible(selector: string): Element | null {
   for (const el of Array.from(document.querySelectorAll(selector))) {
     const r = el.getBoundingClientRect();
@@ -224,8 +255,11 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
   const [minimizado, setMinimizado] = useState(false);
   const [hablando, setHablando] = useState(false);
   const [completadas, setCompletadas] = useState<MisionId[]>(leerCompletadas);
+  // Voz ENCENDIDA por defecto: solo se apaga si el alumno la silenció alguna vez. Nunca suena
+  // sola al cargar la página; empieza con el clic en "Empezar", que además es el gesto que el
+  // navegador exige para permitir audio.
   const [voz, setVoz] = useState(() => {
-    try { return localStorage.getItem(CLAVE_VOZ) === "1"; } catch { return false; }
+    try { return localStorage.getItem(CLAVE_VOZ) !== "0"; } catch { return true; }
   });
   const direccion = useRef<1 | -1>(1);
   /** Saltar una misión no es completarla: sin esta marca, el menú la pintaba con check. */
@@ -271,7 +305,9 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(texto.replace(/[«»*#]/g, ""));
-    u.lang = "es-ES";
+    const vozEs = elegirVozEspanol();
+    if (vozEs) u.voice = vozEs;
+    u.lang = vozEs?.lang ?? "es-ES";
     u.rate = 1.02;
     u.pitch = 1.15;
     u.onstart = () => setHablando(true);
@@ -568,10 +604,7 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
             </div>
 
             <div className="flex items-center justify-between px-4 py-2.5 border-t border-border text-xs text-muted-foreground">
-              <button type="button" onClick={alternarVoz} className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors">
-                {voz ? <Volume2 className="w-3.5 h-3.5 text-violet-500" /> : <VolumeX className="w-3.5 h-3.5" />}
-                Voz {voz ? "activada" : "apagada"}
-              </button>
+              <BotonVoz voz={voz} onVoz={alternarVoz} />
               <button type="button" onClick={() => { setMenuAbierto(false); setBienvenida(true); }} className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors">
                 <RotateCcw className="w-3 h-3" /> Ver bienvenida
               </button>
@@ -612,6 +645,7 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
           indiceEnMision={pasos!.filter((p, i) => p.mision === paso.mision && i < indice).length}
           estadoAria={hablando ? "hablando" : paso.estado}
           voz={voz}
+          hablando={hablando}
           minimizado={minimizado}
           onMinimizar={setMinimizado}
           onVoz={alternarVoz}
@@ -627,6 +661,47 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Botón de voz
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Botón de voz grande y con texto. Antes era un icono gris de 16 px que nadie encontraba, y
+ * en el diálogo centrado ni siquiera recibía el clic (lo tapaba el bloque de texto). Ahora es
+ * una píldora con etiqueta, violeta cuando está encendida y con ondas mientras Aria habla.
+ */
+function BotonVoz({ voz, hablando = false, onVoz }: { voz: boolean; hablando?: boolean; onVoz: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onVoz}
+      aria-pressed={voz}
+      title={voz ? "Silenciar a Aria" : "Escuchar a Aria"}
+      className={cn(
+        "relative z-20 inline-flex items-center gap-1.5 h-9 pl-2.5 pr-3 rounded-full text-xs font-bold border transition-colors shrink-0 active:scale-95",
+        voz
+          ? "bg-violet-600 border-violet-600 text-white hover:bg-violet-700 shadow-md shadow-violet-600/30"
+          : "bg-card border-border text-foreground hover:bg-muted",
+      )}
+    >
+      {voz ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+      <span>{voz ? "Voz" : "Sin voz"}</span>
+      {voz && hablando && (
+        <span className="flex items-end gap-[2px] h-3" aria-hidden>
+          {[0, 0.15, 0.3].map((d) => (
+            <motion.span
+              key={d}
+              className="w-[3px] rounded-full bg-white"
+              animate={{ height: ["30%", "100%", "45%"] }}
+              transition={{ duration: 0.6, repeat: Infinity, delay: d, ease: "easeInOut" }}
+            />
+          ))}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Bienvenida
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -635,24 +710,26 @@ function Bienvenida({
 }: {
   nombre: string; voz: boolean; onVoz: () => void; onIniciar: () => void; onElegir: () => void; onCerrar: () => void;
 }) {
-  const [cara, setCara] = useState<ExpresionAria>("feliz");
-
-  // Pequeña secuencia de gestos al abrir: saluda, guiña y se queda contenta.
+  // Aria está leyendo; de vez en cuando levanta la vista y guiña.
+  const [cara, setCara] = useState<ExpresionAria>("leyendo");
   useEffect(() => {
-    const t1 = window.setTimeout(() => setCara("guino"), 1400);
-    const t2 = window.setTimeout(() => setCara("emocionado"), 2600);
-    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
+    let t: number | undefined;
+    const ciclo = window.setInterval(() => {
+      setCara("guino");
+      t = window.setTimeout(() => setCara("leyendo"), 1400);
+    }, 5200);
+    return () => { window.clearInterval(ciclo); if (t) window.clearTimeout(t); };
   }, []);
 
   const puntos = [
     { icono: MousePointerClick, texto: "Te señalo dónde tocar en la aplicación real." },
     { icono: BookOpen, texto: "Abres un PDF y un Word en un curso de ejemplo." },
-    { icono: PencilLine, texto: "Respondes una práctica de prueba que no cuenta para tu nota." },
+    { icono: PencilLine, texto: "Respondes una práctica que no cuenta para tu nota." },
   ];
 
   return (
     <div
-      className="fixed inset-0 z-[150] grid place-items-center bg-slate-950/70 backdrop-blur-md p-4 overflow-y-auto"
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-3 sm:p-4 overflow-y-auto"
       onClick={(e) => { if (e.target === e.currentTarget) onCerrar(); }}
     >
       <motion.div
@@ -662,25 +739,25 @@ function Bienvenida({
         initial={{ opacity: 0, y: 24, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
-        className="relative w-full max-w-3xl rounded-[28px] bg-card border border-border shadow-2xl overflow-hidden grid md:grid-cols-[0.95fr_1.05fr]"
+        className="relative my-auto w-full max-w-[680px] rounded-[26px] bg-card border border-border shadow-2xl overflow-hidden grid md:grid-cols-[0.9fr_1.1fr]"
       >
         <button
           type="button"
           onClick={onCerrar}
-          className="absolute top-3 right-3 z-20 p-2 rounded-full text-white md:text-muted-foreground hover:bg-black/10 md:hover:bg-muted transition-colors"
+          className="absolute top-3 right-3 z-30 p-2 rounded-full text-white md:text-muted-foreground bg-black/20 md:bg-transparent hover:bg-black/30 md:hover:bg-muted transition-colors"
           aria-label="Cerrar"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Escenario de Aria */}
-        <div className="relative min-h-[260px] md:min-h-[480px] bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 overflow-hidden flex items-end justify-center">
+        <div className="relative h-[210px] md:h-auto md:min-h-[400px] bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 overflow-hidden flex items-end justify-center">
           <div
             className="absolute inset-0 opacity-25"
             style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.55) 1px, transparent 1px)", backgroundSize: "18px 18px" }}
           />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-fuchsia-400/30 blur-3xl" />
-          {[["12%", "18%", 0], ["80%", "14%", 0.6], ["18%", "62%", 1.2], ["86%", "55%", 0.3]].map(([x, y, d], i) => (
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 rounded-full bg-fuchsia-400/30 blur-3xl" />
+          {[["12%", "20%", 0], ["82%", "16%", 0.6], ["14%", "64%", 1.2], ["86%", "58%", 0.3]].map(([x, y, d], i) => (
             <motion.span
               key={i}
               className="absolute text-white/80"
@@ -692,84 +769,66 @@ function Bienvenida({
             </motion.span>
           ))}
 
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ delay: 0.35 }}
-            className="absolute top-6 left-1/2 -translate-x-1/2 md:left-6 md:translate-x-0 rounded-2xl rounded-bl-sm bg-white text-slate-800 px-4 py-2.5 shadow-xl text-sm font-bold whitespace-nowrap"
-          >
-            ¡Hola{nombre ? `, ${nombre}` : ""}! 👋
-          </motion.div>
+          <div className="absolute top-4 left-4">
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ delay: 0.35 }}
+              className="rounded-2xl rounded-bl-sm bg-white text-slate-800 px-3.5 py-2 shadow-xl text-sm font-bold whitespace-nowrap"
+            >
+              ¡Hola{nombre ? `, ${nombre}` : ""}! 👋
+            </motion.div>
+          </div>
 
           <motion.div
-            animate={{ y: [0, -6, 0] }}
+            animate={{ y: [0, -5, 0] }}
             transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
-            className="relative w-44 md:w-72 -mb-4 md:-mb-6"
+            className="relative w-32 md:w-56 -mb-2 md:-mb-3"
           >
             <AriaSvg estado={cara} className="w-full h-auto drop-shadow-2xl" />
           </motion.div>
         </div>
 
         {/* Contenido */}
-        <div className="p-6 sm:p-8 flex flex-col">
+        <div className="p-5 sm:p-7 flex flex-col">
           <span className="self-start inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-700 dark:text-violet-300 text-[11px] font-bold uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" /> Misión inicial
           </span>
-          <h2 id="aria-bienvenida-titulo" className="font-display font-extrabold text-2xl sm:text-3xl leading-tight mt-3">
+          <h2 id="aria-bienvenida-titulo" className="font-display font-extrabold text-xl sm:text-2xl leading-tight mt-2.5 pr-8 md:pr-0">
             Soy Aria y te enseño Semantika en unos minutos
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed mt-2">
-            Soy tu tutora. Vamos juntos por la aplicación de verdad, paso a paso, y practicas sin miedo a equivocarte.
+            Vamos juntos por la aplicación de verdad, paso a paso, sin miedo a equivocarte.
           </p>
 
-          <ul className="mt-5 space-y-2.5">
+          <ul className="mt-4 space-y-2">
             {puntos.map(({ icono: Icono, texto }) => (
-              <li key={texto} className="flex items-start gap-3">
-                <span className="w-8 h-8 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-300 grid place-items-center shrink-0">
-                  <Icono className="w-4 h-4" />
+              <li key={texto} className="flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-300 grid place-items-center shrink-0">
+                  <Icono className="w-3.5 h-3.5" />
                 </span>
-                <span className="text-sm leading-snug pt-1.5">{texto}</span>
+                <span className="text-sm leading-snug">{texto}</span>
               </li>
             ))}
           </ul>
 
-          <div className="mt-5 flex flex-wrap gap-1.5">
-            {MISIONES.map((m) => {
-              const Icono = m.icono;
-              return (
-                <span key={m.id} title={m.resumen} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-muted text-[11px] font-semibold text-muted-foreground">
-                  <Icono className="w-3 h-3" /> {m.titulo}
-                </span>
-              );
-            })}
-          </div>
-
-          <div className="mt-auto pt-6 space-y-3">
+          <div className="mt-auto pt-5 space-y-2.5">
             <button
               type="button"
               onClick={onIniciar}
               autoFocus
-              className="w-full h-12 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 text-white font-bold text-sm shadow-lg shadow-violet-600/25 active:scale-[0.98] transition-all inline-flex items-center justify-center gap-2"
+              className="w-full h-11 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 text-white font-bold text-sm shadow-lg shadow-violet-600/25 active:scale-[0.98] transition-all inline-flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4 fill-white" /> Empezar el recorrido
             </button>
-            <div className="flex items-center justify-between gap-2">
-              <button type="button" onClick={onElegir} className="h-10 px-4 rounded-xl bg-muted hover:bg-muted/70 text-sm font-semibold transition-colors">
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={onElegir} className="h-9 px-3.5 rounded-xl bg-muted hover:bg-muted/70 text-sm font-semibold transition-colors">
                 Elegir una misión
               </button>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={onVoz}
-                  title={voz ? "Silenciar a Aria" : "Escuchar a Aria"}
-                  className="h-10 w-10 grid place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                >
-                  {voz ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                </button>
-                <button type="button" onClick={onCerrar} className="h-10 px-3 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
-                  Ahora no
-                </button>
-              </div>
+              <BotonVoz voz={voz} onVoz={onVoz} />
+              <button type="button" onClick={onCerrar} className="ml-auto h-9 px-2 rounded-xl text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                Ahora no
+              </button>
             </div>
           </div>
         </div>
@@ -792,6 +851,7 @@ interface RecorridoProps {
   indiceEnMision: number;
   estadoAria: ExpresionAria;
   voz: boolean;
+  hablando: boolean;
   minimizado: boolean;
   onMinimizar: (v: boolean) => void;
   onVoz: () => void;
@@ -802,7 +862,7 @@ interface RecorridoProps {
 }
 
 function Recorrido({
-  paso, caja, indice, total, misiones, pasosMision, indiceEnMision, estadoAria, voz,
+  paso, caja, indice, total, misiones, pasosMision, indiceEnMision, estadoAria, voz, hablando,
   minimizado, onMinimizar, onVoz, onSiguiente, onAnterior, onSaltarMision, onSalir,
 }: RecorridoProps) {
   const vw = window.innerWidth;
@@ -824,7 +884,8 @@ function Recorrido({
   // cabe en ningún hueco libre, se vuelve compacto y se pone en el lado CONTRARIO al botón
   // que hay que tocar: tapar un poco del enunciado se arregla con scroll; tapar "Comprobar"
   // deja al alumno atascado.
-  const ALTO_HUD = 240;
+  const ALTO_HUD = 250;
+  const ANCHO_LATERAL = 420;
   let lugar: "abajo" | "arriba" | "derecha" | "izquierda" = "abajo";
   let compacto = false;
   if (hueco) {
@@ -832,14 +893,25 @@ function Recorrido({
     const libreArriba = hueco.y - 64;
     if (libreAbajo >= ALTO_HUD + 16) lugar = "abajo";
     else if (libreArriba >= ALTO_HUD + 16) lugar = "arriba";
-    else if (vw - (hueco.x + hueco.w) >= 440) lugar = "derecha";
-    else if (hueco.x >= 440) lugar = "izquierda";
+    else if (vw - (hueco.x + hueco.w) >= ANCHO_LATERAL + 32) lugar = "derecha";
+    else if (hueco.x >= ANCHO_LATERAL + 32) lugar = "izquierda";
     else {
       compacto = true;
       const botonClic = paso.clic ? buscarVisible(paso.clic)?.getBoundingClientRect() : null;
       lugar = botonClic && botonClic.top > vh / 2 ? "arriba" : "abajo";
     }
   }
+
+  /*
+     Dos disposiciones, según el ancho REAL disponible (y no según el tipo de dispositivo):
+     - ancha: Aria de cuerpo entero a la izquierda del diálogo.
+     - angosta (celular, o diálogo pegado a un lado): Aria asoma por encima del borde superior
+       y solo ocupa la fila de la cabecera, así el texto usa todo el ancho.
+     Antes el diálogo lateral medía 400 px con Aria dentro y la botonera no cabía: se cortaba
+     "Siguiente" en pantallas medianas y en Android.
+  */
+  const lateral = lugar === "derecha" || lugar === "izquierda";
+  const angosto = lateral || vw < 640;
 
   const oscuro = { pointerEvents: "auto" as const, background: "rgba(8, 6, 23, 0.68)" };
 
@@ -848,10 +920,26 @@ function Recorrido({
       {/* Máscara */}
       {hueco ? (
         <>
-          <div className="fixed" style={{ ...oscuro, top: 0, left: 0, width: vw, height: hueco.y }} />
-          <div className="fixed" style={{ ...oscuro, top: hueco.y + hueco.h, left: 0, width: vw, height: Math.max(0, vh - hueco.y - hueco.h) }} />
-          <div className="fixed" style={{ ...oscuro, top: hueco.y, left: 0, width: hueco.x, height: hueco.h }} />
-          <div className="fixed" style={{ ...oscuro, top: hueco.y, left: hueco.x + hueco.w, width: Math.max(0, vw - hueco.x - hueco.w), height: hueco.h }} />
+          {/*
+             UNA sola capa SVG con un hueco (regla evenodd), en vez de cuatro franjas.
+
+             Con franjas, sus bordes caían en medios píxeles y con el escalado de Windows
+             (125 %, 150 %) el navegador dejaba una rendija de 1 px entre ellas: una línea
+             blanca que cruzaba la pantalla justo en el borde del elemento señalado. Un único
+             trazado no tiene uniones, así que no puede haber rendija, y el hueco sale con
+             esquinas redondeadas.
+
+             Los clics: el <svg> no los recibe, pero el <path> sí, y solo sobre la zona
+             pintada. El hueco no está pintado, así que lo que hay debajo sigue siendo clicable.
+          */}
+          <svg className="fixed inset-0 w-full h-full" width={vw} height={vh} style={{ pointerEvents: "none" }} aria-hidden>
+            <path
+              fillRule="evenodd"
+              fill="rgba(8, 6, 23, 0.68)"
+              style={{ pointerEvents: "auto" }}
+              d={`M0 0H${vw}V${vh}H0Z ${rectRedondeado(hueco.x, hueco.y, hueco.w, hueco.h, 16)}`}
+            />
+          </svg>
           {!esperaClic && !paso.interactivo && (
             <div className="fixed" style={{ top: hueco.y, left: hueco.x, width: hueco.w, height: hueco.h, pointerEvents: "auto", cursor: "not-allowed" }} />
           )}
@@ -894,132 +982,145 @@ function Recorrido({
             <span className="w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-950 grid place-items-center overflow-hidden">
               <AriaSvg estado={estadoAria} recorte="cara" className="w-8 h-8" />
             </span>
-            <span className="text-sm font-bold">Mostrar a Aria</span>
+            <span className="text-sm font-bold whitespace-nowrap">Mostrar a Aria</span>
             <ChevronUp className="w-4 h-4 text-muted-foreground" />
           </motion.button>
+        </div>
+      ) : centrado ? (
+        <div className="pointer-events-auto fixed inset-0 overflow-y-auto">
+          <div className="min-h-full grid place-items-center p-4">
+            <motion.div
+              key="centro"
+              initial={{ opacity: 0, y: 14, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: "spring", stiffness: 320, damping: 28 }}
+              className="w-full max-w-md"
+            >
+              <DialogoCentrado
+                paso={paso} estadoAria={estadoAria} mision={mision} ultimo={ultimo} indice={indice}
+                voz={voz} hablando={hablando} onVoz={onVoz} onSiguiente={onSiguiente} onAnterior={onAnterior} onSalir={onSalir}
+              />
+            </motion.div>
+          </div>
         </div>
       ) : (
         <div
           className={cn(
             "pointer-events-auto fixed",
-            centrado && "inset-0 grid place-items-center p-4",
-            !centrado && lugar === "abajo" && "bottom-4 left-1/2 -translate-x-1/2 w-[min(620px,calc(100vw-1.5rem))]",
-            !centrado && lugar === "arriba" && "top-[76px] left-1/2 -translate-x-1/2 w-[min(620px,calc(100vw-1.5rem))]",
-            !centrado && lugar === "derecha" && "top-1/2 -translate-y-1/2 right-4 w-[400px]",
-            !centrado && lugar === "izquierda" && "top-1/2 -translate-y-1/2 left-4 w-[400px]",
+            lugar === "abajo" && "bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 w-[min(640px,calc(100vw-1rem))]",
+            lugar === "arriba" && "left-1/2 -translate-x-1/2 w-[min(640px,calc(100vw-1rem))]",
+            lugar === "arriba" && (angosto && !compacto ? "top-[132px]" : "top-[76px]"),
+            lateral && "top-1/2 -translate-y-1/2 w-[min(420px,calc(100vw-1rem))]",
+            lugar === "derecha" && "right-3",
+            lugar === "izquierda" && "left-3",
           )}
         >
           <motion.div
-            key={centrado ? "centro" : "hud"}
+            key="hud"
             initial={{ opacity: 0, y: 14, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
+            className={cn("relative", !compacto && angosto && "pt-14", !compacto && !angosto && "pl-20")}
           >
-            {centrado ? (
-              <DialogoCentrado
-                paso={paso} estadoAria={estadoAria} mision={mision} ultimo={ultimo} indice={indice}
-                voz={voz} onVoz={onVoz} onSiguiente={onSiguiente} onAnterior={onAnterior} onSalir={onSalir}
-              />
-            ) : (
-              <div className={cn("relative", !compacto && "pt-10 sm:pt-0")}>
-                {/* La Aria grande, de cuerpo entero, asomada al diálogo */}
-                {!compacto && (
-                  <motion.div
-                    key={estadoAria}
-                    initial={{ scale: 0.92 }}
-                    animate={{ scale: 1 }}
-                    className="absolute z-10 left-2 top-0 w-20 sm:-left-3 sm:top-auto sm:bottom-2 sm:w-32"
-                  >
-                    <AriaSvg estado={estadoAria} className="w-full h-auto drop-shadow-xl" />
-                  </motion.div>
+            {/* La Aria grande, asomada al diálogo */}
+            {!compacto && (
+              <motion.div
+                key={estadoAria}
+                initial={{ scale: 0.92 }}
+                animate={{ scale: 1 }}
+                className={cn(
+                  "absolute z-10 pointer-events-none",
+                  angosto ? "left-2 top-0 w-[4.75rem]" : "-left-2 bottom-1 w-28",
                 )}
+              >
+                <AriaSvg estado={estadoAria} className="w-full h-auto drop-shadow-xl" />
+              </motion.div>
+            )}
 
-                <div className={cn("rounded-3xl border border-violet-500/30 bg-card/95 backdrop-blur-xl shadow-2xl shadow-violet-900/30 overflow-hidden", !compacto && "sm:ml-16")}>
-                  <div className="h-1 bg-muted">
-                    <div className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-300" style={{ width: `${((indice + 1) / total) * 100}%` }} />
+            <div className="rounded-3xl border border-violet-500/30 bg-card/95 backdrop-blur-xl shadow-2xl shadow-violet-900/30 overflow-hidden">
+              <div className="h-1 bg-muted">
+                <div className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-300" style={{ width: `${((indice + 1) / total) * 100}%` }} />
+              </div>
+
+              <div className={cn("pr-2.5 pt-2.5 flex items-center gap-1.5", compacto ? "pl-3" : angosto ? "pl-[5.5rem]" : "pl-4")}>
+                {compacto && (
+                  <span className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-950 grid place-items-center overflow-hidden shrink-0">
+                    <AriaSvg estado={estadoAria} recorte="cara" className="w-7 h-7" />
+                  </span>
+                )}
+                {mision && (
+                  <span className="inline-flex items-center gap-1.5 min-w-0 px-2 py-1 rounded-lg bg-violet-500/10 text-violet-700 dark:text-violet-300 text-[11px] font-bold">
+                    <mision.icono className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{numMision}/{misiones.length} · {mision.titulo}</span>
+                  </span>
+                )}
+                <span className="ml-auto flex items-center gap-0.5 shrink-0">
+                  <BotonVoz voz={voz} hablando={hablando} onVoz={onVoz} />
+                  <button type="button" onClick={() => onMinimizar(true)} title="Minimizar para ver lo de atrás" className="h-9 w-9 grid place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
+                    <Minimize2 className="w-4 h-4" />
+                  </button>
+                  <button type="button" onClick={onSalir} title="Salir del recorrido (Esc)" className="h-9 w-9 grid place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
+                    <X className="w-4 h-4" />
+                  </button>
+                </span>
+              </div>
+
+              <div className="px-4 sm:px-5 pt-2 pb-1">
+                {/* Sin AnimatePresence "wait": esperar a que salga el texto anterior dejaba
+                    el diálogo vacío un instante en cada paso. Solo entra el nuevo. */}
+                <motion.div
+                  key={paso.id}
+                  initial={{ opacity: 0, x: 8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.16 }}
+                >
+                  <h3 className="font-display font-bold text-base sm:text-lg leading-snug">{paso.titulo}</h3>
+                  <p className={cn("text-muted-foreground leading-relaxed mt-1", compacto ? "text-xs line-clamp-2" : "text-sm")}>{paso.texto}</p>
+                </motion.div>
+              </div>
+
+              <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 px-4 sm:px-5 mt-1.5 border-t border-border/70 bg-muted/30", compacto ? "py-2" : "py-2.5")}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-1" aria-label={`Paso ${indiceEnMision + 1} de ${pasosMision.length} en esta misión`}>
+                    {pasosMision.map((p, i) => (
+                      <span key={p.id} className={cn("h-1.5 rounded-full transition-all", i === indiceEnMision ? "w-4 bg-violet-500" : i < indiceEnMision ? "w-1.5 bg-violet-400/60" : "w-1.5 bg-border")} />
+                    ))}
                   </div>
+                  <button type="button" onClick={onSaltarMision} className="text-[11px] font-semibold text-muted-foreground hover:text-foreground whitespace-nowrap">
+                    Saltar misión
+                  </button>
+                </div>
 
-                  <div className={cn("pr-3 pt-3 flex items-center gap-2", compacto ? "pl-3" : "pl-24")}>
-                    {compacto && (
-                      <span className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-950 grid place-items-center overflow-hidden shrink-0">
-                        <AriaSvg estado={estadoAria} recorte="cara" className="w-7 h-7" />
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onAnterior}
+                    disabled={indice === 0}
+                    className="h-9 w-9 grid place-items-center rounded-xl border border-border bg-card hover:bg-muted disabled:opacity-30 transition-colors"
+                    title="Paso anterior"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  {esperaClic ? (
+                    <span className="h-9 inline-flex items-center gap-1.5 px-3 rounded-xl bg-violet-500/10 text-violet-700 dark:text-violet-300 text-xs font-bold whitespace-nowrap">
+                      <span className="relative flex w-2 h-2">
+                        <span className="absolute inset-0 rounded-full bg-violet-500 animate-ping" />
+                        <span className="relative w-2 h-2 rounded-full bg-violet-500" />
                       </span>
-                    )}
-                    {mision && (
-                      <span className="inline-flex items-center gap-1.5 min-w-0 px-2 py-1 rounded-lg bg-violet-500/10 text-violet-700 dark:text-violet-300 text-[11px] font-bold">
-                        <mision.icono className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">Misión {numMision}/{misiones.length} · {mision.titulo}</span>
-                      </span>
-                    )}
-                    <span className="ml-auto flex items-center shrink-0">
-                      <button type="button" onClick={onVoz} title={voz ? "Silenciar a Aria" : "Escuchar a Aria"} className="h-8 w-8 grid place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
-                        {voz ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                      </button>
-                      <button type="button" onClick={() => onMinimizar(true)} title="Minimizar para ver lo de atrás" className="h-8 w-8 grid place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
-                        <Minimize2 className="w-4 h-4" />
-                      </button>
-                      <button type="button" onClick={onSalir} title="Salir del recorrido (Esc)" className="h-8 w-8 grid place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
-                        <X className="w-4 h-4" />
-                      </button>
+                      Esperando tu clic
                     </span>
-                  </div>
-
-                  <div className={cn("pr-5 pt-1.5 pb-1", compacto ? "pl-4" : "pl-24 min-h-[88px]")}>
-                    {/* Sin AnimatePresence "wait": esperar a que salga el texto anterior dejaba
-                        el diálogo vacío un instante en cada paso. Solo entra el nuevo. */}
-                    <motion.div
-                        key={paso.id}
-                        initial={{ opacity: 0, x: 8 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.16 }}
-                      >
-                        <h3 className="font-display font-bold text-base sm:text-lg leading-snug">{paso.titulo}</h3>
-                        <p className={cn("text-muted-foreground leading-relaxed mt-1", compacto ? "text-xs line-clamp-2" : "text-sm")}>{paso.texto}</p>
-                      </motion.div>
-                  </div>
-
-                  <div className={cn("flex items-center gap-2 px-4 mt-1 border-t border-border/70 bg-muted/30", compacto ? "py-2" : "py-3")}>
-                    <div className={cn("flex items-center gap-1", !compacto && "pl-20")} aria-label={`Paso ${indiceEnMision + 1} de ${pasosMision.length} en esta misión`}>
-                      {pasosMision.map((p, i) => (
-                        <span key={p.id} className={cn("h-1.5 rounded-full transition-all", i === indiceEnMision ? "w-5 bg-violet-500" : i < indiceEnMision ? "w-1.5 bg-violet-400/60" : "w-1.5 bg-border")} />
-                      ))}
-                    </div>
-                    <button type="button" onClick={onSaltarMision} className="hidden sm:inline text-[11px] font-semibold text-muted-foreground hover:text-foreground ml-2">
-                      Saltar misión
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={onSiguiente}
+                      className="h-9 inline-flex items-center gap-1 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 text-white text-sm font-bold shadow-md shadow-violet-600/25 active:scale-95 transition-all whitespace-nowrap"
+                    >
+                      {paso.boton || "Siguiente"} <ChevronRight className="w-4 h-4" />
                     </button>
-
-                    <div className="ml-auto flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={onAnterior}
-                        disabled={indice === 0}
-                        className="h-9 w-9 grid place-items-center rounded-xl border border-border bg-card hover:bg-muted disabled:opacity-30 transition-colors"
-                        title="Paso anterior"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      {esperaClic ? (
-                        <span className="h-9 inline-flex items-center gap-1.5 px-3 rounded-xl bg-violet-500/10 text-violet-700 dark:text-violet-300 text-xs font-bold">
-                          <span className="relative flex w-2 h-2">
-                            <span className="absolute inset-0 rounded-full bg-violet-500 animate-ping" />
-                            <span className="relative w-2 h-2 rounded-full bg-violet-500" />
-                          </span>
-                          Esperando tu clic
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={onSiguiente}
-                          className="h-9 inline-flex items-center gap-1 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 text-white text-sm font-bold shadow-md shadow-violet-600/25 active:scale-95 transition-all"
-                        >
-                          {paso.boton || "Siguiente"} <ChevronRight className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
           </motion.div>
         </div>
       )}
@@ -1028,37 +1129,37 @@ function Recorrido({
 }
 
 function DialogoCentrado({
-  paso, estadoAria, mision, ultimo, indice, voz, onVoz, onSiguiente, onAnterior, onSalir,
+  paso, estadoAria, mision, ultimo, indice, voz, hablando, onVoz, onSiguiente, onAnterior, onSalir,
 }: {
-  paso: PasoTour; estadoAria: ExpresionAria; mision?: Mision; ultimo: boolean; indice: number; voz: boolean;
+  paso: PasoTour; estadoAria: ExpresionAria; mision?: Mision; ultimo: boolean; indice: number; voz: boolean; hablando: boolean;
   onVoz: () => void; onSiguiente: () => void; onAnterior: () => void; onSalir: () => void;
 }) {
   return (
-    <div className="relative w-full max-w-md">
+    <div className="relative w-full">
       <motion.div
         animate={{ y: [0, -6, 0] }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        className="relative z-10 mx-auto w-40 sm:w-48 -mb-14"
+        className="relative z-10 mx-auto w-36 sm:w-44 -mb-12 pointer-events-none"
       >
         <AriaSvg estado={estadoAria} className="w-full h-auto drop-shadow-2xl" />
       </motion.div>
       <div className="relative rounded-[28px] bg-card border border-violet-500/30 shadow-2xl shadow-violet-900/40 overflow-hidden text-center">
         <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-violet-500/20 to-transparent pointer-events-none" />
-        <div className="absolute top-3 right-3 flex items-center">
-          <button type="button" onClick={onVoz} title={voz ? "Silenciar a Aria" : "Escuchar a Aria"} className="h-8 w-8 grid place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
-            {voz ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </button>
+        {/* z-20: el bloque de contenido va después y es `relative`, así que sin esto se pintaba
+            encima de estos botones y se tragaba sus clics (el botón de voz "no respondía"). */}
+        <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between">
+          <BotonVoz voz={voz} hablando={hablando} onVoz={onVoz} />
           {!ultimo && (
-            <button type="button" onClick={onSalir} title="Salir del recorrido (Esc)" className="h-8 w-8 grid place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
+            <button type="button" onClick={onSalir} title="Salir del recorrido (Esc)" className="h-9 w-9 grid place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground">
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
-        <div className="relative px-6 sm:px-8 pt-16 pb-6">
+        <div className="relative px-5 sm:px-8 pt-16 pb-6">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/10 text-violet-700 dark:text-violet-300 text-[11px] font-bold uppercase tracking-wider">
             {ultimo ? <><Sparkles className="w-3.5 h-3.5" /> Recorrido completado</> : mision ? <><mision.icono className="w-3.5 h-3.5" /> {mision.titulo}</> : null}
           </span>
-          <h3 className="font-display font-extrabold text-2xl leading-tight mt-3">{paso.titulo}</h3>
+          <h3 className="font-display font-extrabold text-xl sm:text-2xl leading-tight mt-3">{paso.titulo}</h3>
           <p className="text-sm text-muted-foreground leading-relaxed mt-2">{paso.texto}</p>
           <div className="mt-6 flex items-center justify-center gap-2">
             {indice > 0 && !ultimo && (
@@ -1076,7 +1177,7 @@ function DialogoCentrado({
             </button>
           </div>
           {!ultimo && (
-            <p className="mt-4 text-[11px] text-muted-foreground">Usa ← → para moverte y Esc para salir.</p>
+            <p className="mt-4 text-[11px] text-muted-foreground hidden sm:block">Usa ← → para moverte y Esc para salir.</p>
           )}
         </div>
       </div>

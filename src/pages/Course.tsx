@@ -12,26 +12,8 @@ import { getCourseIcon } from "@/lib/icon-mapper";
 import { reproducirClic } from "@/lib/sonidos";
 import { precargarMaterial } from "@/lib/cacheMateriales";
 import { CURSO_DEMO, SEMANA_DEMO, esCursoDemo } from "@/lib/tourDemo";
-
-const colorMap = {
-    primary: "bg-primary-gradient",
-    lime: "bg-lime-gradient",
-    coral: "bg-coral-gradient",
-} as const;
-
-/**
- * Clases completas y literales, no construidas con plantillas.
- *
- * Tailwind analiza el codigo como TEXTO para decidir que clases incluye en el CSS final. Una
- * clase armada como `bg-${acento}-600` nunca aparece escrita, asi que se purga del build y
- * el elemento se queda sin color: funciona en desarrollo y falla en produccion, que es la
- * peor forma de fallar.
- */
-const ACENTOS = {
-    lime: { chip: "bg-emerald-600", boton: "bg-emerald-600 hover:bg-emerald-700" },
-    coral: { chip: "bg-rose-600", boton: "bg-rose-600 hover:bg-rose-700" },
-    primary: { chip: "bg-indigo-600", boton: "bg-indigo-600 hover:bg-indigo-700" },
-} as const;
+import { fondoCabeceraCurso, variablesCurso } from "@/lib/colorCurso";
+import { useBannerCurso } from "@/lib/bannerCurso";
 
 /**
  * Vista del curso al estilo de un campus virtual: cada semana es una fila plegable que, al
@@ -56,7 +38,8 @@ export default function Course() {
     });
     // El curso de ejemplo del recorrido de Aria no existe en el servidor: ver lib/tourDemo.
     const esDemo = esCursoDemo(courseId);
-    const course = esDemo ? CURSO_DEMO : courses.find((c: any) => String(c.id) === String(courseId));
+    const course: any = esDemo ? CURSO_DEMO : courses.find((c: any) => String(c.id) === String(courseId));
+    const bannerUrl = useBannerCurso(esDemo ? null : course?.id, course?.bannerVersion);
 
     const { data: weeksServidor = [], isLoading: loadingWeeks } = useQuery({
         queryKey: ["semanas", courseId],
@@ -111,10 +94,9 @@ export default function Course() {
         );
     }
 
-    const acento = ACENTOS[course.color as keyof typeof ACENTOS] ?? ACENTOS.primary;
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8" style={variablesCurso(course.color)}>
             <Link to="/app" className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground">
                 <ArrowLeft className="w-4 h-4" /> Mis cursos
             </Link>
@@ -123,10 +105,8 @@ export default function Course() {
                 data-guide="curso-hero"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={cn(
-                    "rounded-xl p-8 shadow-sm relative overflow-hidden",
-                    colorMap[course.color as keyof typeof colorMap] ?? "bg-primary-gradient"
-                )}
+                className="rounded-xl p-8 shadow-sm relative overflow-hidden"
+                style={fondoCabeceraCurso(course.color, bannerUrl)}
             >
                 <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-[0.25] select-none text-white pointer-events-none">
                     {getCourseIcon(course.emoji, "w-36 h-36 md:w-40 md:h-40")}
@@ -184,7 +164,7 @@ export default function Course() {
                                 >
                                     <div className={cn(
                                         "w-10 h-10 rounded-lg grid place-items-center font-display font-bold shrink-0 text-white",
-                                        acento.chip
+                                        "bg-[var(--curso-fuerte)]"
                                     )}>
                                         {i + 1}
                                     </div>
@@ -315,7 +295,7 @@ export default function Course() {
                                                         onClick={() => reproducirClic()}
                                                         className={cn(
                                                             "inline-flex items-center justify-center gap-2 w-full sm:w-auto min-h-[48px] px-6 rounded-xl font-bold text-sm shadow-xs transition-all text-white",
-                                                            hayPendiente ? "bg-amber-500 hover:bg-amber-600" : acento.boton
+                                                            hayPendiente ? "bg-amber-500 hover:bg-amber-600" : "bg-[var(--curso-fuerte)] hover:brightness-110"
                                                         )}
                                                     >
                                                         {hayPendiente ? <PlayCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}

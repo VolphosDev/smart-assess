@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import TarjetaProgreso from "@/components/TarjetaProgreso";
 import { coursesApi, intentosApi, rendimientoApi } from "@/api";
-import { getCourseIcon } from "@/lib/icon-mapper";
 import { cn } from "@/lib/utils";
 import type { GrupoCursoConocimiento } from "@/components/ConceptHeatMap";
 import { useIsAriaTourActive } from "@/lib/useIsAriaTourActive";
 import { CURSO_DEMO } from "@/lib/tourDemo";
+import { TarjetaCurso } from "@/components/curso/TarjetaCurso";
 
 export default function Dashboard() {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -202,59 +202,34 @@ export default function Dashboard() {
             {(courses.length > 0 || tourActivo) && (
                 <section data-guide="seccion-cursos">
                     <h2 className="font-display text-xl md:text-2xl font-bold mb-4">Tus cursos</h2>
-                    <div data-guide="lista-cursos" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div data-guide="lista-cursos" className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                         {/* Curso de ejemplo del recorrido de Aria: aparece SOLO mientras el
                             recorrido está activo y desaparece al terminarlo (ver lib/tourDemo). */}
                         {tourActivo && (
-                            <Link
+                            <TarjetaCurso
                                 to={`/app/curso/${CURSO_DEMO.id}`}
-                                data-guide="tarjeta-curso-demo"
-                                className="group relative bg-card border-2 border-dashed border-violet-400/60 rounded-2xl p-5 hover:border-violet-500 hover:shadow-sm transition-all flex items-center gap-4 min-h-[80px]"
-                            >
-                                <span className="absolute -top-2.5 left-4 px-2 py-0.5 rounded-full bg-violet-600 text-white text-[10px] font-bold uppercase tracking-wider">
-                                    Ejemplo de Aria
-                                </span>
-                                <div className="w-12 h-12 rounded-xl grid place-items-center border shrink-0 bg-emerald-100/80 border-emerald-300 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400">
-                                    <BookOpen className="w-6 h-6" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-display font-bold text-base leading-tight truncate group-hover:underline">
-                                        {CURSO_DEMO.name}
-                                    </h3>
-                                    <p className="text-xs text-muted-foreground mt-0.5">Solo para el recorrido · no guarda notas</p>
-                                </div>
-                                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
-                            </Link>
+                                dataGuide="tarjeta-curso-demo"
+                                nombre={CURSO_DEMO.name}
+                                color={CURSO_DEMO.color}
+                                emoji={CURSO_DEMO.emoji}
+                                etiqueta="Ejemplo de Aria"
+                                detalle="Solo para el recorrido · no guarda notas"
+                                className="ring-2 ring-violet-400/60 ring-offset-2 ring-offset-background"
+                            />
                         )}
                         {courses.map((c) => (
-                            <Link
+                            <TarjetaCurso
                                 key={c.id}
                                 to={`/app/curso/${c.id}`}
-                                data-guide="tarjeta-curso"
-                                className="group bg-card border border-border/80 rounded-2xl p-5 hover:border-border hover:shadow-sm transition-all flex items-center gap-4 min-h-[80px]"
-                            >
-                                <div
-                                    className={cn(
-                                        "w-12 h-12 rounded-xl grid place-items-center border shrink-0",
-                                        c.color === "lime"
-                                            ? "bg-emerald-100/80 border-emerald-300 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400"
-                                            : c.color === "coral"
-                                                ? "bg-rose-100/80 border-rose-300 text-rose-700 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400"
-                                                : "bg-indigo-100/80 border-indigo-300 text-indigo-700 dark:bg-indigo-950/20 dark:border-indigo-900/30 dark:text-indigo-400"
-                                    )}
-                                >
-                                    {getCourseIcon(c.emoji, "w-6 h-6")}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-display font-bold text-base leading-tight truncate group-hover:underline">
-                                        {c.name}
-                                    </h3>
-                                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                                        <BookOpen className="w-3.5 h-3.5" /> {c.weeks || 4} temas
-                                    </p>
-                                </div>
-                                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
-                            </Link>
+                                dataGuide="tarjeta-curso"
+                                cursoId={c.id}
+                                nombre={c.name}
+                                descripcion={c.description}
+                                color={c.color}
+                                emoji={c.emoji}
+                                bannerVersion={c.bannerVersion}
+                                detalle="Material, prácticas y tu mapa de calor"
+                            />
                         ))}
                     </div>
                 </section>

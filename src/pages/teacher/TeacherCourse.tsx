@@ -31,12 +31,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-const colorMap = {
-    primary: "bg-indigo-600",
-    lime: "bg-emerald-600",
-    coral: "bg-rose-600",
-} as const;
+import { estiloCurso, fondoCabeceraCurso } from "@/lib/colorCurso";
+import { prepararBanner, useBannerCurso } from "@/lib/bannerCurso";
+import { ImagePlus, Loader2 as CargandoIcono } from "lucide-react";
 
 function parseWeekNumber(numSem?: string | null): number {
     if (!numSem) return 0;
@@ -101,16 +98,13 @@ function TeacherWeekItem({
                     </div>
 
                     {/* Badge con el número de semana */}
-                    <div className={cn(
-                        "w-11 h-11 sm:w-12 sm:h-12 rounded-lg grid place-items-center font-display font-bold text-base sm:text-lg shrink-0 text-white transition-colors shadow-2xs",
-                        !isHabilitada
-                            ? "bg-muted-foreground/60"
-                            : courseColor === "lime"
-                                ? "bg-emerald-600"
-                                : courseColor === "coral"
-                                    ? "bg-rose-600"
-                                    : "bg-indigo-600"
-                    )}>
+                    <div
+                        className={cn(
+                            "w-11 h-11 sm:w-12 sm:h-12 rounded-lg grid place-items-center font-display font-bold text-base sm:text-lg shrink-0 text-white transition-colors shadow-2xs",
+                            !isHabilitada && "bg-muted-foreground/60"
+                        )}
+                        style={isHabilitada ? { backgroundColor: estiloCurso(courseColor).fuerte } : undefined}
+                    >
                         {index + 1}
                     </div>
 
@@ -219,10 +213,8 @@ function TeacherWeekItem({
                     <Link
                         to={`/docente/curso/${courseId}/semana/${w.id}`}
                         onClick={(e) => e.stopPropagation()}
-                        className={cn(
-                            "inline-flex items-center gap-1.5 px-3.5 py-1.5 h-8 rounded-lg font-semibold text-xs text-white shadow-xs transition hover:opacity-95 shrink-0 cursor-pointer",
-                            courseColor === "lime" ? "bg-emerald-600" : courseColor === "coral" ? "bg-rose-600" : "bg-indigo-600"
-                        )}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 h-8 rounded-lg font-semibold text-xs text-white shadow-xs transition hover:opacity-95 shrink-0 cursor-pointer"
+                        style={{ backgroundColor: estiloCurso(courseColor).fuerte }}
                     >
                         Gestionar <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
@@ -251,6 +243,8 @@ export default function TeacherCourse() {
         enabled: !!teacherId,
     });
     const course = courses.find((c: any) => String(c.id) === String(courseId));
+    const bannerUrl = useBannerCurso(course?.id, course?.bannerVersion);
+    const [subiendoPortada, setSubiendoPortada] = useState(false);
 
     // 2. Trae las semanas reales
     const { data: weeks = [], isLoading } = useQuery({
@@ -402,10 +396,8 @@ export default function TeacherCourse() {
             <motion.section
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={cn(
-                    "rounded-xl p-6 sm:p-8 text-primary-foreground shadow-sm relative overflow-hidden",
-                    colorMap[course.color as keyof typeof colorMap] ?? "bg-primary-gradient"
-                )}
+                className="rounded-xl p-6 sm:p-8 text-primary-foreground shadow-sm relative overflow-hidden"
+                style={fondoCabeceraCurso(course.color, bannerUrl)}
             >
                 <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-[0.25] select-none text-white pointer-events-none">
                     {getCourseIcon(course.emoji, "w-36 h-36 md:w-40 md:h-40")}
@@ -421,13 +413,44 @@ export default function TeacherCourse() {
                         </p>
                     </div>
 
+                    <div className="flex flex-wrap gap-2 self-start md:self-auto">
+                    {/* Cambiar la portada sin abrir el formulario de edición: es lo que más se
+                        retoca de un curso, y aquí se ve el resultado al instante. */}
+                    <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-black/20 hover:bg-black/30 border border-white/40 transition-all text-white font-semibold rounded-lg shrink-0 text-sm cursor-pointer backdrop-blur">
+                        {subiendoPortada ? <CargandoIcono className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
+                        {bannerUrl ? "Cambiar portada" : "Poner portada"}
+                        <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            disabled={subiendoPortada}
+                            onChange={async (e) => {
+                                const archivo = e.target.files?.[0];
+                                e.target.value = "";
+                                if (!archivo) return;
+                                setSubiendoPortada(true);
+                                try {
+                                    const imagen = await prepararBanner(archivo);
+                                    await coursesApi.subirBanner(courseId, imagen);
+                                    await queryClient.invalidateQueries({ queryKey: ['teacher-courses', teacherId] });
+                                    toast.success("Portada actualizada");
+                                } catch (err) {
+                                    toast.error(err instanceof Error ? err.message : "No se pudo subir la portada");
+                                } finally {
+                                    setSubiendoPortada(false);
+                                }
+                            }}
+                        />
+                    </label>
+
                     {/* Botón para ir a gestionar alumnos */}
                     <Link
                         to={`/docente/curso/${courseId}/alumnos`}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/10 hover:bg-white/20 border border-white/40 transition-all text-white font-semibold rounded-lg shrink-0 self-start md:self-auto text-sm"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-black/20 hover:bg-black/30 border border-white/40 transition-all text-white font-semibold rounded-lg shrink-0 text-sm backdrop-blur"
                     >
                         <Users className="w-4 h-4" /> Gestionar clase
                     </Link>
+                    </div>
                 </div>
             </motion.section>
 

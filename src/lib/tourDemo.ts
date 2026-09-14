@@ -1,4 +1,5 @@
 import type { Question } from "@/types/Evaluation";
+import type { GrupoCursoConocimiento } from "@/components/ConceptHeatMap";
 
 /**
  * Curso de ejemplo del recorrido de Aria. EXISTE SOLO EN EL FRONTEND.
@@ -73,6 +74,45 @@ export const ESTADO_SEMANA_DEMO = {
     deliberacionReal: true,
     ubicacionCompletada: true,
 };
+
+/**
+ * Mapa de calor de ejemplo para "Cómo llevas esta semana". Sin él, el recorrido explicaba un
+ * mapa mostrando el aviso "Aún no hay datos", que es justo lo que un alumno nuevo no entiende.
+ * Mezcla temas dominados, en camino y débiles para que se vea toda la escala de colores.
+ */
+const temaDemo = (concepto: string, dominio: number, nivel: "DOMINADO" | "EN_PROGRESO" | "DEBIL", observaciones: number, nivelBloom: string) => ({
+    concepto,
+    nivelBloom,
+    probabilidadDominio: dominio,
+    intensidadCalor: Math.round((1 - dominio) * 100) / 100,
+    observaciones,
+    confiable: true,
+    nivel,
+    actualizadoEn: null,
+    semanaId: SEMANA_DEMO_ID,
+    semanaNumero: "Semana 1",
+    semanaTema: "El signo lingüístico",
+});
+
+export const MAPA_CONOCIMIENTO_DEMO: GrupoCursoConocimiento[] = [
+    {
+        cursoId: CURSO_DEMO_ID,
+        cursoNombre: CURSO_DEMO.name,
+        cursoColor: CURSO_DEMO.color,
+        cursoEmoji: CURSO_DEMO.emoji,
+        totalTemas: 6,
+        temasDebiles: 2,
+        promedioDominio: 0.58,
+        temas: [
+            temaDemo("Significado y significante", 0.9, "DOMINADO", 6, "COMPRENDER"),
+            temaDemo("Arbitrariedad del signo", 0.82, "DOMINADO", 5, "APLICAR"),
+            temaDemo("Linealidad", 0.62, "EN_PROGRESO", 4, "COMPRENDER"),
+            temaDemo("Mutabilidad", 0.5, "EN_PROGRESO", 3, "ANALIZAR"),
+            temaDemo("Artículos y demostrativos", 0.32, "DEBIL", 4, "APLICAR"),
+            temaDemo("Determinantes posesivos", 0.2, "DEBIL", 3, "RECORDAR"),
+        ],
+    },
+];
 
 export type TipoPreguntaDemo = "OPCION_MULTIPLE" | "VERDADERO_FALSO" | "ABIERTA";
 

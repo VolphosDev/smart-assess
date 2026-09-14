@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 import { getCourseIcon } from "@/lib/icon-mapper";
 
 import { useIsAriaTourActive, useAriaTourStep } from "@/lib/useIsAriaTourActive";
+import { ModalPortal } from "@/components/ModalPortal";
 
 const DEMO_INTENTOS = [
     {
@@ -199,6 +200,7 @@ export default function HistoryPage() {
 
             {/* Modal de detalle */}
             {intentoAbierto && (
+                <ModalPortal>
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
                      onClick={() => setIntentoAbierto(null)}>
                     <div id="hoja-imprimible"
@@ -290,6 +292,7 @@ export default function HistoryPage() {
                         </div>
                     </div>
                 </div>
+                </ModalPortal>
             )}
         </div>
     );

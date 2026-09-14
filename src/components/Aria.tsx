@@ -52,15 +52,50 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
     // unas estrellas encogiéndose parecen un fallo del dibujo.
     const parpadea = ["idle", "hablando", "esperando", "escuchando", "sorprendido", "confundido"].includes(estado);
 
-    const FUR       = "#F5EBE0"; // light cream fur (second image)
-    const FUR_LIGHT = "#FFFDF9"; // snout area
-    const FUR_DARK  = "#8D7B68"; // brown stripes
-    const OUTLINE   = "#2C2523"; // soft dark brown outlines (second image style)
-    const EAR_IN    = "#F3A3B0"; // pink inner ear
-    const GLASSES   = "#FFB703"; // golden intelligence glasses
-    const NOSE      = "#2C2523";
-    const MOUTH_C   = "#2C2523";
+    /*
+       La cola cuenta la emoción aunque la cara sea pequeña: los gatos la mueven rápido cuando
+       están contentos, la erizan y levantan con un susto, la dejan caer cuando están tristes y
+       dan un golpecito de duda cuando piensan. Todo gira desde la base (64,92), que queda
+       escondida detrás del cuerpo, así nunca se ve "despegarse".
+    */
+    const COLA = "M63,92 C76,94.5 86.5,88 84.6,76.5 C83.6,70.5 86.4,66.2 91,66.6";
+    const colaClase = (() => {
+        switch (estado) {
+            case "feliz": case "emocionado": case "celebrando": return "aria-cola aria-cola-feliz";
+            case "sorprendido": return "aria-cola aria-cola-susto";
+            case "triste": return "aria-cola aria-cola-triste";
+            case "pensando": case "confundido": return "aria-cola aria-cola-duda";
+            case "hablando": return "aria-cola aria-cola-habla";
+            case "orgullosa": return "aria-cola aria-cola-orgullo";
+            case "guino": return "aria-cola aria-cola-guino";
+            default: return "aria-cola aria-cola-calma";
+        }
+    })();
+    // Erizada con el susto: el mismo trazo, más grueso.
+    const colaGrosor = estado === "sorprendido" ? 6.6 : 4.6;
 
+    /*
+       Paleta alineada con Semantika: contornos violeta muy oscuro en vez de marrón, lentes y
+       birrete en el índigo/violeta de la marca, y acentos dorados para lo que "brilla"
+       (estrellas, borla, medalla). Así Aria se ve parte de la interfaz y no un sticker pegado.
+    */
+    const FUR       = "#FBF3EA"; // pelaje crema
+    const FUR_LIGHT = "#FFFFFF"; // hocico
+    const FUR_DARK  = "#C2A38C"; // rayas suaves
+    const OUTLINE   = "#2B2140"; // contorno violeta muy oscuro
+    const EAR_IN    = "#F9A8D4"; // interior de la oreja
+    const GLASSES   = "#7C3AED"; // lentes violeta de la marca
+    const ORO       = "#FBBF24"; // borla, estrellas, medalla
+    const INDIGO    = "#4338CA";
+    const NOSE      = "#2B2140";
+    const MOUTH_C   = "#2B2140";
+
+    /*
+       Estas piezas se llaman como FUNCIONES ({Base()}), no como componentes (<Base/>). Al estar
+       definidas dentro del render, cada render creaba un tipo de componente nuevo y React las
+       volvía a montar: mientras Aria habla la boca re-renderiza cada 160 ms, y eso reiniciaba
+       las animaciones CSS (la cola se quedaba "congelada" en su primer fotograma).
+    */
     const Base = () => (
         <>
             {/* Orejas externas */}
@@ -71,8 +106,17 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
             <path d="M22,29 Q16,15 20,6 Q26,8 29,20 Z" fill={EAR_IN}/>
             <path d="M78,29 Q84,15 80,6 Q74,8 71,20 Z" fill={EAR_IN}/>
 
-            {/* Cola del gato */}
-            <path d="M68,90 Q82,90 84,78 Q86,68 90,70 Q88,80 78,94" fill={FUR} stroke={OUTLINE} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            {/* Cola del gato.
+                Antes era una figura rellena y abierta (el trazo no cerraba), que se veía como un
+                pedazo blanco pegado al costado. Ahora es un tubo: contorno grueso + relleno más
+                fino encima, con puntas redondas y la punta a rayas. Nace detrás del cuerpo y se
+                mueve con la emoción (ver `colaClase` y las animaciones `aria-cola-*`). */}
+            <g className={colaClase}>
+                <path d={COLA} fill="none" stroke={OUTLINE} strokeWidth={colaGrosor + 3.4} strokeLinecap="round" strokeLinejoin="round"/>
+                <path d={COLA} fill="none" stroke={FUR} strokeWidth={colaGrosor} strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M86.6,69.2 C87.6,66.4 89.6,65.4 91.2,66.6" fill="none" stroke={FUR_DARK} strokeWidth={colaGrosor} strokeLinecap="round"/>
+                <path d="M83.4,78 C84.6,77.4 85.8,77.6 86.4,78.4" fill="none" stroke={FUR_DARK} strokeWidth="1.6" strokeLinecap="round" opacity="0.8"/>
+            </g>
 
             {/* Cuerpo */}
             <path d="M32,96 C29,80 34,74 50,74 C66,74 71,80 68,96 Z" fill={FUR} stroke={OUTLINE} strokeWidth="1.8" strokeLinejoin="round"/>
@@ -101,24 +145,46 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
             {/* Rayas de los cachetes (der) */}
             <path d="M88,46 Q82,48 78,49 Q82,49 88,48 Z" fill={FUR_DARK}/>
             <path d="M90,52 Q84,53 80,54 Q84,55 90,54 Z" fill={FUR_DARK}/>
+
+            {/* Sombra suave bajo la cabeza: le da volumen sin cambiar el estilo plano */}
+            <ellipse cx="50" cy="73" rx="17" ry="3" fill={OUTLINE} opacity="0.08"/>
+
+            {/* Corbatín violeta */}
+            <path d="M50,79 L40.5,74 L40.5,84 Z" fill="#8B5CF6" stroke={OUTLINE} strokeWidth="1.4" strokeLinejoin="round"/>
+            <path d="M50,79 L59.5,74 L59.5,84 Z" fill="#8B5CF6" stroke={OUTLINE} strokeWidth="1.4" strokeLinejoin="round"/>
+            <path d="M42.5,76.5 L46,78.5" stroke="#C4B5FD" strokeWidth="1" strokeLinecap="round"/>
+            <circle cx="50" cy="79" r="2.5" fill="#6D28D9" stroke={OUTLINE} strokeWidth="1.2"/>
+        </>
+    );
+
+    /* Birrete: el detalle que la hace "estudiosa" de un vistazo, incluso en miniatura. */
+    const Birrete = () => (
+        <>
+            <path d="M36,15 L36,21.5 Q50,27 64,21.5 L64,15 Z" fill="#312E81" stroke={OUTLINE} strokeWidth="1.6" strokeLinejoin="round"/>
+            <path d="M50,3.5 L79,12.5 L50,21.5 L21,12.5 Z" fill={INDIGO} stroke={OUTLINE} strokeWidth="1.8" strokeLinejoin="round"/>
+            <path d="M50,6 L71,12.5 L50,13.5 L29,12.5 Z" fill="#818CF8" opacity="0.45"/>
+            <circle cx="50" cy="12.5" r="1.9" fill={ORO} stroke={OUTLINE} strokeWidth="0.8"/>
+            <path d="M50,12.5 Q66,13.5 74.5,15.5 L75.5,24" fill="none" stroke={ORO} strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M73,23.5 L78,23.5 L79,31 L72,31 Z" fill={ORO} stroke={OUTLINE} strokeWidth="0.9" strokeLinejoin="round"/>
         </>
     );
 
     const Libros = () => (
         <>
-            {/* Libro 1 (abajo - Rojo-Naranja) */}
-            <rect x="15" y="111" width="70" height="9" rx="2" fill="#E76F51" stroke={OUTLINE} strokeWidth="1.8"/>
-            <line x1="22" y1="111" x2="22" y2="120" stroke={OUTLINE} strokeWidth="1.2"/>
-            <line x1="25" y1="111" x2="25" y2="120" stroke={OUTLINE} strokeWidth="1.2"/>
+            {/* Libro 1 (abajo, índigo) */}
+            <rect x="15" y="111" width="70" height="9" rx="2" fill="#4F46E5" stroke={OUTLINE} strokeWidth="1.8"/>
+            <rect x="78" y="112.5" width="5" height="6" rx="0.8" fill="#F5F3FF"/>
+            <line x1="22" y1="111" x2="22" y2="120" stroke="#A5B4FC" strokeWidth="1.4"/>
 
-            {/* Libro 2 (medio - Turquesa/Verde) */}
-            <rect x="18" y="103" width="64" height="8" rx="2" fill="#2A9D8F" stroke={OUTLINE} strokeWidth="1.8"/>
-            <line x1="25" y1="103" x2="25" y2="111" stroke={OUTLINE} strokeWidth="1.2"/>
-            <line x1="28" y1="103" x2="28" y2="111" stroke={OUTLINE} strokeWidth="1.2"/>
+            {/* Libro 2 (medio, esmeralda) */}
+            <rect x="18" y="103" width="64" height="8" rx="2" fill="#10B981" stroke={OUTLINE} strokeWidth="1.8"/>
+            <rect x="75" y="104.5" width="5" height="5" rx="0.8" fill="#ECFDF5"/>
+            <line x1="25" y1="103" x2="25" y2="111" stroke="#A7F3D0" strokeWidth="1.4"/>
 
-            {/* Libro 3 (arriba - Amarillo-Oro) */}
-            <rect x="22" y="96" width="56" height="7" rx="1.5" fill="#E9C46A" stroke={OUTLINE} strokeWidth="1.8"/>
-            <line x1="29" y1="96" x2="29" y2="103" stroke={OUTLINE} strokeWidth="1.2"/>
+            {/* Libro 3 (arriba, rosa) con cinta marcapáginas */}
+            <rect x="22" y="96" width="56" height="7" rx="1.5" fill="#EC4899" stroke={OUTLINE} strokeWidth="1.8"/>
+            <line x1="29" y1="96" x2="29" y2="103" stroke="#FBCFE8" strokeWidth="1.4"/>
+            <path d="M64,103 L64,108 L66,106.5 L68,108 L68,103" fill={ORO} stroke={OUTLINE} strokeWidth="0.8" strokeLinejoin="round"/>
         </>
     );
 
@@ -128,7 +194,7 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
             const a = (Math.PI / 5) * i - Math.PI / 2;
             return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
         }).join(" ");
-        return <polygon points={puntos} fill={GLASSES} stroke={OUTLINE} strokeWidth="1.2" strokeLinejoin="round"/>;
+        return <polygon points={puntos} fill={ORO} stroke={OUTLINE} strokeWidth="1.2" strokeLinejoin="round"/>;
     };
 
     const Ojos = () => {
@@ -152,8 +218,8 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
         );
         if (estado === "emocionado") return (
             <>
-                <Estrella cx={33} cy={52}/>
-                <Estrella cx={67} cy={52}/>
+                {Estrella({ cx: 33, cy: 52 })}
+                {Estrella({ cx: 67, cy: 52 })}
             </>
         );
         if (estado === "confundido") return (
@@ -215,11 +281,14 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
         return (
             <>
                 <circle cx="33" cy="52" r={8.5 + ex} fill={OUTLINE}/>
-                <circle cx="31" cy="49" r="2.5" fill="white"/>
-                <circle cx="35" cy="55" r="1.2" fill="white"/>
+                {/* Reflejo violeta en la parte baja del iris: ojos con color, no puntos negros */}
+                <circle cx="33" cy="55" r="4.2" fill="#8B5CF6" opacity="0.55"/>
+                <circle cx="31" cy="49" r="2.6" fill="white"/>
+                <circle cx="35.5" cy="55" r="1.2" fill="white"/>
                 <circle cx="67" cy="52" r={8.5 + ex} fill={OUTLINE}/>
-                <circle cx="65" cy="49" r="2.5" fill="white"/>
-                <circle cx="69" cy="55" r="1.2" fill="white"/>
+                <circle cx="67" cy="55" r="4.2" fill="#8B5CF6" opacity="0.55"/>
+                <circle cx="65" cy="49" r="2.6" fill="white"/>
+                <circle cx="69.5" cy="55" r="1.2" fill="white"/>
             </>
         );
     };
@@ -271,8 +340,11 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
 
     const Lentes = () => (
         <>
-            <circle cx="33" cy="52" r="12" fill="none" stroke={GLASSES} strokeWidth="2.2"/>
-            <circle cx="67" cy="52" r="12" fill="none" stroke={GLASSES} strokeWidth="2.2"/>
+            <circle cx="33" cy="52" r="12" fill="#C4B5FD" fillOpacity="0.14" stroke={GLASSES} strokeWidth="2.4"/>
+            <circle cx="67" cy="52" r="12" fill="#C4B5FD" fillOpacity="0.14" stroke={GLASSES} strokeWidth="2.4"/>
+            {/* Brillo del cristal */}
+            <path d="M25,46 Q28,42 32,41.5" fill="none" stroke="white" strokeWidth="1.3" strokeLinecap="round" opacity="0.8"/>
+            <path d="M59,46 Q62,42 66,41.5" fill="none" stroke="white" strokeWidth="1.3" strokeLinecap="round" opacity="0.8"/>
             <path d="M45,52 Q50,54 55,52" fill="none" stroke={GLASSES} strokeWidth="2.2"/>
             <path d="M21,52 Q17,50 14,48" fill="none" stroke={GLASSES} strokeWidth="1.5"/>
             <path d="M79,52 Q83,50 86,48" fill="none" stroke={GLASSES} strokeWidth="1.5"/>
@@ -289,8 +361,8 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
 
         if (estado === "hablando") return (
             <>
-                <Nariz/>
-                <LineaNariz/>
+                {Nariz()}
+                {LineaNariz()}
                 {bocaAbierta ? (
                     <path d="M46,66 C46,73 54,73 54,66 Z" fill="#C06060" stroke={OUTLINE} strokeWidth="1.5"/>
                 ) : (
@@ -303,55 +375,55 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
         );
         if (estado === "feliz") return (
             <>
-                <Nariz/>
-                <LineaNariz/>
+                {Nariz()}
+                {LineaNariz()}
                 <path d="M44,66 Q50,76 56,66" fill="none" stroke={MOUTH_C} strokeWidth="2" strokeLinecap="round"/>
             </>
         );
         if (estado === "emocionado" || estado === "celebrando") return (
             <>
-                <Nariz/>
-                <LineaNariz/>
+                {Nariz()}
+                {LineaNariz()}
                 <path d="M43,65.5 Q50,79 57,65.5 Z" fill="#C06060" stroke={OUTLINE} strokeWidth="1.5" strokeLinejoin="round"/>
                 <path d="M46.5,71 Q50,68.5 53.5,71 Q50,75 46.5,71 Z" fill="#F4A0C8"/>
             </>
         );
         if (estado === "sorprendido") return (
             <>
-                <Nariz/>
+                {Nariz()}
                 <ellipse cx="50" cy="69.5" rx="3.2" ry="4" fill="#C06060" stroke={OUTLINE} strokeWidth="1.5"/>
             </>
         );
         if (estado === "confundido") return (
             <>
-                <Nariz/>
+                {Nariz()}
                 <path d="M44,69 Q47,66 50,69 Q53,72 56,69" fill="none" stroke={MOUTH_C} strokeWidth="1.6" strokeLinecap="round"/>
             </>
         );
         if (estado === "guino" || estado === "orgullosa") return (
             <>
-                <Nariz/>
-                <LineaNariz/>
+                {Nariz()}
+                {LineaNariz()}
                 <path d="M45,67 Q51,73 57,65" fill="none" stroke={MOUTH_C} strokeWidth="2" strokeLinecap="round"/>
             </>
         );
         if (estado === "leyendo") return (
             <>
-                <Nariz/>
+                {Nariz()}
                 <path d="M47,67 Q50,68.5 53,67" fill="none" stroke={MOUTH_C} strokeWidth="1.5" strokeLinecap="round"/>
             </>
         );
         if (estado === "triste") return (
             <>
-                <Nariz/>
-                <LineaNariz/>
+                {Nariz()}
+                {LineaNariz()}
                 <path d="M46,69 Q50,64 54,69" fill="none" stroke={MOUTH_C} strokeWidth="1.5" strokeLinecap="round"/>
             </>
         );
         return (
             <>
-                <Nariz/>
-                <LineaNariz/>
+                {Nariz()}
+                {LineaNariz()}
                 <path d="M45,66 Q48,69 50,67" fill="none" stroke={MOUTH_C} strokeWidth="1.5" strokeLinecap="round"/>
                 <path d="M50,67 Q52,69 55,66" fill="none" stroke={MOUTH_C} strokeWidth="1.5" strokeLinecap="round"/>
             </>
@@ -419,7 +491,8 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
         );
         if (estado === "leyendo") return (
             <>
-                {/* Libro abierto sostenido delante del cuerpo */}
+                {/* Libro abierto sostenido delante del cuerpo: tapa violeta asomando tras las hojas */}
+                <path d="M27,79 L50,83 L73,79 L73,96 L50,99.5 L27,96 Z" fill="#6D28D9" stroke={OUTLINE} strokeWidth="1.5" strokeLinejoin="round"/>
                 <path d="M50,80 Q40,76 30,78 L30,93 Q40,91 50,95 Z" fill="#FFFDF9" stroke={OUTLINE} strokeWidth="1.5" strokeLinejoin="round"/>
                 <path d="M50,80 Q60,76 70,78 L70,93 Q60,91 50,95 Z" fill="#FFFDF9" stroke={OUTLINE} strokeWidth="1.5" strokeLinejoin="round"/>
                 <line x1="34" y1="83" x2="46" y2="84.5" stroke="#8D7B68" strokeWidth="1" strokeLinecap="round"/>
@@ -432,7 +505,7 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
             <>
                 {/* Medalla */}
                 <path d="M45,74 L50,84 L55,74" fill="none" stroke="#7C3AED" strokeWidth="3" strokeLinejoin="round"/>
-                <circle cx="50" cy="87" r="5.5" fill={GLASSES} stroke={OUTLINE} strokeWidth="1.5"/>
+                <circle cx="50" cy="87" r="5.5" fill={ORO} stroke={OUTLINE} strokeWidth="1.5"/>
                 <path d="M50 84 L51 86.3 L53.4 86.5 L51.6 88 L52.2 90.4 L50 89.1 L47.8 90.4 L48.4 88 L46.6 86.5 L49 86.3 Z" fill="#FFFDF9"/>
             </>
         );
@@ -490,8 +563,39 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
                         100% { transform: translateY(4px); opacity: 0.6; }
                     }
                     .aria-confeti { animation: aria-confeti 1.1s ease-in-out infinite alternate; }
+
+                    .aria-cola { transform-origin: 64px 92px; transform-box: view-box; }
+                    @keyframes aria-cola-calma { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(6deg); } }
+                    @keyframes aria-cola-feliz { 0%, 100% { transform: rotate(-16deg); } 50% { transform: rotate(14deg); } }
+                    @keyframes aria-cola-habla { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(8deg); } }
+                    @keyframes aria-cola-susto {
+                        0%, 100% { transform: rotate(-22deg) translateY(-1px); }
+                        25% { transform: rotate(-19deg) translateY(-1px); }
+                        75% { transform: rotate(-25deg) translateY(-1px); }
+                    }
+                    @keyframes aria-cola-triste { 0%, 100% { transform: rotate(38deg); } 50% { transform: rotate(33deg); } }
+                    @keyframes aria-cola-duda {
+                        0%, 70%, 100% { transform: rotate(0deg); }
+                        78% { transform: rotate(-12deg); }
+                        86% { transform: rotate(4deg); }
+                    }
+                    @keyframes aria-cola-orgullo { 0%, 100% { transform: rotate(-14deg); } 50% { transform: rotate(-8deg); } }
+                    @keyframes aria-cola-guino {
+                        0%, 60%, 100% { transform: rotate(-2deg); }
+                        70% { transform: rotate(-18deg); }
+                        80% { transform: rotate(6deg); }
+                    }
+                    .aria-cola-calma { animation: aria-cola-calma 3.2s ease-in-out infinite; }
+                    .aria-cola-feliz { animation: aria-cola-feliz .45s ease-in-out infinite; }
+                    .aria-cola-habla { animation: aria-cola-habla 1.3s ease-in-out infinite; }
+                    .aria-cola-susto { animation: aria-cola-susto .18s linear infinite; }
+                    .aria-cola-triste { animation: aria-cola-triste 3.6s ease-in-out infinite; }
+                    .aria-cola-duda { animation: aria-cola-duda 2.4s ease-in-out infinite; }
+                    .aria-cola-orgullo { animation: aria-cola-orgullo 2.6s ease-in-out infinite; }
+                    .aria-cola-guino { animation: aria-cola-guino 1.8s ease-in-out infinite; }
+
                     @media (prefers-reduced-motion: reduce) {
-                        .aria-ojos-parpadean, .aria-rebote, .aria-destello, .aria-confeti, .swimming-fish { animation: none; }
+                        .aria-ojos-parpadean, .aria-rebote, .aria-destello, .aria-confeti, .swimming-fish, .aria-cola { animation: none; }
                     }
                     @keyframes float-fish {
                         0% { transform: translate(0px, 0px) scaleX(1); }
@@ -506,19 +610,20 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
                     }
                 `}
             </style>
-            {recorte === "completa" && <Libros/>}
-            <Base/>
+            {recorte === "completa" && Libros()}
+            {Base()}
             <g className={parpadea ? "aria-ojos-parpadean" : undefined}>
-                <Ojos/>
+                {Ojos()}
             </g>
-            <Cejas/>
-            <Lentes/>
+            {Cejas()}
+            {Lentes()}
+            {Birrete()}
             {/* Cachetes */}
-            <ellipse cx="26" cy="62" rx="6" ry="3.5" fill="#F4A0C8" opacity={blush}/>
-            <ellipse cx="74" cy="62" rx="6" ry="3.5" fill="#F4A0C8" opacity={blush}/>
-            <Bigotes/>
-            <Boca/>
-            <Extras/>
+            <ellipse cx="26" cy="62" rx="6" ry="3.5" fill="#F9A8D4" opacity={blush}/>
+            <ellipse cx="74" cy="62" rx="6" ry="3.5" fill="#F9A8D4" opacity={blush}/>
+            {Bigotes()}
+            {Boca()}
+            {Extras()}
         </svg>
     );
 }

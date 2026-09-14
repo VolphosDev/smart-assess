@@ -17,6 +17,7 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip as ChartTooltip,
+    ReferenceLine,
     Legend
 } from "recharts";
 
@@ -358,31 +359,61 @@ export default function KnowledgeMap() {
                                 </p>
                                 <div className="h-60 w-full">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        {/*
+                                            Colores literales, no `var(--primary)`.
+
+                                            Las variables del tema guardan solo los componentes HSL
+                                            ("250 85% 58%"), no un color completo. Escritas tal cual
+                                            en un atributo SVG no significan nada: el navegador caía
+                                            a gris, casi invisible en modo oscuro. Además los atributos
+                                            SVG (stroke, stop-color) no resuelven var() en todos los
+                                            navegadores, así que aquí van hexadecimales.
+
+                                            La franja verde marca el aprobado (11/20): así la curva se
+                                            lee contra algo, no flota sola.
+                                        */}
+                                        <AreaChart data={chartData} margin={{ top: 10, right: 12, left: -20, bottom: 0 }}>
                                             <defs>
-                                                <linearGradient id="colorNota" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.25} />
-                                                    <stop offset="95%" stopColor="var(--primary)" stopOpacity={0.0} />
+                                                <linearGradient id="colorNotaRelleno" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#A855F7" stopOpacity={0.55} />
+                                                    <stop offset="60%" stopColor="#6366F1" stopOpacity={0.22} />
+                                                    <stop offset="100%" stopColor="#6366F1" stopOpacity={0.02} />
+                                                </linearGradient>
+                                                <linearGradient id="colorNotaLinea" x1="0" y1="0" x2="1" y2="0">
+                                                    <stop offset="0%" stopColor="#6366F1" />
+                                                    <stop offset="55%" stopColor="#A855F7" />
+                                                    <stop offset="100%" stopColor="#EC4899" />
                                                 </linearGradient>
                                             </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(226,232,240,0.08)" />
-                                            <XAxis dataKey="name" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
-                                            <YAxis domain={[0, 20]} stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94A3B8" strokeOpacity={0.18} />
+                                            <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} tickLine={false} axisLine={false} />
+                                            <YAxis domain={[0, 20]} stroke="#94A3B8" fontSize={11} tickLine={false} axisLine={false} />
+                                            <ReferenceLine
+                                                y={11}
+                                                stroke="#10B981"
+                                                strokeDasharray="6 4"
+                                                strokeOpacity={0.8}
+                                                label={{ value: "Aprobado 11", position: "insideTopRight", fill: "#10B981", fontSize: 10, fontWeight: 700 }}
+                                            />
                                             <ChartTooltip
                                                 contentStyle={{
-                                                    backgroundColor: "var(--card)",
-                                                    border: "1px solid var(--border)",
-                                                    borderRadius: "8px",
+                                                    backgroundColor: "hsl(var(--card))",
+                                                    border: "1px solid hsl(var(--border))",
+                                                    borderRadius: "10px",
                                                     fontSize: "12px",
+                                                    color: "hsl(var(--foreground))",
                                                 }}
+                                                cursor={{ stroke: "#A855F7", strokeOpacity: 0.4 }}
                                             />
                                             <Area
                                                 type="monotone"
                                                 dataKey="Nota"
-                                                stroke="var(--primary)"
-                                                strokeWidth={2}
+                                                stroke="url(#colorNotaLinea)"
+                                                strokeWidth={3}
                                                 fillOpacity={1}
-                                                fill="url(#colorNota)"
+                                                fill="url(#colorNotaRelleno)"
+                                                dot={{ r: 4, fill: "#A855F7", stroke: "#FFFFFF", strokeWidth: 2 }}
+                                                activeDot={{ r: 6, fill: "#EC4899", stroke: "#FFFFFF", strokeWidth: 2 }}
                                             />
                                         </AreaChart>
                                     </ResponsiveContainer>
