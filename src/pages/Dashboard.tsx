@@ -1,18 +1,22 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Flame, Target, ArrowRight, BookOpen, Sparkles, Play, CheckCircle2, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import TarjetaProgreso from "@/components/TarjetaProgreso";
 import { coursesApi, intentosApi, rendimientoApi } from "@/api";
-import { getCourseIcon } from "@/lib/icon-mapper";
 import { cn } from "@/lib/utils";
 import type { GrupoCursoConocimiento } from "@/components/ConceptHeatMap";
+import { useIsAriaTourActive } from "@/lib/useIsAriaTourActive";
+import { CURSO_DEMO } from "@/lib/tourDemo";
+import { TarjetaCurso } from "@/components/curso/TarjetaCurso";
 
 export default function Dashboard() {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const studentId = user.id;
     const primerNombre = user.name?.split(" ")[0] || "estudiante";
+
+    const tourActivo = useIsAriaTourActive();
 
     const { data: courses = [] } = useQuery({
         queryKey: ["student-courses", studentId],
@@ -68,6 +72,7 @@ export default function Dashboard() {
         <div className="space-y-6 md:space-y-8">
             {/* ── Saludo + el ÚNICO paso siguiente ──────────────────────────── */}
             <motion.section
+                data-guide="hero-banner"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-hero-gradient rounded-2xl p-6 md:p-8 shadow-sm"
@@ -127,6 +132,7 @@ export default function Dashboard() {
             {/* ── Temas para reforzar, con nombre concreto ──────────────────── */}
             {temasParaRepasar.length > 0 && (
                 <motion.section
+                    data-guide="temas-reforzar"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.05 }}
@@ -181,7 +187,7 @@ export default function Dashboard() {
             )}
 
             {/* ── Progreso: tres números, sin jerga ─────────────────────────── */}
-            <section className="grid grid-cols-3 gap-3 md:gap-4">
+            <section data-guide="stats-cards" className="grid grid-cols-3 gap-3 md:gap-4">
                 <StatCard icon={Flame} label="Días seguidos" value={String(streakDays)} tone="rose" />
                 <StatCard icon={Target} label="Tu promedio" value={averageGrade} tone="emerald" />
                 <StatCard icon={CheckCircle2} label="Prácticas" value={String(attempts.length)} tone="indigo" />
@@ -193,38 +199,37 @@ export default function Dashboard() {
             {user?.id && <TarjetaProgreso usuarioId={user.id} />}
 
             {/* ── Cursos ────────────────────────────────────────────────────── */}
-            {courses.length > 0 && (
-            <section>
+            {(courses.length > 0 || tourActivo) && (
+                <section data-guide="seccion-cursos">
                     <h2 className="font-display text-xl md:text-2xl font-bold mb-4">Tus cursos</h2>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div data-guide="lista-cursos" className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                        {/* Curso de ejemplo del recorrido de Aria: aparece SOLO mientras el
+                            recorrido está activo y desaparece al terminarlo (ver lib/tourDemo). */}
+                        {tourActivo && (
+                            <TarjetaCurso
+                                to={`/app/curso/${CURSO_DEMO.id}`}
+                                dataGuide="tarjeta-curso-demo"
+                                nombre={CURSO_DEMO.name}
+                                color={CURSO_DEMO.color}
+                                emoji={CURSO_DEMO.emoji}
+                                etiqueta="Ejemplo de Aria"
+                                detalle="Solo para el recorrido · no guarda notas"
+                                className="ring-2 ring-violet-400/60 ring-offset-2 ring-offset-background"
+                            />
+                        )}
                         {courses.map((c) => (
-                            <Link
+                            <TarjetaCurso
                                 key={c.id}
                                 to={`/app/curso/${c.id}`}
-                                className="group bg-card border border-border/80 rounded-2xl p-5 hover:border-border hover:shadow-sm transition-all flex items-center gap-4 min-h-[80px]"
-                            >
-                                <div
-                                    className={cn(
-                                        "w-12 h-12 rounded-xl grid place-items-center border shrink-0",
-                                        c.color === "lime"
-                                            ? "bg-emerald-100/80 border-emerald-300 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400"
-                                            : c.color === "coral"
-                                                ? "bg-rose-100/80 border-rose-300 text-rose-700 dark:bg-rose-950/20 dark:border-rose-900/30 dark:text-rose-400"
-                                                : "bg-indigo-100/80 border-indigo-300 text-indigo-700 dark:bg-indigo-950/20 dark:border-indigo-900/30 dark:text-indigo-400"
-                                    )}
-                                >
-                                    {getCourseIcon(c.emoji, "w-6 h-6")}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-display font-bold text-base leading-tight truncate group-hover:underline">
-                                        {c.name}
-                                    </h3>
-                                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                                        <BookOpen className="w-3.5 h-3.5" /> {c.weeks || 4} temas
-                                    </p>
-                                </div>
-                                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
-                            </Link>
+                                dataGuide="tarjeta-curso"
+                                cursoId={c.id}
+                                nombre={c.name}
+                                descripcion={c.description}
+                                color={c.color}
+                                emoji={c.emoji}
+                                bannerVersion={c.bannerVersion}
+                                detalle="Material, prácticas y tu mapa de calor"
+                            />
                         ))}
                     </div>
                 </section>

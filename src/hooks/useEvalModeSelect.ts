@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { semanasApi } from "@/api/courses";
+import { SEMANA_DEMO, esSemanaDemo } from "@/lib/tourDemo";
 
 export function useEvalModeSelect() {
     const { courseId = "", semanaId: week = "" } = useParams();
@@ -9,11 +10,14 @@ export function useEvalModeSelect() {
     const [selectedSubtemas, setSelectedSubtemas] = useState<string[]>([]);
     const [selectedFile, setSelectedFile] = useState<{ id: string, name: string } | null>(null);
 
-    const { data: semana, isLoading } = useQuery({
+    const esDemo = esSemanaDemo(week);
+    const { data: semanaServidor, isLoading } = useQuery({
         queryKey: ["semana", week],
         queryFn: () => semanasApi.get(week),
-        enabled: !!week,
+        enabled: !!week && !esDemo,
     });
+    // La semana del curso de ejemplo de Aria no existe en el servidor (ver lib/tourDemo).
+    const semana: any = esDemo ? SEMANA_DEMO : semanaServidor;
 
     return {
         courseId,
@@ -25,6 +29,7 @@ export function useEvalModeSelect() {
         selectedFile,
         setSelectedFile,
         semana,
-        isLoading,
+        isLoading: isLoading && !esDemo,
+        esDemo,
     };
 }

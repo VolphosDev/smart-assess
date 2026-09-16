@@ -20,6 +20,7 @@ export function SelectorTema({ className }: { className?: string }) {
         <div
             role="group"
             aria-label="Elegir tema de color"
+            data-guide="selector-tema"
             className={cn("flex items-center gap-0.5 bg-muted rounded-lg p-0.5 border border-border", className)}
         >
             {OPCIONES.map(({ id, icono: Icono, etiqueta, titulo }) => (
@@ -27,6 +28,7 @@ export function SelectorTema({ className }: { className?: string }) {
                     key={id}
                     type="button"
                     onClick={() => setTema(id)}
+                    data-guide={`tema-${id}`}
                     title={titulo}
                     aria-label={titulo}
                     aria-pressed={tema === id}

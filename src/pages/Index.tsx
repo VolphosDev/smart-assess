@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Sparkles, ArrowRight, GraduationCap, Check } from "lucide-react";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 
 // ¡IMPORTANTE! Importa tu authApi
 import { authApi } from "@/api/auth.ts";
+import { ModalPortal } from "@/components/ModalPortal";
 
 export default function Index() {
     const [email, setEmail] = useState("");
@@ -208,6 +209,7 @@ export default function Index() {
 
             {/* MODAL DE SOPORTE */}
             {showSupportModal && (
+                <ModalPortal>
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -271,6 +273,7 @@ export default function Index() {
                         )}
                     </motion.div>
                 </div>
+                </ModalPortal>
             )}
         </div>
     );

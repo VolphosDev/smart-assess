@@ -51,7 +51,7 @@ export default function TarjetaProgreso({ usuarioId }: { usuarioId: number | str
     if (!p) return null;
 
     return (
-        <div className="bg-card border border-border rounded-xl p-5 shadow-xs space-y-4">
+        <div data-guide="tarjeta-progreso" className="bg-card border border-border rounded-xl p-5 shadow-xs space-y-4">
             <div className="flex items-center gap-4">
                 <div className="text-4xl leading-none shrink-0" aria-hidden>{p.rangoEmoji}</div>
                 <div className="flex-1 min-w-0">

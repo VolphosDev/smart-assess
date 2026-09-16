@@ -7,12 +7,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ArrowLeft, Users, UserPlus, UserMinus, Loader2, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const colorMap = {
-    primary: "bg-primary-gradient",
-    lime: "bg-lime-gradient",
-    coral: "bg-coral-gradient",
-} as const;
+import { fondoCabeceraCurso } from "@/lib/colorCurso";
+import { useBannerCurso } from "@/lib/bannerCurso";
 
 export default function CourseStudentsManager() {
     const { courseId = "" } = useParams();
@@ -36,6 +32,7 @@ export default function CourseStudentsManager() {
         enabled: !!teacherId,
     });
     const course = courses.find((c: any) => String(c.id) === String(courseId));
+    const bannerUrl = useBannerCurso(course?.id, course?.bannerVersion);
 
     const { data: searchResults = [], isLoading: isSearching } = useQuery({
         queryKey: ["buscarEstudiantes", searchTerm],
@@ -93,10 +90,8 @@ export default function CourseStudentsManager() {
             <motion.div
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={cn(
-                    "rounded-xl p-8 text-primary-foreground shadow-sm relative overflow-hidden",
-                    colorMap[course?.color as keyof typeof colorMap] ?? "bg-primary-gradient"
-                )}
+                className="rounded-xl p-8 text-primary-foreground shadow-sm relative overflow-hidden"
+                style={fondoCabeceraCurso(course?.color, bannerUrl)}
             >
                 <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-[0.25] select-none pointer-events-none text-white">
                     <Users className="w-32 h-32 md:w-36 md:h-36" />

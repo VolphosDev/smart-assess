@@ -1,4 +1,4 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { intentosApi } from "@/api/courses";
 import { useState } from "react";
 import { Loader2, Eye, Download, Printer, CheckCircle2, XCircle, Lightbulb } from "lucide-react";
@@ -13,9 +13,54 @@ import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAx
 import { motion } from "framer-motion";
 import { getCourseIcon } from "@/lib/icon-mapper";
 
+import { useIsAriaTourActive, useAriaTourStep } from "@/lib/useIsAriaTourActive";
+import { ModalPortal } from "@/components/ModalPortal";
+
+const DEMO_INTENTOS = [
+    {
+        id: "demo-h1",
+        cursoNombre: "Biología General",
+        cursoEmoji: "🧬",
+        semana: 1,
+        nota: 18.5,
+        tecnica: "AVATAR_TUTOR",
+        fecha: new Date().toISOString(),
+        correctas: 9,
+        totalPreguntas: 10,
+        duracionSegundos: 320,
+        feedback: "Excelente dominio de los conceptos de organelos celulares y fotosíntesis.",
+        preguntasRespuestas: [
+            { pregunta: "¿Cuál es el organelo encargado de la respiración celular?", respuestaAlumno: "Mitocondria", correcta: true, explicacion: "Correcto, la mitocondria genera la mayor parte de ATP." }
+        ]
+    },
+    {
+        id: "demo-h2",
+        cursoNombre: "Química Orgánica",
+        cursoEmoji: "🧪",
+        semana: 2,
+        nota: 16.0,
+        tecnica: "OPCION_MULTIPLE",
+        fecha: new Date(Date.now() - 86400000).toISOString(),
+        correctas: 8,
+        totalPreguntas: 10,
+        duracionSegundos: 240,
+        feedback: "Buen manejo de estructuras de carbono. Conviene reforzar nomenclatura de alquinos.",
+        preguntasRespuestas: [
+            { pregunta: "¿Qué grupo funcional caracteriza a los alcoholes?", respuestaAlumno: "Hidroxilo (-OH)", correcta: true, explicacion: "Correcto, el grupo -OH identifica a los alcoholes." }
+        ]
+    }
+];
+
 export default function HistoryPage() {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const [intentoAbierto, setIntentoAbierto] = useState<any | null>(null);
+    const tourStep = useAriaTourStep();
+    const isExplainingHistorial =
+        tourStep === "explicacion-historial" ||
+        tourStep === "boton-descargar" ||
+        tourStep === "grafico-evolucion" ||
+        tourStep === "tarjeta-promedio" ||
+        tourStep === "tarjetas-historial";
 
     const { data: rawIntentos = [], isLoading } = useQuery({
         queryKey: ["mis-intentos", user.id],
@@ -23,10 +68,12 @@ export default function HistoryPage() {
         enabled: !!user.id,
     });
 
-    const intentos = rawIntentos.filter((h: any) => 
+    const baseIntentos = rawIntentos.filter((h: any) => 
         h.tipoEvaluacion !== "DIAGNOSTICA" && 
         h.tecnica?.toLowerCase() !== "adaptativa"
     );
+
+    const intentos = baseIntentos.length === 0 && isExplainingHistorial ? DEMO_INTENTOS : baseIntentos;
 
     const avg = intentos.length
         ? (intentos.reduce((a: number, b: any) => a + b.nota, 0) / intentos.length).toFixed(1)
@@ -72,6 +119,7 @@ export default function HistoryPage() {
                     <p className="text-muted-foreground text-sm">Revisa cada intento y descubre tus puntos a reforzar.</p>
                 </div>
                 <button
+                    data-guide="boton-descargar"
                     onClick={descargarTodo}
                     className="inline-flex items-center justify-center gap-2 shrink-0 min-h-[44px] px-4 rounded-xl border border-border bg-card font-semibold text-sm hover:bg-muted/60 transition-colors shadow-xs"
                 >
@@ -81,7 +129,7 @@ export default function HistoryPage() {
             </div>
 
             <div className="grid lg:grid-cols-3 gap-5">
-                <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6 shadow-xs">
+                <div data-guide="grafico-evolucion" className="lg:col-span-2 bg-card border border-border rounded-xl p-6 shadow-xs">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-display font-bold text-xl">Evolución de notas</h3>
                         <span className="text-sm text-muted-foreground">Últimos {intentos.length} intentos</span>
@@ -104,14 +152,14 @@ export default function HistoryPage() {
                         </ResponsiveContainer>
                     </div>
                 </div>
-                <div className="bg-hero-gradient rounded-xl p-6 shadow-sm flex flex-col justify-center">
+                <div data-guide="tarjeta-promedio" className="bg-hero-gradient rounded-xl p-6 shadow-sm flex flex-col justify-center">
                     <div className="text-xs font-bold uppercase tracking-wider opacity-90 mb-2">Promedio general</div>
                     <div className="font-display font-bold text-5xl mb-1">{avg}</div>
                     <div className="opacity-90 text-sm">de un total de 20 puntos · Avance constante</div>
                 </div>
             </div>
 
-            <div className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
+            <div data-guide="tarjetas-historial" className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
                 <div className="p-5 border-b border-border">
                     <h3 className="font-display font-bold text-lg">Intentos recientes</h3>
                 </div>
@@ -152,6 +200,7 @@ export default function HistoryPage() {
 
             {/* Modal de detalle */}
             {intentoAbierto && (
+                <ModalPortal>
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
                      onClick={() => setIntentoAbierto(null)}>
                     <div id="hoja-imprimible"
@@ -243,6 +292,7 @@ export default function HistoryPage() {
                         </div>
                     </div>
                 </div>
+                </ModalPortal>
             )}
         </div>
     );
