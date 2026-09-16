@@ -52,7 +52,8 @@ export function PreguntaDeteccionErrores({
     return (
         <div className="space-y-4">
             <p className="text-xs font-semibold text-muted-foreground leading-relaxed">
-                Haz clic en las palabras subrayadas en el texto para escribir la corrección adecuada:
+                Toca cada palabra marcada y escribe la correcta (una o dos palabras). Si no sabes cuál
+                va, déjala vacía: contará como no corregida.
             </p>
             <div className="p-5 rounded-2xl bg-secondary/15 border border-border/80 text-foreground leading-relaxed text-sm md:text-base font-medium font-display">
                 {parts.map((part, idx) => {

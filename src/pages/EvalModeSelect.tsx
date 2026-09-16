@@ -241,6 +241,16 @@ export default function EvalModeSelect() {
     const completedAdaptive = estadoSemana
         ? estadoSemana.recomendadoraCompletada
         : !!savedRecsRaw;
+    /**
+     * ¿Hizo ya la PRUEBA DE UBICACIÓN de esta semana?
+     *
+     * Es distinto de `completedAdaptive`, que significa "el comité ya deliberó". El servidor
+     * mandaba ambas señales desde el principio, pero la página solo leía la segunda: quien
+     * terminaba la ubicación seguía viendo "Pendiente" y con todo bloqueado, porque la
+     * ubicación no crea un debate. Había que pulsar "Realizar Diagnóstico" DOS veces sin que
+     * nadie lo dijera.
+     */
+    const ubicacionCompletada = estadoSemana?.ubicacionCompletada ?? false;
     const modosRecomendados = estadoSemana?.modosRecomendados ?? [];
     const deliberacionReal = estadoSemana?.deliberacionReal ?? true;
     const recommendations = estadoSemana?.recomendadoraCompletada
@@ -308,8 +318,10 @@ export default function EvalModeSelect() {
     const ariaSemana: { estado: ExpresionAria; mensaje: string } =
         unfinishedMode
             ? { estado: "esperando", mensaje: "Tienes una prueba a medias. ¡Termínala y seguimos!" }
-            : !completedAdaptive
-                ? { estado: "guino", mensaje: "Lee el material y haz el diagnóstico: así sé por dónde empezar contigo." }
+            : !ubicacionCompletada
+                ? { estado: "guino", mensaje: "Lee el material y haz la prueba de ubicación: así sé por dónde empezar contigo." }
+                : !completedAdaptive
+                ? { estado: "feliz", mensaje: "Ya sé tu nivel. Practica lo que quieras, y cuando hagas una evaluación te marco lo que más te conviene." }
                 : allRecommendedCompleted
                     ? { estado: "orgullosa", mensaje: "¡Hiciste todas las prácticas recomendadas! Puedes volver a evaluarte." }
                     : { estado: "feliz", mensaje: "Abajo te marqué las formas de practicar que más te convienen." };
@@ -352,7 +364,7 @@ export default function EvalModeSelect() {
         // Convertir la restriccion en incentivo conserva la guia del sistema y devuelve la
         // decision al alumno. Ademas, si puede desviarse, se puede MEDIR cuanto sigue la
         // recomendacion; si se le obliga, ese dato no existe.
-        const faltaUbicacion = !ignorarBloqueo && !completedAdaptive && m.id !== "adaptativa";
+        const faltaUbicacion = !ignorarBloqueo && !ubicacionCompletada && m.id !== "adaptativa";
         return m.disabled || isBlockedByOtherUnfinished || faltaUbicacion;
     };
 
@@ -362,7 +374,7 @@ const isUnfinished = m.id === unfinishedMode;
                             const isBlockedByOtherUnfinished = !ignorarBloqueo && unfinishedMode !== null && !isUnfinished;
                             const isRecommended = isModeRecommended(m.id, recommendations, modosRecomendados);
                             // Ver la nota en esModoNoDisponible: solo bloquea la ubicacion inicial.
-                            const faltaUbicacion = !ignorarBloqueo && !completedAdaptive && m.id !== "adaptativa";
+                            const faltaUbicacion = !ignorarBloqueo && !ubicacionCompletada && m.id !== "adaptativa";
 
                             const isDisabled = m.disabled || isBlockedByOtherUnfinished || faltaUbicacion;
 
@@ -479,7 +491,11 @@ const isUnfinished = m.id === unfinishedMode;
                                         ? visibleMateriales.map((m: any) => (m.nombreArchivo || "").replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim()).join(", ")
                                         : "");
 
-                                const targetMat = visibleMateriales[0] || materiales[0];
+                                // Basta con UN material visible: el servidor amplía la búsqueda a
+                                // todos los materiales visibles de la semana (AlcanceMaterialesService).
+                                // Antes había un respaldo `|| materiales[0]` que, con todo oculto,
+                                // mandaba un material que la docente había ocultado.
+                                const targetMat = visibleMateriales[0];
                                 const mongoIdParam = targetMat?.mongoId || targetMat?.id || "";
 
                                 if (m.id === "adaptativa" || m.id === "avatar" || m.id === "video") {
@@ -967,9 +983,19 @@ const isUnfinished = m.id === unfinishedMode;
                                         <Brain className="w-5 h-5" />
                                     </div>
                                     <div className="space-y-1">
-                                        <h3 className="font-display font-black text-lg text-foreground">Evaluación Recomendadora (Pendiente)</h3>
+                                        {/* Son DOS pasos y antes se anunciaban como uno. Quien terminaba
+                                            la ubicación volvía a leer "Completa esta evaluación inicial",
+                                            palabra por palabra igual que antes de hacerla, y no tenía forma
+                                            de saber que le faltaba una segunda vuelta. */}
+                                        <h3 className="font-display font-black text-lg text-foreground">
+                                            {ubicacionCompletada
+                                                ? "Evaluación Recomendadora (te falta este paso)"
+                                                : "Evaluación Recomendadora (Pendiente)"}
+                                        </h3>
                                         <p className="text-xs text-muted-foreground leading-normal max-w-xl font-semibold">
-                                            Completa esta evaluación inicial para que el comité de agentes IA diagnostique tu perfil y te recomiende los mejores métodos de retroalimentación de la semana.
+                                            {ubicacionCompletada
+                                                ? "Ya hiciste la prueba de ubicación de esta semana: por eso las prácticas de abajo están abiertas. Falta una evaluación para que el comité de agentes IA vea cómo respondes y te marque los métodos que más te convienen."
+                                                : "Completa esta evaluación inicial para que el comité de agentes IA diagnostique tu perfil y te recomiende los mejores métodos de retroalimentación de la semana."}
                                         </p>
                                     </div>
                                 </div>

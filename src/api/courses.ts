@@ -116,7 +116,27 @@ export const coursesApi = {
     },
     eliminarBanner: (courseId: string | number) =>
         apiClient.delete<{ message: string }>(`/cursos/${courseId}/banner`),
+
+    /** Titular y co-docentes del curso, y si el usuario actual puede gestionarlos. */
+    docentes: (courseId: string | number) =>
+        apiClient.get<RespuestaDocentes>(`/cursos/${courseId}/docentes`),
+    agregarDocente: (courseId: string | number, correo: string) =>
+        apiClient.post<RespuestaDocentes>(`/cursos/${courseId}/docentes`, { correo }),
+    quitarDocente: (courseId: string | number, docenteId: string) =>
+        apiClient.delete<RespuestaDocentes>(`/cursos/${courseId}/docentes/${docenteId}`),
 };
+
+export interface DocenteCurso {
+    id: string;
+    nombre: string;
+    correo: string;
+    titular: boolean;
+}
+
+export interface RespuestaDocentes {
+    docentes: DocenteCurso[];
+    puedoGestionar: boolean;
+}
 export const semanasApi = {
     get: (semanaId: string | number) =>
         apiClient.get<any>(`/semanas/${semanaId}`),

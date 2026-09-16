@@ -298,7 +298,7 @@ export default function AdminDashboard() {
         const preview: { name: string; email: string; role: string; password: string }[] = [];
 
         lines.forEach(line => {
-            // Si la línea contiene un '@', es un correo explícito (ej. alumnoejemplo@gmail.com)
+            // Si la línea contiene un '@', es un correo explícito (ej. alumno@colegio.edu.pe)
             if (line.includes("@")) {
                 const emailClean = line.toLowerCase().trim();
                 const defaultName = emailClean.split("@")[0];
@@ -311,7 +311,8 @@ export default function AdminDashboard() {
                 return;
             }
 
-            // Si es un nombre de persona, generamos el correo con @gmail.com por defecto
+            // Si es un nombre de persona, se genera un NOMBRE DE USUARIO (sin dominio). Antes se
+            // le pegaba @gmail.com y el alumno terminaba con un correo que no existe.
             const parts = line.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z\s]/g, "").split(/\s+/);
             let base = "";
             if (parts.length >= 3) {
@@ -324,7 +325,7 @@ export default function AdminDashboard() {
             
             preview.push({
                 name: line,
-                email: `${base}@gmail.com`,
+                email: base,
                 role: role,
                 password: password || "123456"
             });
@@ -719,8 +720,8 @@ export default function AdminDashboard() {
                         <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Ana Pérez" className="h-11 rounded-lg" />
                     </div>
                     <div className="space-y-1.5">
-                        <Label>Correo electrónico</Label>
-                        <Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ana@gmail.com" className="h-11 rounded-lg" />
+                        <Label>Correo o usuario</Label>
+                        <Input required type="text" autoCapitalize="none" spellCheck={false} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="aperez  o  ana@colegio.edu.pe" className="h-11 rounded-lg" />
                     </div>
 
                     {/* NUEVO CAMPO DE CONTRASEÑA */}

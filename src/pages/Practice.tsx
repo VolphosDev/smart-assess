@@ -284,7 +284,9 @@ export default function Practice() {
                                 <button
                                     className="px-6 py-2.5 rounded-xl bg-primary-gradient text-white font-bold shadow-soft flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     onClick={comprobarRespuestaActual}
-                                    disabled={evaluando || !respuestas[currentSlide]}
+                                    // Detección de errores se puede enviar sin escribir nada: los
+                                    // huecos vacíos cuentan como "dejo la palabra como está".
+                                    disabled={evaluando || (mode !== "DETECCION_ERRORES" && !respuestas[currentSlide])}
                                 >
                                     {evaluando ? (
                                         <>

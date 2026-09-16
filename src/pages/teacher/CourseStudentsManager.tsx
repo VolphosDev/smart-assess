@@ -9,6 +9,7 @@ import { ArrowLeft, Users, UserPlus, UserMinus, Loader2, Mail } from "lucide-rea
 import { cn } from "@/lib/utils";
 import { fondoCabeceraCurso } from "@/lib/colorCurso";
 import { useBannerCurso } from "@/lib/bannerCurso";
+import { DocentesCurso } from "@/components/curso/DocentesCurso";
 
 export default function CourseStudentsManager() {
     const { courseId = "" } = useParams();
@@ -234,6 +235,10 @@ export default function CourseStudentsManager() {
                 </motion.section>
 
             </div>
+
+            {/* Quién enseña este curso. Va en "Gestionar clase" porque, como la lista de
+                alumnos, es gestión de personas y no de contenido. */}
+            <DocentesCurso courseId={courseId} />
         </div>
     );
 }

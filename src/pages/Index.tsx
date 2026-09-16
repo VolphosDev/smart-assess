@@ -160,12 +160,15 @@ export default function Index() {
  
                     <form onSubmit={submit} className="space-y-4">
                         <div className="space-y-1.5 text-left">
-                            <Label htmlFor="email" className="font-semibold text-xs text-foreground/80">Correo institucional</Label>
+                            <Label htmlFor="email" className="font-semibold text-xs text-foreground/80">Correo o usuario</Label>
                             <Input
                                 id="email"
-                                type="email"
+                                type="text"
+                                autoComplete="username"
+                                autoCapitalize="none"
+                                spellCheck={false}
                                 required
-                                placeholder="correo@institucion.edu"
+                                placeholder="correo o nombre de usuario"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="h-11 rounded-lg border border-input bg-background/50 focus-visible:ring-primary/30 transition-all text-sm"
@@ -232,13 +235,13 @@ export default function Index() {
                         ) : (
                             <form onSubmit={submitSupport} className="space-y-4">
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-semibold">Correo institucional que recuerdes</Label>
+                                    <Label className="text-xs font-semibold">Correo o usuario que recuerdes</Label>
                                     <Input
-                                        type="email"
+                                        type="text"
                                         required
                                         value={supportEmail}
                                         onChange={(e) => setSupportEmail(e.target.value)}
-                                        placeholder="correo@institucion.edu"
+                                        placeholder="correo o nombre de usuario"
                                     />
                                 </div>
                                 <div className="space-y-1.5">

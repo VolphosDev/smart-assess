@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import type { GrupoCursoConocimiento, TemaConocimiento } from "./ConceptHeatMap";
 
 /**
@@ -39,7 +39,22 @@ interface TemaConSemana extends TemaConocimiento {
 }
 
 const REJILLA_ANCHO = 120;
-const REJILLA_ALTO = 68;
+
+/**
+ * Ancho mínimo, en píxeles, de la columna de cada semana.
+ *
+ * POR QUÉ. El mapa ocupaba el ancho disponible con proporción 16:9. En un escritorio eso da
+ * columnas de 300 px o más; en un celular de 340 px con tres semanas, unos 110 px por semana
+ * repartidos entre cuatro o cinco temas: cada etiqueta quedaba en 20 px y se leía "C… o…".
+ * El mapa estaba ahí, pero no se podía leer.
+ *
+ * Con un mínimo por columna, en pantallas estrechas el mapa conserva un tamaño legible y se
+ * desliza en horizontal DENTRO de su tarjeta (la página no se desborda). En escritorio, donde
+ * sobra ancho, no cambia nada.
+ */
+const ANCHO_MIN_COLUMNA = 230;
+/** Alto que necesita cada fila de etiquetas para no pisarse (píldora de dos líneas + aire). */
+const ALTO_POR_FILA = 58;
 
 /**
  * Rampa de color tipo mapa de densidad: azul (frío, dominado) → cian → verde → amarillo →
@@ -145,6 +160,18 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
     const [cursoActivo, setCursoActivo] = useState(0);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const [seleccionado, setSeleccionado] = useState<Punto | null>(null);
+    const detalleRef = useRef<HTMLDivElement | null>(null);
+
+    // El detalle se abre ARRIBA del mapa. En un celular, quien pulsa un tema abajo del mapa
+    // no lo vería aparecer, así que se lleva a la vista.
+    useEffect(() => {
+        if (seleccionado) detalleRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, [seleccionado]);
+
+    const esSeleccionado = (p: Punto) =>
+        !!seleccionado
+        && seleccionado.tema.concepto === p.tema.concepto
+        && seleccionado.etiquetaSemana === p.etiquetaSemana;
     const [estilo, setEstilo] = useState<EstiloMapa>(() => {
         try {
             return (localStorage.getItem("semantika.estiloMapa") as EstiloMapa) || "difuminado";
@@ -164,9 +191,20 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
 
     const curso = conDatos[Math.min(cursoActivo, Math.max(0, conDatos.length - 1))];
 
+    // Ancho real del hueco donde vive el mapa, para decidir si hace falta deslizar.
+    const visorRef = useRef<HTMLDivElement | null>(null);
+    const [anchoVisible, setAnchoVisible] = useState(0);
+    useEffect(() => {
+        const el = visorRef.current;
+        if (!el || typeof ResizeObserver === "undefined") return;
+        const obs = new ResizeObserver(([entrada]) => setAnchoVisible(entrada.contentRect.width));
+        obs.observe(el);
+        return () => obs.disconnect();
+    }, [conDatos.length]);
+
     /** Coloca cada tema en su columna de semana y lo reparte verticalmente dentro de ella. */
-    const { puntos, columnas } = useMemo(() => {
-        if (!curso) return { puntos: [] as Punto[], columnas: [] as string[] };
+    const { puntos, columnas, maxFilas } = useMemo(() => {
+        if (!curso) return { puntos: [] as Punto[], columnas: [] as string[], maxFilas: 0 };
 
         const temas = curso.temas as TemaConSemana[];
 
@@ -190,6 +228,7 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
 
         const pts: Punto[] = [];
         const anchoBanda = 1 / claves.length;
+        let maxFilas = 0;
 
         claves.forEach((clave, i) => {
             const grupo = porSemana.get(clave)!;
@@ -204,6 +243,7 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
                 Math.min(grupo.length, Math.round(Math.sqrt(grupo.length * anchoBanda * 1.9)))
             );
             const filasEnBanda = Math.ceil(grupo.length / columnasEnBanda);
+            maxFilas = Math.max(maxFilas, filasEnBanda);
 
             grupo.forEach((tema, j) => {
                 const col = j % columnasEnBanda;
@@ -224,11 +264,26 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
             });
         });
 
-        return { puntos: pts, columnas: claves };
+        return { puntos: pts, columnas: claves, maxFilas };
     }, [curso]);
+
+    // Tamaño del lienzo. Sin medir todavía (primer render) se usa el 16:9 de siempre.
+    const anchoLienzo = anchoVisible > 0
+        ? Math.max(anchoVisible, columnas.length * ANCHO_MIN_COLUMNA)
+        : 0;
+    const altoLienzo = anchoLienzo > 0
+        ? Math.max(anchoLienzo * 9 / 16, (maxFilas + 1) * ALTO_POR_FILA)
+        : 0;
+    const desliza = anchoLienzo > anchoVisible + 1;
+    // La rejilla sigue la proporción del lienzo: si no, al hacerlo más alto los halos se
+    // estirarían en óvalos y dejarían de coincidir con su etiqueta.
+    const rejillaAlto = anchoLienzo > 0
+        ? Math.max(40, Math.round(REJILLA_ANCHO * altoLienzo / anchoLienzo))
+        : 68;
 
     // Pintado del campo de densidad
     useEffect(() => {
+        const REJILLA_ALTO = rejillaAlto;
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext("2d");
@@ -321,7 +376,7 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
         }
 
         ctx.putImageData(imagen, 0, 0);
-    }, [puntos, estilo]);
+    }, [puntos, estilo, rejillaAlto]);
 
     if (conDatos.length === 0) {
         return (
@@ -372,8 +427,34 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
                     </p>
                 </div>
 
-                {/* El contenedor tiene proporción fija para que el campo no se deforme */}
-                <div className="relative w-full" style={{ aspectRatio: "16 / 9" }}>
+                {/* Instrucción visible. Antes nada indicaba que los temas se podían pulsar, y el
+                    detalle aparecía debajo de todo, fuera de la vista en un celular. */}
+                {!compacto && !seleccionado && (
+                    <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-semibold text-primary dark:text-primary-glow">
+                        <span aria-hidden>👆</span> Presiona un tema para ver más detalles
+                    </div>
+                )}
+
+                {!compacto && seleccionado && (
+                    <DetalleTema
+                        ref={detalleRef}
+                        punto={seleccionado}
+                        onCerrar={() => setSeleccionado(null)}
+                    />
+                )}
+
+                {desliza && (
+                    <p className="px-4 pt-3 text-xs font-semibold text-muted-foreground">
+                        Desliza hacia los lados para ver todas las semanas →
+                    </p>
+                )}
+
+                {/* Visor desplazable: en celular el mapa conserva un tamaño legible y se mueve
+                    dentro de la tarjeta, en vez de encogerse hasta que nada se lee. */}
+                <div ref={visorRef} className="w-full overflow-x-auto overscroll-x-contain">
+                <div style={anchoLienzo > 0 ? { width: anchoLienzo } : undefined}>
+                <div className="relative w-full"
+                     style={anchoLienzo > 0 ? { height: altoLienzo } : { aspectRatio: "16 / 9" }}>
                     <canvas
                         ref={canvasRef}
                         className="absolute inset-0 w-full h-full"
@@ -384,7 +465,8 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
                     {puntos.map((p, i) => (
                         <button
                             key={i}
-                            onClick={() => setSeleccionado(p)}
+                            onClick={() => setSeleccionado(esSeleccionado(p) ? null : p)}
+                            aria-pressed={esSeleccionado(p)}
                             style={{
                                 left: `${p.x * 100}%`,
                                 top: `${p.y * 100}%`,
@@ -394,7 +476,13 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
                             // ensanchar la píldora hasta chocar con la vecina. Si aun así no
                             // cabe, se corta y queda el nombre completo en el `title` y en el
                             // panel de detalle al pulsar.
-                            className="absolute -translate-x-1/2 -translate-y-1/2 px-1.5 py-1 rounded-md text-[10px] sm:text-[11px] font-bold leading-tight text-white bg-black/50 hover:bg-black/75 backdrop-blur-[2px] transition-colors text-center line-clamp-2 break-words"
+                            // El tema pulsado cambia de color y se agranda: sin eso no había forma
+                            // de saber a qué etiqueta correspondía el detalle abierto.
+                            className={`absolute -translate-x-1/2 -translate-y-1/2 px-1.5 py-1 rounded-md text-[11px] font-bold leading-tight backdrop-blur-[2px] transition-all text-center line-clamp-2 break-words ${
+                                esSeleccionado(p)
+                                    ? "z-10 scale-110 bg-white text-slate-900 ring-2 ring-primary shadow-lg"
+                                    : "text-white bg-black/50 hover:bg-black/75"
+                            }`}
                             title={`${p.tema.concepto} · ${p.etiquetaSemana}`}
                         >
                             <span className="line-clamp-2">{p.tema.concepto}</span>
@@ -402,16 +490,19 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
                     ))}
                 </div>
 
-                {/* Eje de semanas */}
+                {/* Eje de semanas: dentro del mismo visor, para que se desplace junto al mapa y
+                    cada rótulo quede siempre bajo su columna. */}
                 {!compacto && <div className="flex border-t border-border bg-muted/30">
                     {columnas.map((c) => (
                         <div key={c}
-                             className="flex-1 min-w-0 px-1 py-2 text-center text-[10px] sm:text-xs font-semibold text-muted-foreground truncate"
+                             className="flex-1 min-w-0 px-1 py-2 text-center text-xs font-semibold text-muted-foreground truncate"
                              title={c}>
                             {c}
                         </div>
                     ))}
                 </div>}
+                </div>
+                </div>
 
                 {/* Selector de estilo */}
                 {!compacto && (
@@ -447,45 +538,63 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
                 </div>
             </div>
 
-            {!compacto && seleccionado && (
-                <div className="bg-card border border-border rounded-xl p-5 shadow-xs">
-                    <div className="flex items-start justify-between gap-3">
-                        <div>
-                            <h4 className="font-display font-bold text-lg">{seleccionado.tema.concepto}</h4>
-                            <p className="text-sm text-muted-foreground">{seleccionado.etiquetaSemana}</p>
-                        </div>
-                        <button onClick={() => setSeleccionado(null)}
-                                className="text-sm font-semibold text-muted-foreground hover:text-foreground">
-                            Cerrar
-                        </button>
-                    </div>
-                    <div className="grid sm:grid-cols-3 gap-3 mt-4 text-sm">
-                        <div className="bg-muted/40 rounded-lg p-3">
-                            <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Nivel</div>
-                            <div className="font-bold mt-0.5">
-                                {seleccionado.tema.nivel === "DOMINADO" ? "Lo dominas"
-                                    : seleccionado.tema.nivel === "EN_PROGRESO" ? "Vas avanzando"
-                                    : seleccionado.tema.nivel === "DEBIL" ? "Conviene repasar"
-                                    : "Aún faltan datos"}
-                            </div>
-                        </div>
-                        <div className="bg-muted/40 rounded-lg p-3">
-                            <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Preguntas resueltas</div>
-                            <div className="font-bold mt-0.5">{seleccionado.tema.observaciones}</div>
-                        </div>
-                        <div className="bg-muted/40 rounded-lg p-3">
-                            <div className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Nivel de Bloom</div>
-                            <div className="font-bold mt-0.5">{seleccionado.tema.nivelBloom ?? "—"}</div>
-                        </div>
-                    </div>
-                    {!seleccionado.tema.confiable && (
-                        <p className="text-xs text-muted-foreground mt-3 italic">
-                            Con tan pocas preguntas resueltas todavía no podemos afirmar nada con
-                            seguridad sobre este tema. Practica un poco más y volvemos a mirarlo.
-                        </p>
-                    )}
-                </div>
-            )}
         </div>
     );
 }
+
+
+const ETIQUETA_NIVEL: Record<string, { texto: string; clase: string }> = {
+    DOMINADO: { texto: "Lo dominas", clase: "border-l-blue-500" },
+    EN_PROGRESO: { texto: "Vas avanzando", clase: "border-l-amber-500" },
+    DEBIL: { texto: "Conviene repasar", clase: "border-l-rose-500" },
+    DATOS_INSUFICIENTES: { texto: "Aún faltan datos", clase: "border-l-slate-400" },
+};
+
+/** Detalle del tema pulsado. Va dentro de la tarjeta, justo encima del mapa. */
+const DetalleTema = forwardRef<HTMLDivElement, { punto: Punto; onCerrar: () => void }>(
+    function DetalleTema({ punto, onCerrar }, ref) {
+        const { tema, etiquetaSemana } = punto;
+        const nivel = ETIQUETA_NIVEL[tema.nivel] ?? ETIQUETA_NIVEL.DATOS_INSUFICIENTES;
+        const minimas = tema.observacionesMinimas ?? 3;
+        const faltan = Math.max(0, minimas - (tema.observaciones ?? 0));
+
+        return (
+            <div ref={ref}
+                 className={`mx-4 mt-3 rounded-xl border border-border border-l-4 ${nivel.clase} bg-muted/40 p-4 shadow-sm`}>
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <h4 className="font-display font-bold text-lg leading-tight">{tema.concepto}</h4>
+                        <p className="text-sm text-muted-foreground">{etiquetaSemana}</p>
+                    </div>
+                    <button onClick={onCerrar}
+                            className="shrink-0 min-h-[36px] px-3 rounded-lg text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted">
+                        Cerrar
+                    </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 mt-3 text-sm">
+                    <div className="bg-card rounded-lg p-2.5">
+                        <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Nivel</div>
+                        <div className="font-bold mt-0.5 leading-tight">{nivel.texto}</div>
+                    </div>
+                    <div className="bg-card rounded-lg p-2.5">
+                        <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Preguntas</div>
+                        <div className="font-bold mt-0.5">{tema.observaciones} de {minimas}</div>
+                    </div>
+                    <div className="bg-card rounded-lg p-2.5">
+                        <div className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Bloom</div>
+                        <div className="font-bold mt-0.5 leading-tight">{tema.nivelBloom ?? "—"}</div>
+                    </div>
+                </div>
+
+                {!tema.confiable && (
+                    <p className="text-sm mt-3">
+                        Responde <strong>{faltan} {faltan === 1 ? "pregunta más" : "preguntas más"}</strong> de
+                        este tema y podremos decirte si lo dominas. Con menos de {minimas} respuestas, un
+                        acierto o un fallo sueltos podrían ser suerte.
+                    </p>
+                )}
+            </div>
+        );
+    }
+);

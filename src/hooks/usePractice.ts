@@ -411,7 +411,26 @@ export function usePractice() {
     const comprobarRespuestaActual = async () => {
         if (evaluando) return;
         const p = preguntas[currentSlide];
-        const respuestaEstudiante = respuestas[currentSlide];
+        let respuestaEstudiante = respuestas[currentSlide];
+
+        // En detección de errores se puede enviar con huecos vacíos: significa que el alumno
+        // deja la palabra tal como venía. Se completa el mapa con esa palabra original para que
+        // la respuesta sea explícita —el juez la cuenta como "no corregida"— y el resultado
+        // muestre cada hueco, también los que no tocó.
+        if (mode === "DETECCION_ERRORES") {
+            const escritas: Record<string, string> = (() => {
+                try { return respuestaEstudiante ? JSON.parse(respuestaEstudiante) : {}; } catch { return {}; }
+            })();
+            const errores: string[] = Array.isArray(p?.opciones_o_respuesta) ? p.opciones_o_respuesta : [];
+            const completa: Record<string, string> = {};
+            for (const error of errores) {
+                const escrita = (escritas[error] || "").trim();
+                completa[error] = escrita || error;
+            }
+            respuestaEstudiante = JSON.stringify(completa);
+            setRespuestas((prev) => ({ ...prev, [currentSlide]: respuestaEstudiante }));
+        }
+
         if (!respuestaEstudiante) {
             toast.warning("Por favor selecciona una alternativa.");
             return;
