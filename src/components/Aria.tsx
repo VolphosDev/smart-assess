@@ -1,27 +1,9 @@
 import { useEffect, useState } from "react";
 
-/**
- * Aria: el rostro de la plataforma.
- *
- * POR QUE ESTA AQUI Y NO EN UNA PAGINA. Este SVG vivia dentro de `AvatarTutor.tsx`, asi que
- * Aria solo podia existir en la pantalla de tutoria por voz. Sacarla a un componente propio
- * es lo que permite que sea el mismo personaje quien te recibe, te ensena la aplicacion y te
- * devuelve la sintesis al final — en vez de una cara que aparece en un rincon del sistema.
- *
- * DONDE DEBE APARECER, Y DONDE NO. En la entrada (bienvenida, tutorial) y en la salida
- * (resultados). NUNCA mientras el alumno responde preguntas: ahi seria un "seductive detail"
- * —elemento atractivo pero irrelevante— y esos, segun Harp y Mayer (1998), PERJUDICAN el
- * aprendizaje porque desvian la atencion del contenido. La misma cara que motiva al entrar,
- * distrae en mitad de un reactivo de analisis.
- */
+
 export type EstadoAvatar =
     | "idle" | "pensando" | "hablando" | "esperando" | "escuchando" | "feliz" | "triste";
 
-/**
- * Caras extra que solo usa la guía. Van en un tipo aparte y no dentro de `EstadoAvatar`
- * porque AvatarTutor declara `Record<EstadoAvatar, string>`: si se ampliara ese tipo, la
- * tutoría por voz dejaría de compilar hasta etiquetar caras que nunca muestra.
- */
 export type ExpresionAria =
     | EstadoAvatar
     | "sorprendido" | "guino" | "emocionado" | "confundido" | "leyendo" | "celebrando" | "orgullosa";
@@ -52,12 +34,7 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
     // unas estrellas encogiéndose parecen un fallo del dibujo.
     const parpadea = ["idle", "hablando", "esperando", "escuchando", "sorprendido", "confundido"].includes(estado);
 
-    /*
-       La cola cuenta la emoción aunque la cara sea pequeña: los gatos la mueven rápido cuando
-       están contentos, la erizan y levantan con un susto, la dejan caer cuando están tristes y
-       dan un golpecito de duda cuando piensan. Todo gira desde la base (64,92), que queda
-       escondida detrás del cuerpo, así nunca se ve "despegarse".
-    */
+
     const COLA = "M63,92 C76,94.5 86.5,88 84.6,76.5 C83.6,70.5 86.4,66.2 91,66.6";
     const colaClase = (() => {
         switch (estado) {
@@ -74,11 +51,7 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
     // Erizada con el susto: el mismo trazo, más grueso.
     const colaGrosor = estado === "sorprendido" ? 6.6 : 4.6;
 
-    /*
-       Paleta alineada con Semantika: contornos violeta muy oscuro en vez de marrón, lentes y
-       birrete en el índigo/violeta de la marca, y acentos dorados para lo que "brilla"
-       (estrellas, borla, medalla). Así Aria se ve parte de la interfaz y no un sticker pegado.
-    */
+
     const FUR       = "#FBF3EA"; // pelaje crema
     const FUR_LIGHT = "#FFFFFF"; // hocico
     const FUR_DARK  = "#C2A38C"; // rayas suaves
@@ -90,27 +63,15 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
     const NOSE      = "#2B2140";
     const MOUTH_C   = "#2B2140";
 
-    /*
-       Estas piezas se llaman como FUNCIONES ({Base()}), no como componentes (<Base/>). Al estar
-       definidas dentro del render, cada render creaba un tipo de componente nuevo y React las
-       volvía a montar: mientras Aria habla la boca re-renderiza cada 160 ms, y eso reiniciaba
-       las animaciones CSS (la cola se quedaba "congelada" en su primer fotograma).
-    */
     const Base = () => (
         <>
-            {/* Orejas externas */}
             <path d="M20,32 Q12,12 18,2 Q28,4 34,20 Z" fill={FUR} stroke={OUTLINE} strokeWidth="1.8" strokeLinejoin="round"/>
             <path d="M80,32 Q88,12 82,2 Q72,4 66,20 Z" fill={FUR} stroke={OUTLINE} strokeWidth="1.8" strokeLinejoin="round"/>
 
-            {/* Orejas internas */}
             <path d="M22,29 Q16,15 20,6 Q26,8 29,20 Z" fill={EAR_IN}/>
             <path d="M78,29 Q84,15 80,6 Q74,8 71,20 Z" fill={EAR_IN}/>
 
-            {/* Cola del gato.
-                Antes era una figura rellena y abierta (el trazo no cerraba), que se veía como un
-                pedazo blanco pegado al costado. Ahora es un tubo: contorno grueso + relleno más
-                fino encima, con puntas redondas y la punta a rayas. Nace detrás del cuerpo y se
-                mueve con la emoción (ver `colaClase` y las animaciones `aria-cola-*`). */}
+
             <g className={colaClase}>
                 <path d={COLA} fill="none" stroke={OUTLINE} strokeWidth={colaGrosor + 3.4} strokeLinecap="round" strokeLinejoin="round"/>
                 <path d={COLA} fill="none" stroke={FUR} strokeWidth={colaGrosor} strokeLinecap="round" strokeLinejoin="round"/>
@@ -232,7 +193,6 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
         );
         if (estado === "leyendo") return (
             <>
-                {/* Mirada hacia abajo: medio ojo con el párpado bajado */}
                 <path d="M24.5,54 A8.5,8.5 0 0 0 41.5,54 Z" fill={OUTLINE}/>
                 <path d="M58.5,54 A8.5,8.5 0 0 0 75.5,54 Z" fill={OUTLINE}/>
                 <circle cx="31" cy="57" r="1.4" fill="white"/>
@@ -249,7 +209,6 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
         );
         if (estado === "feliz" || estado === "celebrando") return (
             <>
-                {/* Ojos cerrados felices tipo arco */}
                 <path d="M24,54 Q33,44 42,54" stroke={OUTLINE} strokeWidth="3" fill="none" strokeLinecap="round"/>
                 <path d="M58,54 Q67,44 76,54" stroke={OUTLINE} strokeWidth="3" fill="none" strokeLinecap="round"/>
             </>
@@ -281,7 +240,6 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
         return (
             <>
                 <circle cx="33" cy="52" r={8.5 + ex} fill={OUTLINE}/>
-                {/* Reflejo violeta en la parte baja del iris: ojos con color, no puntos negros */}
                 <circle cx="33" cy="55" r="4.2" fill="#8B5CF6" opacity="0.55"/>
                 <circle cx="31" cy="49" r="2.6" fill="white"/>
                 <circle cx="35.5" cy="55" r="1.2" fill="white"/>
@@ -342,7 +300,6 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
         <>
             <circle cx="33" cy="52" r="12" fill="#C4B5FD" fillOpacity="0.14" stroke={GLASSES} strokeWidth="2.4"/>
             <circle cx="67" cy="52" r="12" fill="#C4B5FD" fillOpacity="0.14" stroke={GLASSES} strokeWidth="2.4"/>
-            {/* Brillo del cristal */}
             <path d="M25,46 Q28,42 32,41.5" fill="none" stroke="white" strokeWidth="1.3" strokeLinecap="round" opacity="0.8"/>
             <path d="M59,46 Q62,42 66,41.5" fill="none" stroke="white" strokeWidth="1.3" strokeLinecap="round" opacity="0.8"/>
             <path d="M45,52 Q50,54 55,52" fill="none" stroke={GLASSES} strokeWidth="2.2"/>
