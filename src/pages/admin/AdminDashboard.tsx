@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { UserPlus, Trash2, Users, GraduationCap, BookOpenCheck, Loader2, Download, ShieldCheck, TrendingUp, BarChart2, Calendar, Filter, ChevronDown, Check, RefreshCw, Unlock, Lock, Key, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -290,42 +290,104 @@ export default function AdminDashboard() {
         });
     };
 
-    // Lógica para generar correos
+    // Lógica para generar usuarios / correos
     const handleGeneratePreview = () => {
         if (!bulkNames.trim()) return;
         const lines = bulkNames.split('\n').map(l => l.trim()).filter(l => l.length > 0);
         
         const preview: { name: string; email: string; role: string; password: string }[] = [];
+        const usedUsernames = new Set<string>();
+        const existingInDb = new Set<string>(
+            users.map((u: any) => (u.correo || u.email || "").toLowerCase().trim()).filter(Boolean)
+        );
 
-        lines.forEach(line => {
-            // Si la línea contiene un '@', es un correo explícito (ej. alumno@colegio.edu.pe)
-            if (line.includes("@")) {
-                const emailClean = line.toLowerCase().trim();
+        const genericWords = [
+            "alumno", "alumnos", "docente", "docentes", "usuario", "usuarios", 
+            "estudiante", "estudiantes", "profesor", "profesores", "user", "users", 
+            "student", "students", "teacher", "teachers"
+        ];
+
+        lines.forEach((line, index) => {
+            const rawLine = line.trim();
+            if (!rawLine) return;
+
+            // 1. Si la línea contiene un '@', es un correo explícito (ej. alumno@colegio.edu.pe)
+            if (rawLine.includes("@")) {
+                const emailClean = rawLine.toLowerCase().trim();
                 const defaultName = emailClean.split("@")[0];
+                const formattedName = defaultName.charAt(0).toUpperCase() + defaultName.slice(1);
                 preview.push({
-                    name: defaultName.charAt(0).toUpperCase() + defaultName.slice(1),
+                    name: formattedName,
                     email: emailClean,
                     role: role,
                     password: password || "123456"
                 });
+                usedUsernames.add(emailClean);
                 return;
             }
 
-            // Si es un nombre de persona, se genera un NOMBRE DE USUARIO (sin dominio). Antes se
-            // le pegaba @gmail.com y el alumno terminaba con un correo que no existe.
-            const parts = line.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z\s]/g, "").split(/\s+/);
+            // 2. Normalizar acentos pero CONSERVAR letras y números (a-z, 0-9)
+            const normalized = rawLine
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, ""); // elimina tildes
+
+            // Reemplazar cualquier caracter que no sea letra o número por espacio
+            const parts = normalized.replace(/[^a-z0-9\s]/g, " ").trim().split(/\s+/).filter(Boolean);
+
             let base = "";
-            if (parts.length >= 3) {
-                base = parts[0].charAt(0) + parts[parts.length - 2] + parts[parts.length - 1].charAt(0);
-            } else if (parts.length === 2) {
-                base = parts[0].charAt(0) + parts[1];
+
+            if (parts.length === 0) {
+                base = `${role === "student" ? "alumno" : "docente"}${String(index + 1).padStart(2, '0')}`;
             } else {
-                base = parts[0];
+                // Verificar si la última parte es puramente numérica (ej. "alumno 01", "juan perez 02")
+                const lastPart = parts[parts.length - 1];
+                const isLastPartNumeric = /^\d+$/.test(lastPart);
+                const numberSuffix = isLastPartNumeric ? lastPart : "";
+                const wordParts = isLastPartNumeric ? parts.slice(0, -1) : parts;
+
+                if (wordParts.length === 0) {
+                    // Si solo ingresó dígitos (ej. "01")
+                    base = `${role === "student" ? "alumno" : "docente"}${numberSuffix}`;
+                } else if (wordParts.length === 1) {
+                    // Una sola palabra o identificador (ej. "alumno01", "alumno", "jperez")
+                    // Si ya contenía números (como "alumno01"), wordParts[0] ya es "alumno01"
+                    base = wordParts[0] + numberSuffix;
+                } else if (wordParts.length === 2) {
+                    // Si la primera palabra es un genérico como "alumno 01" o "docente 02"
+                    if (genericWords.includes(wordParts[0])) {
+                        base = wordParts[0] + (numberSuffix || wordParts[1]);
+                    } else {
+                        // Nombre + Apellido: ej. "Juan Perez" -> "jperez"
+                        base = wordParts[0].charAt(0) + wordParts[1] + numberSuffix;
+                    }
+                } else {
+                    // 3 o más palabras: ej. "Adriano Chacon Paredes" -> "achaconp"
+                    base = wordParts[0].charAt(0) + wordParts[wordParts.length - 2] + wordParts[wordParts.length - 1].charAt(0) + numberSuffix;
+                }
             }
-            
+
+            // Si quedó como palabra genérica solitaria sin números (ej. "alumno" a secas):
+            if (genericWords.includes(base) || (!/\d/.test(base) && (base === "alumno" || base === "docente"))) {
+                const numStr = String(index + 1).padStart(2, '0');
+                base = `${base}${numStr}`;
+            }
+
+            // Manejo de duplicados dentro del lote o si ya existe en la BD
+            let finalUsername = base;
+            let counter = 1;
+            while (usedUsernames.has(finalUsername) || existingInDb.has(finalUsername)) {
+                const baseNoDigits = base.replace(/\d+$/, "");
+                const prefix = baseNoDigits || base;
+                finalUsername = `${prefix}${String(counter).padStart(2, '0')}`;
+                counter++;
+            }
+
+            usedUsernames.add(finalUsername);
+
             preview.push({
-                name: line,
-                email: base,
+                name: rawLine,
+                email: finalUsername,
                 role: role,
                 password: password || "123456"
             });
@@ -753,10 +815,10 @@ export default function AdminDashboard() {
                                 ))}
                             </div>
                             <div className="space-y-1.5">
-                                <Label>Lista de Nombres (uno por línea)</Label>
+                                <Label>Lista de Nombres o Usuarios (uno por línea)</Label>
                                 <textarea 
-                                    className="w-full h-32 p-3 text-sm rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary/20 outline-none resize-none"
-                                    placeholder="Adriano Chacon Paredes&#10;Juan Perez Benites"
+                                    className="w-full h-32 p-3 text-sm rounded-lg border border-input bg-background focus:ring-2 focus:ring-primary/20 outline-none resize-none font-mono"
+                                    placeholder="alumno01&#10;alumno02&#10;alumno03&#10;o nombres como: Juan Perez Benites"
                                     value={bulkNames}
                                     onChange={(e) => setBulkNames(e.target.value)}
                                 />
@@ -768,24 +830,47 @@ export default function AdminDashboard() {
                             </div>
 
                             {bulkPreview.length === 0 ? (
-                                <Button type="button" onClick={handleGeneratePreview} className="w-full h-11 bg-muted hover:bg-muted/80 text-foreground font-semibold">
-                                    Generar Correos
+                                <Button type="button" onClick={handleGeneratePreview} className="w-full h-11 bg-muted hover:bg-muted/80 text-foreground font-semibold flex items-center justify-center gap-2">
+                                    <Users className="w-4 h-4 text-primary" /> Generar Usuarios
                                 </Button>
                             ) : (
                                 <>
-                                    <div className="max-h-48 overflow-y-auto border border-border rounded-lg text-xs">
+                                    <div className="max-h-56 overflow-y-auto border border-border rounded-lg text-xs">
                                         <table className="w-full">
                                             <thead className="bg-muted sticky top-0">
                                                 <tr>
-                                                    <th className="p-2 text-left font-bold">Nombre</th>
-                                                    <th className="p-2 text-left font-bold">Correo (Generado)</th>
+                                                    <th className="p-2 text-left font-bold">Nombre / Entrada</th>
+                                                    <th className="p-2 text-left font-bold">Usuario (Generado)</th>
+                                                    <th className="p-2 text-center font-bold w-10"></th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-border">
                                                 {bulkPreview.map((item, idx) => (
                                                     <tr key={idx}>
-                                                        <td className="p-2 truncate max-w-[120px]">{item.name}</td>
-                                                        <td className="p-2 truncate font-mono text-[10px] text-primary">{item.email}</td>
+                                                        <td className="p-2 truncate max-w-[120px] font-medium text-foreground" title={item.name}>{item.name}</td>
+                                                        <td className="p-2">
+                                                            <input
+                                                                type="text"
+                                                                value={item.email}
+                                                                onChange={(e) => {
+                                                                    const updated = [...bulkPreview];
+                                                                    updated[idx].email = e.target.value.toLowerCase().trim();
+                                                                    setBulkPreview(updated);
+                                                                }}
+                                                                className="w-full px-2 py-1 text-xs font-mono rounded border border-border/80 bg-background focus:outline-none focus:ring-1 focus:ring-primary text-primary font-semibold"
+                                                                title="Puedes editar el usuario directamente si deseas ajustarlo"
+                                                            />
+                                                        </td>
+                                                        <td className="p-2 text-center">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setBulkPreview(bulkPreview.filter((_, i) => i !== idx))}
+                                                                className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                                                                title="Eliminar de la lista"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
