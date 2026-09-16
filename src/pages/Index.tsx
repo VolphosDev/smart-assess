@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 // ¡IMPORTANTE! Importa tu authApi
 import { authApi } from "@/api/auth.ts";
 import { ModalPortal } from "@/components/ModalPortal";
+import { AriaLeyendo } from "@/components/PantallaMantenimiento";
+import { enMantenimiento } from "@/lib/mantenimiento";
 
 export default function Index() {
     const [email, setEmail] = useState("");
@@ -116,14 +118,29 @@ export default function Index() {
                     <span className="tracking-tight text-white">Semantika</span>
                 </Link>
                 
-                <div className="relative space-y-6 max-w-md z-10 my-auto text-left">
-                    <h1 className="font-display text-5xl font-bold leading-tight tracking-tight text-white">
-                        Evaluación formativa <br />y adaptativa con IA.
-                    </h1>
-                    <p className="text-white/80 text-lg font-light leading-relaxed">
-                        Plataforma académica integral impulsada por agentes de IA. Genera evaluaciones interactivas y visuales, interactúa con tutores inteligentes en video o conversación, y recibe diagnósticos adaptativos en tiempo real.
-                    </p>
-                </div>
+                {enMantenimiento ? (
+                    <div className="relative space-y-5 max-w-md z-10 my-auto text-left">
+                        <AriaLeyendo className="w-52 h-52 !mx-0" anchoAria="w-36" claseHojas="text-white/80" />
+                        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/20 text-white text-xs font-bold uppercase tracking-wider">
+                            <Sparkles className="w-3.5 h-3.5" /> Plataforma en preparación
+                        </span>
+                        <h1 className="font-display text-5xl font-bold leading-tight tracking-tight text-white">
+                            Aria está preparando tus evaluaciones.
+                        </h1>
+                        <p className="text-white/80 text-lg font-light leading-relaxed">
+                            Estamos incorporando y revisando el material de tus cursos para que cada pregunta que recibas sea precisa y esté basada en lo que realmente estudias. Vuelve a ingresar más tarde o mañana: tu cuenta y tu progreso están guardados.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="relative space-y-6 max-w-md z-10 my-auto text-left">
+                        <h1 className="font-display text-5xl font-bold leading-tight tracking-tight text-white">
+                            Evaluación formativa <br />y adaptativa con IA.
+                        </h1>
+                        <p className="text-white/80 text-lg font-light leading-relaxed">
+                            Plataforma académica integral impulsada por agentes de IA. Genera evaluaciones interactivas y visuales, interactúa con tutores inteligentes en video o conversación, y recibe diagnósticos adaptativos en tiempo real.
+                        </p>
+                    </div>
+                )}
                 
                 <div className="relative text-xs text-white/50 z-10 font-mono text-left">
                     © 2026 Semantika · Educación Generativa & Análisis
@@ -149,6 +166,18 @@ export default function Index() {
                         <span className="tracking-tight">Semantika</span>
                     </div>
  
+                    {enMantenimiento && (
+                        <div className="mb-6 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 p-3 text-left">
+                            <AriaLeyendo className="w-16 h-16 shrink-0 !mx-0" anchoAria="w-12" escala={0.3} />
+                            <div className="min-w-0">
+                                <p className="font-bold text-sm text-foreground">Aria está preparando tus evaluaciones</p>
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                    Estamos incorporando el material de tus cursos. Vuelve más tarde o mañana; tu progreso está guardado.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     <h2 className="font-display text-3xl font-bold mb-2 tracking-tight text-left">Bienvenido de vuelta</h2>
                     <p className="text-muted-foreground text-sm mb-6 text-left">Ingresa tus credenciales para continuar al panel.</p>
  

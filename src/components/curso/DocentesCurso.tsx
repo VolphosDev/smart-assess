@@ -6,16 +6,6 @@ import { coursesApi, type RespuestaDocentes } from "@/api/courses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-/**
- * Docentes de un curso: la titular (quien lo creó) y los co-docentes.
- *
- * Un curso puede tenerlos porque en un colegio es habitual que dos profesores compartan
- * asignatura, o que una practicante acompañe a la titular. Los co-docentes ven y gestionan
- * todo el curso; lo único reservado a la titular es decidir quién más enseña en él, para que
- * nadie pueda quitarle el curso a quien lo creó.
- */
-
-/** El cliente devuelve el cuerpo en texto; el backend manda {"error": "..."}. */
 function mensajeDeError(err: unknown, porDefecto: string): string {
     const crudo = (err as { message?: string })?.message;
     if (!crudo) return porDefecto;
@@ -37,8 +27,6 @@ export function DocentesCurso({ courseId }: { courseId: string }) {
         enabled: !!courseId,
     });
     const docentes = data?.docentes ?? [];
-    // Lo decide el servidor, que es quien luego lo exige: así no se enseñan botones que
-    // devolverían 403.
     const puedeGestionar = !!data?.puedoGestionar;
 
     const agregar = useMutation({

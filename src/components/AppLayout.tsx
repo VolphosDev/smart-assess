@@ -8,6 +8,8 @@ import { SelectorTema } from "./SelectorTema";
 import AriaGuideWidget from "./AriaGuideWidget";
 import { abrirBienvenidaAria } from "@/lib/ariaEventos";
 import { ModalPortal } from "@/components/ModalPortal";
+import { PantallaMantenimiento } from "@/components/PantallaMantenimiento";
+import { enMantenimiento } from "@/lib/mantenimiento";
 
 const nav = [
   { to: "/app", icon: Home, label: "Inicio", end: true },
@@ -189,10 +191,11 @@ export default function AppLayout() {
       </header>
 
       <main className="container py-8 pb-24 md:pb-8">
-        <Outlet />
+        {/* En preparación, el alumno ve la pantalla de mantenimiento en cualquier ruta suya.
+            Docentes y administradores usan otros layouts y siguen trabajando. */}
+        {enMantenimiento ? <PantallaMantenimiento /> : <Outlet />}
       </main>
 
-      {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-4 left-4 right-4 z-30 bg-card border border-border rounded-xl shadow-lg flex justify-around p-2">
         {nav.map(({ to, icon: Icon, label, end }) => (
           <NavLink
@@ -213,7 +216,7 @@ export default function AppLayout() {
         ))}
       </nav>
 
-      <AriaGuideWidget pausado={showConsent} />
+      <AriaGuideWidget pausado={showConsent || enMantenimiento} />
     </div>
   );
 }

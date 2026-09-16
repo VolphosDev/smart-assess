@@ -413,10 +413,6 @@ export function usePractice() {
         const p = preguntas[currentSlide];
         let respuestaEstudiante = respuestas[currentSlide];
 
-        // En detección de errores se puede enviar con huecos vacíos: significa que el alumno
-        // deja la palabra tal como venía. Se completa el mapa con esa palabra original para que
-        // la respuesta sea explícita —el juez la cuenta como "no corregida"— y el resultado
-        // muestre cada hueco, también los que no tocó.
         if (mode === "DETECCION_ERRORES") {
             const escritas: Record<string, string> = (() => {
                 try { return respuestaEstudiante ? JSON.parse(respuestaEstudiante) : {}; } catch { return {}; }

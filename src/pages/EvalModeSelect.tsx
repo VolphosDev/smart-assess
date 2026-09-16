@@ -241,15 +241,6 @@ export default function EvalModeSelect() {
     const completedAdaptive = estadoSemana
         ? estadoSemana.recomendadoraCompletada
         : !!savedRecsRaw;
-    /**
-     * ¿Hizo ya la PRUEBA DE UBICACIÓN de esta semana?
-     *
-     * Es distinto de `completedAdaptive`, que significa "el comité ya deliberó". El servidor
-     * mandaba ambas señales desde el principio, pero la página solo leía la segunda: quien
-     * terminaba la ubicación seguía viendo "Pendiente" y con todo bloqueado, porque la
-     * ubicación no crea un debate. Había que pulsar "Realizar Diagnóstico" DOS veces sin que
-     * nadie lo dijera.
-     */
     const ubicacionCompletada = estadoSemana?.ubicacionCompletada ?? false;
     const modosRecomendados = estadoSemana?.modosRecomendados ?? [];
     const deliberacionReal = estadoSemana?.deliberacionReal ?? true;
@@ -348,7 +339,6 @@ export default function EvalModeSelect() {
     const materiales = semana.materiales || [];
     const visibleMateriales = materiales.filter((m: any) => m.visible);
     const allSubtemas = visibleMateriales.flatMap((m: any) => m.subtemas || []);
-
 
     /** Un modo no está disponible ahora mismo (sea por bloqueo, por recomendación o porque aún no existe). */
     const esModoNoDisponible = (m: any) => {
@@ -491,10 +481,6 @@ const isUnfinished = m.id === unfinishedMode;
                                         ? visibleMateriales.map((m: any) => (m.nombreArchivo || "").replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").trim()).join(", ")
                                         : "");
 
-                                // Basta con UN material visible: el servidor amplía la búsqueda a
-                                // todos los materiales visibles de la semana (AlcanceMaterialesService).
-                                // Antes había un respaldo `|| materiales[0]` que, con todo oculto,
-                                // mandaba un material que la docente había ocultado.
                                 const targetMat = visibleMateriales[0];
                                 const mongoIdParam = targetMat?.mongoId || targetMat?.id || "";
 
@@ -983,10 +969,6 @@ const isUnfinished = m.id === unfinishedMode;
                                         <Brain className="w-5 h-5" />
                                     </div>
                                     <div className="space-y-1">
-                                        {/* Son DOS pasos y antes se anunciaban como uno. Quien terminaba
-                                            la ubicación volvía a leer "Completa esta evaluación inicial",
-                                            palabra por palabra igual que antes de hacerla, y no tenía forma
-                                            de saber que le faltaba una segunda vuelta. */}
                                         <h3 className="font-display font-black text-lg text-foreground">
                                             {ubicacionCompletada
                                                 ? "Evaluación Recomendadora (te falta este paso)"

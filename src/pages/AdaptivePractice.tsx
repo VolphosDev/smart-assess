@@ -659,15 +659,6 @@ export default function AdaptivePractice() {
                 >
                     <ArrowLeft className="w-4 h-4" /> Cancelar y Volver
                 </button>
-                {/* La insignia de nivel GLOBAL se oculta durante la prueba de ubicación.
-                    Se contradecía con el resultado en la misma pantalla: la tarjeta anunciaba
-                    "TU NIVEL EN ESTE TEMA: INTERMEDIO" mientras arriba seguía diciendo
-                    "Nivel Actual: PRINCIPIANTE". Para el alumno se leía como "subiste... no,
-                    no subiste", justo en la pantalla que existe para darle una buena noticia.
-
-                    Son dos cosas distintas: arriba el NivelConocimiento global del usuario;
-                    en la tarjeta, el NivelSemanaAlumno de esta semana, que es el que decide la
-                    dificultad. Dentro de una semana el único que significa algo es el segundo. */}
                 {!esUbicacion && (
                     <div className="flex items-center gap-2 text-xs bg-secondary/60 border border-border px-3 py-1.5 rounded-full">
                         <span className="font-bold">Nivel Actual:</span>

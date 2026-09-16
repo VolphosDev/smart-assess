@@ -236,8 +236,6 @@ export default function CourseStudentsManager() {
 
             </div>
 
-            {/* Quién enseña este curso. Va en "Gestionar clase" porque, como la lista de
-                alumnos, es gestión de personas y no de contenido. */}
             <DocentesCurso courseId={courseId} />
         </div>
     );

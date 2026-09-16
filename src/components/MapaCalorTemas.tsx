@@ -40,20 +40,7 @@ interface TemaConSemana extends TemaConocimiento {
 
 const REJILLA_ANCHO = 120;
 
-/**
- * Ancho mínimo, en píxeles, de la columna de cada semana.
- *
- * POR QUÉ. El mapa ocupaba el ancho disponible con proporción 16:9. En un escritorio eso da
- * columnas de 300 px o más; en un celular de 340 px con tres semanas, unos 110 px por semana
- * repartidos entre cuatro o cinco temas: cada etiqueta quedaba en 20 px y se leía "C… o…".
- * El mapa estaba ahí, pero no se podía leer.
- *
- * Con un mínimo por columna, en pantallas estrechas el mapa conserva un tamaño legible y se
- * desliza en horizontal DENTRO de su tarjeta (la página no se desborda). En escritorio, donde
- * sobra ancho, no cambia nada.
- */
 const ANCHO_MIN_COLUMNA = 230;
-/** Alto que necesita cada fila de etiquetas para no pisarse (píldora de dos líneas + aire). */
 const ALTO_POR_FILA = 58;
 
 /**
@@ -162,8 +149,6 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
     const [seleccionado, setSeleccionado] = useState<Punto | null>(null);
     const detalleRef = useRef<HTMLDivElement | null>(null);
 
-    // El detalle se abre ARRIBA del mapa. En un celular, quien pulsa un tema abajo del mapa
-    // no lo vería aparecer, así que se lleva a la vista.
     useEffect(() => {
         if (seleccionado) detalleRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }, [seleccionado]);
@@ -191,7 +176,6 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
 
     const curso = conDatos[Math.min(cursoActivo, Math.max(0, conDatos.length - 1))];
 
-    // Ancho real del hueco donde vive el mapa, para decidir si hace falta deslizar.
     const visorRef = useRef<HTMLDivElement | null>(null);
     const [anchoVisible, setAnchoVisible] = useState(0);
     useEffect(() => {
@@ -267,7 +251,6 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
         return { puntos: pts, columnas: claves, maxFilas };
     }, [curso]);
 
-    // Tamaño del lienzo. Sin medir todavía (primer render) se usa el 16:9 de siempre.
     const anchoLienzo = anchoVisible > 0
         ? Math.max(anchoVisible, columnas.length * ANCHO_MIN_COLUMNA)
         : 0;
@@ -275,8 +258,6 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
         ? Math.max(anchoLienzo * 9 / 16, (maxFilas + 1) * ALTO_POR_FILA)
         : 0;
     const desliza = anchoLienzo > anchoVisible + 1;
-    // La rejilla sigue la proporción del lienzo: si no, al hacerlo más alto los halos se
-    // estirarían en óvalos y dejarían de coincidir con su etiqueta.
     const rejillaAlto = anchoLienzo > 0
         ? Math.max(40, Math.round(REJILLA_ANCHO * altoLienzo / anchoLienzo))
         : 68;
@@ -427,8 +408,6 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
                     </p>
                 </div>
 
-                {/* Instrucción visible. Antes nada indicaba que los temas se podían pulsar, y el
-                    detalle aparecía debajo de todo, fuera de la vista en un celular. */}
                 {!compacto && !seleccionado && (
                     <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-semibold text-primary dark:text-primary-glow">
                         <span aria-hidden>👆</span> Presiona un tema para ver más detalles
@@ -449,8 +428,6 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
                     </p>
                 )}
 
-                {/* Visor desplazable: en celular el mapa conserva un tamaño legible y se mueve
-                    dentro de la tarjeta, en vez de encogerse hasta que nada se lee. */}
                 <div ref={visorRef} className="w-full overflow-x-auto overscroll-x-contain">
                 <div style={anchoLienzo > 0 ? { width: anchoLienzo } : undefined}>
                 <div className="relative w-full"
@@ -476,8 +453,6 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
                             // ensanchar la píldora hasta chocar con la vecina. Si aun así no
                             // cabe, se corta y queda el nombre completo en el `title` y en el
                             // panel de detalle al pulsar.
-                            // El tema pulsado cambia de color y se agranda: sin eso no había forma
-                            // de saber a qué etiqueta correspondía el detalle abierto.
                             className={`absolute -translate-x-1/2 -translate-y-1/2 px-1.5 py-1 rounded-md text-[11px] font-bold leading-tight backdrop-blur-[2px] transition-all text-center line-clamp-2 break-words ${
                                 esSeleccionado(p)
                                     ? "z-10 scale-110 bg-white text-slate-900 ring-2 ring-primary shadow-lg"
@@ -490,8 +465,6 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
                     ))}
                 </div>
 
-                {/* Eje de semanas: dentro del mismo visor, para que se desplace junto al mapa y
-                    cada rótulo quede siempre bajo su columna. */}
                 {!compacto && <div className="flex border-t border-border bg-muted/30">
                     {columnas.map((c) => (
                         <div key={c}
@@ -542,7 +515,6 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
     );
 }
 
-
 const ETIQUETA_NIVEL: Record<string, { texto: string; clase: string }> = {
     DOMINADO: { texto: "Lo dominas", clase: "border-l-blue-500" },
     EN_PROGRESO: { texto: "Vas avanzando", clase: "border-l-amber-500" },
@@ -550,7 +522,6 @@ const ETIQUETA_NIVEL: Record<string, { texto: string; clase: string }> = {
     DATOS_INSUFICIENTES: { texto: "Aún faltan datos", clase: "border-l-slate-400" },
 };
 
-/** Detalle del tema pulsado. Va dentro de la tarjeta, justo encima del mapa. */
 const DetalleTema = forwardRef<HTMLDivElement, { punto: Punto; onCerrar: () => void }>(
     function DetalleTema({ punto, onCerrar }, ref) {
         const { tema, etiquetaSemana } = punto;

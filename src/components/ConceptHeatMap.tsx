@@ -17,7 +17,6 @@ export interface TemaConocimiento {
     intensidadCalor: number;
     observaciones: number;
     confiable: boolean;
-    /** Preguntas que hacen falta para que el tema deje de estar en "datos insuficientes". */
     observacionesMinimas?: number;
     nivel: "DOMINADO" | "EN_PROGRESO" | "DEBIL" | "DATOS_INSUFICIENTES";
     actualizadoEn: string | null;

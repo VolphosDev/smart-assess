@@ -117,7 +117,6 @@ export const coursesApi = {
     eliminarBanner: (courseId: string | number) =>
         apiClient.delete<{ message: string }>(`/cursos/${courseId}/banner`),
 
-    /** Titular y co-docentes del curso, y si el usuario actual puede gestionarlos. */
     docentes: (courseId: string | number) =>
         apiClient.get<RespuestaDocentes>(`/cursos/${courseId}/docentes`),
     agregarDocente: (courseId: string | number, correo: string) =>
