@@ -12,6 +12,8 @@ import { ModalPortal } from "@/components/ModalPortal";
 import { AriaLeyendo } from "@/components/PantallaMantenimiento";
 import { enMantenimiento } from "@/lib/mantenimiento";
 
+const exigirCambioDeContrasena = import.meta.env.VITE_EXIGIR_CAMBIO_CONTRASENA === "true";
+
 export default function Index() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -59,7 +61,7 @@ export default function Index() {
             console.log("¡Login exitoso!", response.user);
 
             // Verificar si el usuario necesita configurar su contraseña
-            if (response.user.requiresPasswordSetup) {
+            if (exigirCambioDeContrasena && response.user.requiresPasswordSetup) {
                 // Redirigir a la pantalla de setup-password, pasando el correo
                 navigate(`/setup-password?email=${encodeURIComponent(email)}`);
                 return; // Evita guardar el token para forzar que inicie sesión bien después

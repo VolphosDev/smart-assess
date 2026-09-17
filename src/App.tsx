@@ -46,6 +46,7 @@ const ValidacionJuez = lazy(() => import("./pages/teacher/ValidacionJuez"));
 
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const MetricasIA = lazy(() => import("./pages/admin/MetricasIA"));
+const UsoPlataforma = lazy(() => import("./pages/admin/UsoPlataforma"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const queryClient = new QueryClient({
@@ -117,6 +118,7 @@ const App = () => (
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="metricas-ia" element={<MetricasIA />} />
+                <Route path="uso" element={<UsoPlataforma />} />
               </Route>
             </Route>
 

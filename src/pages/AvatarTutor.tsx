@@ -813,6 +813,7 @@ export default function AvatarTutor() {
             let feedbackAcumulado = "";
             let evName = "";
             let evData = "";
+            let transcripcionRecibida = "";
 
             const procesarEvento = (name: string, data: string) => {
                 if (name === "feedback") {
@@ -824,6 +825,15 @@ export default function AvatarTutor() {
                         setEstado(d.estado as EstadoAvatar);
                     } catch (e) {
                         console.error("Error al parsear avatar_state:", e);
+                    }
+                } else if (name === "transcripcion") {
+                    try {
+                        const texto = JSON.parse(data).texto;
+                        if (texto) {
+                            transcripcionRecibida = texto;
+                            setTurnoActual(t => t ? {...t, respuestaEstudiante: texto} : t);
+                        }
+                    } catch {
                     }
                 } else if (name === "turno") {
                     // Decision autoritativa del servidor. Si no llega, mas abajo hay respaldo
@@ -858,19 +868,23 @@ export default function AvatarTutor() {
                         setEstado(repregunta ? "esperando" : veredicto);
                     }
 
+                    const turnoRespondido = transcripcionRecibida
+                        ? {...turnoConRespuesta, respuestaEstudiante: transcripcionRecibida}
+                        : turnoConRespuesta;
+
                     if (repregunta) {
                         // El turno NO ha terminado: Aria ha dado una pista o ha replanteado
                         // el problema, y el alumno vuelve a responder LA MISMA pregunta con
                         // un escalón más de ayuda. No se guarda en el historial ni se
                         // puntúa, porque todavía no hay un resultado que puntuar.
                         setEscalon(e => e + 1);
-                        setTurnoActual(turnoConRespuesta);
+                        setTurnoActual(turnoRespondido);
                         setTurnoListo(false);
                         hablar(textToSpeak);
                         return;
                     }
 
-                    setHistorial(h => [...h, {...turnoConRespuesta, feedback: textToSpeak, puntuacion, sentimiento}]);
+                    setHistorial(h => [...h, {...turnoRespondido, feedback: textToSpeak, puntuacion, sentimiento}]);
                     setTurno(t => t + 1);
                     setTurnoListo(true);
                     hablar(textToSpeak);

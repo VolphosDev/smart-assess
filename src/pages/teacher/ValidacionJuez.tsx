@@ -16,7 +16,7 @@ import { reproducirClic } from "@/lib/sonidos";
  * sugestión en vez del acuerdo real. El backend tampoco la envía en este endpoint.
  */
 
-type Origen = "PRACTICA" | "ARIA";
+type Origen = "PRACTICA" | "ARIA" | "ARIA_VOZ";
 
 export default function ValidacionJuez() {
     const [origen, setOrigen] = useState<Origen>("PRACTICA");
@@ -90,7 +90,7 @@ export default function ValidacionJuez() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-                {(["PRACTICA", "ARIA"] as Origen[]).map((o) => (
+                {(["PRACTICA", "ARIA", "ARIA_VOZ"] as Origen[]).map((o) => (
                     <button
                         key={o}
                         onClick={() => { reproducirClic(); cambiarOrigen(o); }}
@@ -100,7 +100,7 @@ export default function ValidacionJuez() {
                                 : "bg-card border-border hover:bg-muted/60"
                         }`}
                     >
-                        {o === "PRACTICA" ? "Respuestas de examen" : "Turnos con Aria"}
+                        {o === "PRACTICA" ? "Respuestas de examen" : o === "ARIA" ? "Turnos con Aria" : "Aria por voz (transcrita)"}
                     </button>
                 ))}
                 <button
