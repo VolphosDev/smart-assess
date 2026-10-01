@@ -25,7 +25,10 @@ import {
     Compass
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { adaptiveApi } from "../api/courses";
+import { AriaAcompana } from "@/components/AriaAcompana";
+import { AriaDescansando } from "@/components/AriaDescansando";
+import { esIaNoDisponible } from "@/services/http/config";
+import { adaptiveApi } from "../services/courses";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import { toast } from "sonner";
 import {
@@ -160,6 +163,7 @@ export default function AdaptivePractice() {
     // General states
     const [phase, setPhase] = useState<"loading" | "questionnaire" | "debate" | "results">("loading");
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [iaDormida, setIaDormida] = useState(false);
     const [startTime] = useState<number>(Date.now());
     const [isAcra, setIsAcra] = useState<boolean>(false);
     // La prueba de ubicacion no genera nota: su resultado es un NIVEL, no una calificacion.
@@ -227,7 +231,12 @@ export default function AdaptivePractice() {
                 setPhase("questionnaire");
             } catch (err: any) {
                 console.error("Error fetching adaptive evaluation:", err);
-                setErrorMsg(err?.response?.data?.error || "Error al conectar con el servidor.");
+                if (esIaNoDisponible(err)) {
+                    setIaDormida(true);
+                    setErrorMsg("Aria está descansando.");
+                } else {
+                    setErrorMsg(err?.response?.data?.error || "Error al conectar con el servidor.");
+                }
             }
         }
 
@@ -682,7 +691,11 @@ export default function AdaptivePractice() {
             )}
 
             {/* Error state */}
-            {errorMsg && phase === "loading" && (
+            {errorMsg && phase === "loading" && iaDormida && (
+                <AriaDescansando contexto="practica" onReintentar={() => window.location.reload()} />
+            )}
+
+            {errorMsg && phase === "loading" && !iaDormida && (
                 <div className="p-6 rounded-3xl border border-destructive/20 bg-destructive/5 text-center space-y-4 max-w-md mx-auto">
                     <AlertCircle className="w-12 h-12 mx-auto text-destructive" />
                     <h3 className="font-display font-bold text-lg">Error al inicializar la evaluación</h3>
@@ -728,6 +741,7 @@ export default function AdaptivePractice() {
                     <div className="bg-card border border-border rounded-3xl p-6 md:p-8 shadow-soft">
                         <div className="space-y-6">
                             <div className="flex items-center gap-3 text-xs font-bold text-muted-foreground border-b border-border/40 pb-3">
+                                <AriaAcompana />
                                 <span className="bg-secondary px-2.5 py-1 rounded-lg text-foreground font-black">
                                     Pregunta {currentSlide + 1} de {questions.length}
                                 </span>

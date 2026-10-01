@@ -8,7 +8,7 @@ import {
     intentosApi,
     agentJudgeApi,
     archivosApi,
-} from "@/api/courses";
+} from "@/services/courses";
 import { reproducirAcierto, reproducirError, reproducirLogro } from "@/lib/sonidos";
 
 // Instancias globales de los casos de uso / repositorios
@@ -139,6 +139,7 @@ export function usePractice() {
 
     const [isError, setIsError] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [codigoError, setCodigoError] = useState<string | null>(null);
 
     const [streamCompleted, setStreamCompleted] = useState(() => {
         try {
@@ -264,6 +265,7 @@ export function usePractice() {
         setIsLoading(true);
         setIsError(false);
         setErrorMsg(null);
+        setCodigoError(null);
         setStreamCompleted(false);
         setEvaluacion(null);
         setImagenesCargadas({});
@@ -286,6 +288,7 @@ export function usePractice() {
                 if (isMounted.current) {
                     setIsError(true);
                     setErrorMsg(err?.message || "Error al generar preguntas de evaluación.");
+                    setCodigoError(err?.codigo ?? null);
                     setIsLoading(false);
                     setStreamCompleted(true);
                     setPracticeStreamCompleted(true);
@@ -540,6 +543,7 @@ export function usePractice() {
         isLoading,
         isError,
         errorMsg,
+        codigoError,
         streamCompleted,
         imagenesCargadas,
         preguntas,

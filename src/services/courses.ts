@@ -1,4 +1,5 @@
-import { apiClient } from "./client";
+import { apiClient } from "./http/client";
+import { abrirStream } from "./http/sse";
 // Quitamos API_ENDPOINTS porque ahora usaremos las rutas directas de Spring Boot
 import type { CourseRecord } from "./store";
 
@@ -30,47 +31,53 @@ export const evaluacionApi = {
  * Vivía en `infrastructure/repositories/ApiEvaluationRepository`. Se trajo aquí al unificar
  * las dos pilas de acceso a datos que coexistían en el proyecto.
  *
- * No usa `apiClient` porque `EventSource` abre su propia conexión y no admite cabeceras: por
- * eso el token viaja en la URL. Devuelve la función de cierre para que quien lo llame pueda
- * cortar el flujo al desmontarse — sin eso, la conexión queda abierta al salir de la pantalla.
+ * No usa `apiClient` porque la respuesta es un flujo SSE y no un JSON. Lee el flujo con
+ * `abrirStream`, que manda el token en la cabecera Authorization. Devuelve la función de cierre
+ * para que quien lo llame pueda cortar el flujo al desmontarse — sin eso, la conexión queda
+ * abierta al salir de la pantalla.
+ *
+ * El parámetro `_token` se conserva por compatibilidad con quienes ya la llamaban; se ignora.
  */
 export const generarPreguntasStream = (
     mongoId: string,
     tipo: string,
     cantidad: number,
     tema: string,
-    token: string,
+    _token: string,
     onChunk: (chunk: string) => void,
     onResult: (data: any) => void,
     onError: (err: any) => void
 ): (() => void) => {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
-    const url = `${baseUrl}/archivos/stream-tecnica-pdf?mongoId=${encodeURIComponent(mongoId)}`
+    const ruta = `/archivos/stream-tecnica-pdf?mongoId=${encodeURIComponent(mongoId)}`
         + `&tipo=${tipo}&cantidad=${cantidad}`
-        + `${tema ? `&tema=${encodeURIComponent(tema)}` : ""}&token=${token}`;
+        + `${tema ? `&tema=${encodeURIComponent(tema)}` : ""}`;
 
-    const eventSource = new EventSource(url, { withCredentials: true });
-
-    eventSource.addEventListener("chunk", (e: MessageEvent) => {
-        if (e.data) onChunk(e.data);
-    });
-
-    eventSource.addEventListener("result", (e: MessageEvent) => {
-        try {
-            onResult(JSON.parse(e.data));
-        } catch (err) {
+    let cerrado = false;
+    const abortar = abrirStream(ruta, {
+        onChunk: (datos) => {
+            if (datos) onChunk(datos);
+        },
+        onResult: (datos) => {
+            try {
+                onResult(JSON.parse(datos));
+            } catch (err) {
+                onError(err);
+            } finally {
+                cerrado = true;
+                abortar();
+            }
+        },
+        onError: (err) => {
+            if (cerrado) return;
+            cerrado = true;
             onError(err);
-        } finally {
-            eventSource.close();
-        }
+        },
     });
 
-    eventSource.onerror = (err) => {
-        onError(err);
-        eventSource.close();
+    return () => {
+        cerrado = true;
+        abortar();
     };
-
-    return () => eventSource.close();
 };
 
 export const coursesApi = {

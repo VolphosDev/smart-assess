@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
-import { semanasApi, type ProgresoIngesta } from "@/api/courses";
+import { semanasApi, type ProgresoIngesta } from "@/services/courses";
 
 /**
  * Barra de progreso de una ingesta en segundo plano.

@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Loader2, AlertCircle, BookOpen, Brain, CheckSquare, CheckCircle2, XCircle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AriaDescansando } from "@/components/AriaDescansando";
+import { CODIGO_IA_NO_DISPONIBLE } from "@/services/http/config";
 import { usePractice } from "@/hooks/usePractice";
 import { PreguntaCard } from "@/components/practice/PreguntaCard";
 import { ResumenDeteccionErrores } from "@/components/practice/ResumenDeteccionErrores";
@@ -78,6 +80,7 @@ export default function Practice() {
         isLoading,
         isError,
         errorMsg,
+        codigoError,
         streamCompleted,
         imagenesCargadas,
         preguntas,
@@ -112,20 +115,30 @@ export default function Practice() {
 
     if (isError) {
         const errorText = errorMsg || "Error desconocido";
-        const isFreeTierIssue = errorText.includes("503") || errorText.includes("high demand") || errorText.includes("429") || errorText.includes("Quota exceeded");
+        const isFreeTierIssue = codigoError === CODIGO_IA_NO_DISPONIBLE
+            || errorText.includes("503") || errorText.includes("high demand")
+            || errorText.includes("429") || errorText.includes("Quota exceeded");
+
+        if (isFreeTierIssue) {
+            return (
+                <AriaDescansando
+                    contexto="generacion"
+                    onReintentar={() => window.location.reload()}
+                />
+            );
+        }
+
         return (
             <div className="text-center py-20 space-y-4 max-w-lg mx-auto">
-                <AlertCircle className={cn("w-16 h-16 mx-auto", isFreeTierIssue ? "text-amber-500" : "text-destructive")} />
+                <AlertCircle className="w-16 h-16 mx-auto text-destructive" />
                 <h2 className="font-display font-bold text-2xl">
-                    {isFreeTierIssue ? "¡Ups! La IA necesita un respiro 🤖" : "Error al generar las preguntas"}
+                    Error al generar las preguntas
                 </h2>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                    {isFreeTierIssue
-                        ? "Hemos alcanzado los límites de la cuota gratuita de IA o el servidor está bajo una alta demanda. Por favor, espera un momento y reinténtalo."
-                        : "No hemos podido conectar con el motor de Inteligencia Artificial para estructurar tu examen. Por favor, inténtalo más tarde."}
+                    No hemos podido conectar con el motor de Inteligencia Artificial para estructurar tu examen. Por favor, inténtalo más tarde.
                 </p>
-                
-                {!isFreeTierIssue && (
+
+                {(
                     <details className="text-left bg-muted/40 border border-border/60 rounded-lg p-3 text-xs text-muted-foreground max-w-md mx-auto">
                         <summary className="cursor-pointer font-semibold hover:text-foreground transition-colors select-none">
                             Ver detalles técnicos

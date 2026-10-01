@@ -2,7 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Play, Pause, RotateCcw, ArrowRight, Loader2, Award, Star, Check, X, AlertCircle, Volume2, VolumeX, CheckCircle2, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { evaluacionApi, agentJudgeApi, intentosApi, archivosApi } from "@/api/courses";
+import { evaluacionApi, agentJudgeApi, intentosApi, archivosApi } from "@/services/courses";
+import { AriaDescansando } from "@/components/AriaDescansando";
+import { esIaNoDisponible } from "@/services/http/config";
+import { abrirStream } from "@/services/http/sse";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -178,6 +181,7 @@ export default function VideoTutor() {
     // Estados de Carga y Datos
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState("");
+    const [iaDormida, setIaDormida] = useState(false);
     const [evaluacion, setEvaluacion] = useState<EvaluacionResponse | null>(null);
 
     // Estados de Flujo
@@ -230,7 +234,7 @@ export default function VideoTutor() {
 
         setImagenesCargadas({});
         setStreamCompleted(false);
-        let eventSource: EventSource | null = null;
+        let cerrarStream: (() => void) | null = null;
         let sseCompleted = false;
 
         const ejecutarFallback = async () => {
@@ -242,6 +246,7 @@ export default function VideoTutor() {
                 setStreamCompleted(true);
             } catch (err: any) {
                 console.error("[VideoTutor] Error en fallback:", err);
+                if (esIaNoDisponible(err)) setIaDormida(true);
                 setError(err?.message || "Error al generar la videolección.");
                 setCargando(false);
                 setStreamCompleted(true);
@@ -251,17 +256,14 @@ export default function VideoTutor() {
         try {
             setCargando(true);
             setError("");
-            const token = localStorage.getItem("token") || "";
-            const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
-            const url = `${baseUrl}/archivos/stream-tecnica-pdf?mongoId=${encodeURIComponent(
+            const ruta = `/archivos/stream-tecnica-pdf?mongoId=${encodeURIComponent(
                 mongoId
-            )}&tipo=VIDEO_EXPLICATIVO&cantidad=${totalPreguntas}${tema ? `&tema=${encodeURIComponent(tema)}` : ""}&token=${token}`;
+            )}&tipo=VIDEO_EXPLICATIVO&cantidad=${totalPreguntas}${tema ? `&tema=${encodeURIComponent(tema)}` : ""}`;
 
-            eventSource = new EventSource(url, { withCredentials: true });
             let streamText = "";
 
-            eventSource.addEventListener("chunk", (event) => {
-                const chunk = event.data;
+            const alRecibirChunk = (datos: string) => {
+                const chunk = datos;
                 if (chunk) {
                     streamText += chunk;
                     const parsed = parseIncrementalLeccionYPreguntas(streamText);
@@ -280,41 +282,41 @@ export default function VideoTutor() {
                         setCargando(false);
                     }
                 }
-            });
-
-            eventSource.addEventListener("result", (event) => {
-                try {
-                    sseCompleted = true;
-                    const finalData = JSON.parse(event.data);
-                    setEvaluacion(finalData);
-                    setCargando(false);
-                    setStreamCompleted(true);
-                    eventSource?.close();
-                } catch (err) {
-                    console.error("[VideoTutor] Error parseando datos de result SSE:", err);
-                    ejecutarFallback();
-                    eventSource?.close();
-                }
-            });
-
-            eventSource.onerror = (err) => {
-                console.warn("[VideoTutor] Error en canal SSE (fallback a síncrono):", err);
-                eventSource?.close();
-                if (!sseCompleted) {
-                    ejecutarFallback();
-                } else {
-                    setStreamCompleted(true);
-                }
             };
+
+            cerrarStream = abrirStream(ruta, {
+                onChunk: alRecibirChunk,
+                onResult: (datos) => {
+                    try {
+                        sseCompleted = true;
+                        const finalData = JSON.parse(datos);
+                        setEvaluacion(finalData);
+                        setCargando(false);
+                        setStreamCompleted(true);
+                        cerrarStream?.();
+                    } catch (err) {
+                        console.error("[VideoTutor] Error parseando datos de result SSE:", err);
+                        ejecutarFallback();
+                        cerrarStream?.();
+                    }
+                },
+                onError: (err) => {
+                    console.warn("[VideoTutor] Error en canal SSE (fallback a síncrono):", err);
+                    cerrarStream?.();
+                    if (!sseCompleted) {
+                        ejecutarFallback();
+                    } else {
+                        setStreamCompleted(true);
+                    }
+                },
+            });
         } catch (e) {
-            console.error("[VideoTutor] Error al instanciar EventSource:", e);
+            console.error("[VideoTutor] Error al abrir el canal SSE:", e);
             ejecutarFallback();
         }
 
         return () => {
-            if (eventSource) {
-                eventSource.close();
-            }
+            cerrarStream?.();
         };
     }, [mongoId, totalPreguntas, tema]);
 
@@ -830,6 +832,10 @@ export default function VideoTutor() {
                 <p className="text-sm font-semibold text-muted-foreground">Generando videolección interactiva con IA...</p>
             </div>
         );
+    }
+
+    if (iaDormida && !sesionIniciada) {
+        return <AriaDescansando contexto="generacion" onReintentar={() => window.location.reload()} />;
     }
 
     if (error && !sesionIniciada) {

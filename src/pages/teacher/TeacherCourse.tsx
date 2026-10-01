@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { coursesApi, semanasApi } from "@/api";
+import { coursesApi, semanasApi } from "@/services";
 import { getCourseIcon } from "@/lib/icon-mapper";
 import { toast } from "sonner";
 import {

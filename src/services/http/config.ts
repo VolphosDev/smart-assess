@@ -43,4 +43,11 @@ export const API_ENDPOINTS = {
   finishAttempt: (attemptId: string) => `/attempts/${attemptId}/finish`,
 };
 
-export type ApiError = { status: number; message: string };
+export type ApiError = { status: number; message: string; codigo?: string };
+
+export const CODIGO_IA_NO_DISPONIBLE = "IA_NO_DISPONIBLE";
+
+export function esIaNoDisponible(error: unknown): boolean {
+    const e = error as ApiError | undefined;
+    return e?.status === 503 && e?.codigo === CODIGO_IA_NO_DISPONIBLE;
+}

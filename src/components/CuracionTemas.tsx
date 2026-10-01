@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Check, ChevronDown, Loader2, Tags, X } from "lucide-react";
-import { curacionTemasApi, type TemaCurable } from "@/api/curacionTemas";
+import { curacionTemasApi, type TemaCurable } from "@/services/curacionTemas";
 import { reproducirClic } from "@/lib/sonidos";
 
 /**

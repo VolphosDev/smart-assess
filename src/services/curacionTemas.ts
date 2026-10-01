@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient } from "./http/client";
 
 /**
  * Curación de los temas extraídos automáticamente de un material.

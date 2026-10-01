@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { intentosApi } from "@/api/courses";
+import { intentosApi } from "@/services/courses";
 import { useState } from "react";
 import { Loader2, Eye, Download, Printer, CheckCircle2, XCircle, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ import {CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAx
 import { motion } from "framer-motion";
 import { getCourseIcon } from "@/lib/icon-mapper";
 
-import { useIsAriaTourActive, useAriaTourStep } from "@/lib/useIsAriaTourActive";
+import { useIsAriaTourActive, useAriaTourStep } from "@/hooks/useIsAriaTourActive";
 import { ModalPortal } from "@/components/ModalPortal";
 
 const DEMO_INTENTOS = [

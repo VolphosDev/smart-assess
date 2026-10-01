@@ -5,7 +5,7 @@ import {
     AlertTriangle, Download, Loader2, Activity, Layers, Search, Type,
     Image as ImageIcon, ShieldAlert, Gavel, Users,
 } from "lucide-react";
-import { metricasApi, type BloqueMetrica } from "@/api/metricas";
+import { metricasApi, type BloqueMetrica } from "@/services/metricas";
 import { reproducirClic } from "@/lib/sonidos";
 
 /**

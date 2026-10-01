@@ -6,7 +6,8 @@ export type EstadoAvatar =
 
 export type ExpresionAria =
     | EstadoAvatar
-    | "sorprendido" | "guino" | "emocionado" | "confundido" | "leyendo" | "celebrando" | "orgullosa";
+    | "sorprendido" | "guino" | "emocionado" | "confundido" | "leyendo" | "celebrando" | "orgullosa"
+    | "durmiendo";
 
 interface AriaSvgProps {
     estado: ExpresionAria;
@@ -201,6 +202,12 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
                 <line x1="58" y1="54" x2="76" y2="54" stroke={OUTLINE} strokeWidth="2" strokeLinecap="round"/>
             </>
         );
+        if (estado === "durmiendo") return (
+            <>
+                <path d="M25,53 Q33,60 41,53" stroke={OUTLINE} strokeWidth="3" fill="none" strokeLinecap="round"/>
+                <path d="M59,53 Q67,60 75,53" stroke={OUTLINE} strokeWidth="3" fill="none" strokeLinecap="round"/>
+            </>
+        );
         if (estado === "orgullosa") return (
             <>
                 <path d="M25,51 Q33,57 41,51" stroke={OUTLINE} strokeWidth="3" fill="none" strokeLinecap="round"/>
@@ -280,6 +287,12 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
             <>
                 <path d="M24,44 Q33,48 42,45" stroke={OUTLINE} strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.75"/>
                 <path d="M58,45 Q67,48 76,44" stroke={OUTLINE} strokeWidth="1.8" fill="none" strokeLinecap="round" opacity="0.75"/>
+            </>
+        );
+        if (estado === "durmiendo") return (
+            <>
+                <path d="M24,46 Q33,44 42,46" stroke={OUTLINE} strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.5"/>
+                <path d="M58,46 Q67,44 76,46" stroke={OUTLINE} strokeWidth="1.5" fill="none" strokeLinecap="round" opacity="0.5"/>
             </>
         );
         if (estado === "pensando") return (
@@ -364,6 +377,12 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
                 <path d="M45,67 Q51,73 57,65" fill="none" stroke={MOUTH_C} strokeWidth="2" strokeLinecap="round"/>
             </>
         );
+        if (estado === "durmiendo") return (
+            <>
+                {Nariz()}
+                <ellipse cx="50" cy="69.5" rx="3.4" ry="2.8" fill={MOUTH_C} opacity="0.4"/>
+            </>
+        );
         if (estado === "leyendo") return (
             <>
                 {Nariz()}
@@ -399,6 +418,13 @@ export function AriaSvg({ estado, className, recorte = "completa" }: AriaSvgProp
     );
 
     const Extras = () => {
+        if (estado === "durmiendo") return (
+            <>
+                <text x="74" y="22" fontSize="11" fontWeight="700" fill={OUTLINE} opacity="0.75">z</text>
+                <text x="82" y="10" fontSize="14" fontWeight="700" fill={OUTLINE} opacity="0.6">z</text>
+                <text x="90" y="-4" fontSize="18" fontWeight="700" fill={OUTLINE} opacity="0.45">z</text>
+            </>
+        );
         if (estado === "pensando") return (
             <>
                 {/* Nubecita de pensamiento */}

@@ -1,5 +1,5 @@
 import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
-import { LogOut, Sparkles, ShieldCheck, Activity, CalendarDays } from "lucide-react";
+import { LogOut, Sparkles, ShieldCheck, Activity, CalendarDays, History } from "lucide-react";
 import { SelectorTema } from "./SelectorTema";
 import { UserAvatar } from "@/lib/icon-mapper";
 
@@ -27,6 +27,17 @@ export default function AdminLayout() {
               }
             >
               <ShieldCheck className="w-4 h-4" /> Usuarios
+            </NavLink>
+            <NavLink
+              to="/admin/trazabilidad"
+              className={({ isActive }) =>
+                `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  isActive ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`
+              }
+            >
+              <History className="w-4 h-4" /> Trazabilidad
             </NavLink>
             <NavLink
               to="/admin/metricas-ia"

@@ -87,7 +87,14 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
                 localStorage.removeItem("user");
                 window.location.href = "/";
             }
-            throw { status: res.status, message: await res.text() } as ApiError;
+            const cuerpo = await res.text();
+            let codigo: string | undefined;
+            try {
+                codigo = JSON.parse(cuerpo)?.codigo;
+            } catch {
+                codigo = undefined;
+            }
+            throw { status: res.status, message: cuerpo, codigo } as ApiError;
         }
         return (await res.json()) as T;
     } finally {

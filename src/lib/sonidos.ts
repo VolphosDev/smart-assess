@@ -16,18 +16,25 @@ const CLAVE_PREFERENCIA = "semantika.sonido";
 /** El contexto se crea perezosamente: los navegadores lo bloquean hasta que el usuario interactúa. */
 let contexto: AudioContext | null = null;
 
-function obtenerContexto(): AudioContext | null {
+async function obtenerContexto(): Promise<AudioContext | null> {
     try {
-        if (!contexto) {
+        if (!contexto || contexto.state === "closed") {
             const Ctor = window.AudioContext || (window as any).webkitAudioContext;
             if (!Ctor) return null;
             contexto = new Ctor();
         }
-        // Safari e iOS suspenden el contexto hasta el primer gesto del usuario.
+        // Hay que ESPERAR a que reanude antes de leer currentTime.
+        //
+        // El reloj de un AudioContext suspendido esta congelado. Si se programa con ese valor
+        // y el contexto reanuda despues, todos los eventos de la envolvente quedan en el
+        // pasado: la ganancia salta directamente a su valor final (0.0001) y el tono suena
+        // en silencio. Ese era el sintoma de "solo funciona la primera vez": el navegador
+        // suspende el contexto cuando lleva rato sin sonar, y a partir de ahi cada clic
+        // programaba contra un reloj detenido.
         if (contexto.state === "suspended") {
-            void contexto.resume();
+            await contexto.resume();
         }
-        return contexto;
+        return contexto.state === "running" ? contexto : null;
     } catch {
         // Sin audio disponible la aplicación debe seguir funcionando igual.
         return null;
@@ -72,12 +79,14 @@ interface Tono {
     tipo?: OscillatorType;
 }
 
-function tocar(tonos: Tono[]) {
+async function tocar(tonos: Tono[]) {
     if (!sonidoActivado() || prefiereMenosEstimulo()) return;
-    const ctx = obtenerContexto();
+    const ctx = await obtenerContexto();
     if (!ctx) return;
 
-    const ahora = ctx.currentTime;
+    // currentTime se lee DESPUES de reanudar, y con un margen minimo: programar justo en el
+    // instante actual deja los eventos en el pasado para cuando el hilo de audio los procesa.
+    const ahora = ctx.currentTime + 0.02;
 
     for (const t of tonos) {
         const inicio = ahora + (t.retraso ?? 0);
@@ -102,11 +111,11 @@ function tocar(tonos: Tono[]) {
 
 /** Pulsación genérica. Muy corto y discreto. */
 export const reproducirClic = () =>
-    tocar([{ frecuencia: 620, duracion: 0.05, volumen: 0.035, tipo: "triangle" }]);
+    void tocar([{ frecuencia: 620, duracion: 0.05, volumen: 0.035, tipo: "triangle" }]);
 
 /** Acierto: dos notas ascendentes (do–sol). Ascender se lee como "bien" sin necesidad de texto. */
 export const reproducirAcierto = () =>
-    tocar([
+    void tocar([
         { frecuencia: 523.25, duracion: 0.11 },
         { frecuencia: 783.99, duracion: 0.16, retraso: 0.09 },
     ]);
@@ -118,14 +127,14 @@ export const reproducirAcierto = () =>
  * que acaba de equivocarse; el objetivo es informarle, no avergonzarlo.
  */
 export const reproducirError = () =>
-    tocar([
+    void tocar([
         { frecuencia: 392.0, duracion: 0.12, volumen: 0.05 },
         { frecuencia: 311.13, duracion: 0.18, retraso: 0.1, volumen: 0.05 },
     ]);
 
 /** Fin de una evaluación: arpegio breve de tres notas. */
 export const reproducirLogro = () =>
-    tocar([
+    void tocar([
         { frecuencia: 523.25, duracion: 0.1 },
         { frecuencia: 659.25, duracion: 0.1, retraso: 0.09 },
         { frecuencia: 1046.5, duracion: 0.24, retraso: 0.18 },

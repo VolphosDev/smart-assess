@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { coursesApi, intentosApi } from "@/api";
+import { coursesApi, intentosApi } from "@/services";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { getCourseIcon } from "@/lib/icon-mapper";

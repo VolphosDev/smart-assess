@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient } from "./http/client";
 
 /**
  * Métricas del canal de IA.

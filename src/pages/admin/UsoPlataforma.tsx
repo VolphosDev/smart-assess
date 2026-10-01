@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { CalendarDays, Download, Loader2, Search, UserCheck, UserX, Users, CalendarCheck } from "lucide-react";
-import { usoApi, type UsoPorAlumno } from "@/api/uso";
+import { usoApi, type UsoPorAlumno } from "@/services/uso";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 

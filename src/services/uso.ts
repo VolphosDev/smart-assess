@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient } from "./http/client";
 
 export interface UsoPorDia {
     fecha: string;

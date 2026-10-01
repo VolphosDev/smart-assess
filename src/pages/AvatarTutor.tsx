@@ -2,7 +2,9 @@ import {useState, useEffect, useRef} from "react";
 import {useParams, useSearchParams, Link} from "react-router-dom";
 import {ArrowLeft, Mic, MicOff, Volume2} from "lucide-react";
 import {motion, AnimatePresence} from "framer-motion";
-import {intentosApi} from "@/api/courses";
+import {intentosApi} from "@/services/courses";
+import { AriaDescansando } from "@/components/AriaDescansando";
+import { esIaNoDisponible } from "@/services/http/config";
 import {toast} from "sonner";
 import {cn} from "@/lib/utils";
 import { limpiarEtiquetas, leerEtiquetas } from "@/lib/tutorEtiquetas";
@@ -414,6 +416,7 @@ export default function AvatarTutor() {
 
     const [cargando, setCargando] = useState(false);
     const [error, setErrorState] = useState("");
+    const [iaDormida, setIaDormida] = useState(false);
     const setError = (rawMsg: string) => {
         if (!rawMsg) {
             setErrorState("");
@@ -578,6 +581,7 @@ export default function AvatarTutor() {
             setEstado("hablando");
             hablar(nuevo.pregunta, () => setEstado("esperando"));
         } catch (err: any) {
+            if (esIaNoDisponible(err)) setIaDormida(true);
             setError(err?.message || "No pude conectarme al servidor.");
             setEstado("idle");
         } finally {
@@ -1148,7 +1152,11 @@ export default function AvatarTutor() {
 
             {/* Error container placed higher up for absolute visibility */}
             <AnimatePresence>
-                {error && (
+                {iaDormida && (
+                    <AriaDescansando contexto="tutoria" onReintentar={() => window.location.reload()} />
+                )}
+
+                {error && !iaDormida && (
                     <motion.div
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}

@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Upload, Trash2, FileText, BookOpen, Loader2, Eye, EyeOff, Download, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { semanasApi, intentosApi, coursesApi } from "@/api/courses.ts";
+import { semanasApi, intentosApi, coursesApi } from "@/services/courses.ts";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import React, { useCallback, useRef, useState } from "react";

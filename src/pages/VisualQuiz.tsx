@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AriaAcompana } from "@/components/AriaAcompana";
 
 interface Pregunta {
     enunciado: string;
@@ -72,8 +73,11 @@ export default function VisualQuiz({
         >
             {/* Header / Enunciado */}
             <div className="text-center space-y-2">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-coral-600/10 text-coral-600 text-xs font-bold uppercase tracking-wider select-none">
-                    🖼️ Pregunta {index + 1}
+                <div className="flex items-center justify-center gap-2">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-coral-600/10 text-coral-600 text-xs font-bold uppercase tracking-wider select-none">
+                        🖼️ Pregunta {index + 1}
+                    </div>
+                    <AriaAcompana />
                 </div>
                 <h2 className="text-xl md:text-2xl font-black text-foreground font-display max-w-3xl mx-auto leading-relaxed text-balance">
                     {pregunta.enunciado}

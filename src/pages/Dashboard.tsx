@@ -4,10 +4,10 @@ import { Flame, Target, ArrowRight, BookOpen, Sparkles, Play, CheckCircle2, Comp
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import TarjetaProgreso from "@/components/TarjetaProgreso";
-import { coursesApi, intentosApi, rendimientoApi } from "@/api";
+import { coursesApi, intentosApi, rendimientoApi } from "@/services";
 import { cn } from "@/lib/utils";
 import type { GrupoCursoConocimiento } from "@/components/ConceptHeatMap";
-import { useIsAriaTourActive } from "@/lib/useIsAriaTourActive";
+import { useIsAriaTourActive } from "@/hooks/useIsAriaTourActive";
 import { CURSO_DEMO } from "@/lib/tourDemo";
 import { TarjetaCurso } from "@/components/curso/TarjetaCurso";
 

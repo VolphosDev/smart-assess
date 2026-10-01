@@ -5,6 +5,7 @@ import { PreguntaVF } from "./PreguntaVF";
 import { PreguntaAbierta } from "./PreguntaAbierta";
 import { PreguntaDeteccionErrores } from "./PreguntaDeteccionErrores";
 import VisualQuiz from "@/pages/VisualQuiz";
+import { AriaAcompana } from "@/components/AriaAcompana";
 
 interface PreguntaCardProps {
     pregunta: Question;
@@ -55,6 +56,7 @@ export function PreguntaCard({
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                     Pregunta {index + 1}
                 </span>
+                <AriaAcompana className="ml-auto" />
             </div>
 
             {tipo === "OPCION_MULTIPLE" && (

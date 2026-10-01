@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { rendimientoApi } from "@/api";
+import { rendimientoApi } from "@/services";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Brain, TrendingUp, AlertTriangle, CheckCircle2, HelpCircle, ArrowRight, BookOpen, Calendar, HelpCircle as InfoIcon, Award } from "lucide-react";
@@ -68,7 +68,7 @@ const nivelConfig = {
     },
 } as const;
 
-import { useIsAriaTourActive, useAriaTourStep } from "@/lib/useIsAriaTourActive";
+import { useIsAriaTourActive, useAriaTourStep } from "@/hooks/useIsAriaTourActive";
 
 const DEMO_MAPA_CONOCIMIENTO: GrupoCursoConocimiento[] = [
     {

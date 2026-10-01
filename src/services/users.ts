@@ -1,5 +1,5 @@
-import { apiClient } from "./client";
-import { API_ENDPOINTS } from "./config";
+import { apiClient } from "./http/client";
+import { API_ENDPOINTS } from "./http/config";
 import type { Role, User } from "./store";
 
 export const usersApi = {

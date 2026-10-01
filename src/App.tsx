@@ -45,6 +45,7 @@ const CourseStudentsManager = lazy(() => import("./pages/teacher/CourseStudentsM
 const ValidacionJuez = lazy(() => import("./pages/teacher/ValidacionJuez"));
 
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const Trazabilidad = lazy(() => import("./pages/admin/Trazabilidad"));
 const MetricasIA = lazy(() => import("./pages/admin/MetricasIA"));
 const UsoPlataforma = lazy(() => import("./pages/admin/UsoPlataforma"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
@@ -117,6 +118,7 @@ const App = () => (
             <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
+                <Route path="trazabilidad" element={<Trazabilidad />} />
                 <Route path="metricas-ia" element={<MetricasIA />} />
                 <Route path="uso" element={<UsoPlataforma />} />
               </Route>

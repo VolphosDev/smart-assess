@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Flame, Target, Trophy, TrendingUp, TrendingDown } from "lucide-react";
-import { apiClient } from "@/api";
+import { apiClient } from "@/services";
 import { cn } from "@/lib/utils";
 
 /**

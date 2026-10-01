@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient } from "./http/client";
 
 /**
  * Validación del juez de IA contra docentes.

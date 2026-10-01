@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { coursesApi } from "@/api";
+import { coursesApi } from "@/services";
 import { useEffect, useState } from "react";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import { getCourseIcon } from "@/lib/icon-mapper";

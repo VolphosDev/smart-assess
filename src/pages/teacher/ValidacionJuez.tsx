@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import {
     Loader2, ShieldCheck, ScatterChart, AlertTriangle, CheckCircle2, XCircle, RefreshCw,
 } from "lucide-react";
-import { validacionJuezApi, type CasoParaCalificar } from "@/api/validacionJuez";
+import { validacionJuezApi, type CasoParaCalificar } from "@/services/validacionJuez";
 import { reproducirClic } from "@/lib/sonidos";
 
 /**

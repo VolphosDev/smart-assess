@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { GraduationCap, Loader2, UserMinus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import { coursesApi, type RespuestaDocentes } from "@/api/courses";
+import { coursesApi, type RespuestaDocentes } from "@/services/courses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 

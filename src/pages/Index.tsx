@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 // ¡IMPORTANTE! Importa tu authApi
-import { authApi } from "@/api/auth.ts";
+import { authApi } from "@/services/auth.ts";
 import { ModalPortal } from "@/components/ModalPortal";
 import { AriaLeyendo } from "@/components/PantallaMantenimiento";
 import { enMantenimiento } from "@/lib/mantenimiento";

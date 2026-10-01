@@ -3,7 +3,7 @@ import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
 import { Home, History, Sparkles, LogOut, Loader2, ShieldAlert, Check, Brain, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/lib/icon-mapper";
-import { authApi } from "@/api/auth";
+import { authApi } from "@/services/auth";
 import { SelectorTema } from "./SelectorTema";
 import AriaGuideWidget from "./AriaGuideWidget";
 import { abrirBienvenidaAria } from "@/lib/ariaEventos";

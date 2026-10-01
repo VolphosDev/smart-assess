@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { coursesApi } from "@/api/courses.ts";
+import { coursesApi } from "@/services/courses.ts";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ArrowLeft, Users, UserPlus, UserMinus, Loader2, Mail } from "lucide-react";

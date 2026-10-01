@@ -3,7 +3,7 @@
  * Se importa una sola vez desde api/index.ts.
  */
 import { registerMock } from "./client";
-import { store, uid, User, CourseRecord, MaterialRecord, GradeRecord } from "./store";
+import { store, uid, User, CourseRecord, MaterialRecord, GradeRecord } from "../store";
 
 // ============ AUTH ============
 registerMock("POST", "/auth/login", (_p, body) => {

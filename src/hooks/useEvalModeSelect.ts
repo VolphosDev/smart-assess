@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { semanasApi } from "@/api/courses";
+import { semanasApi } from "@/services/courses";
 import { SEMANA_DEMO, esSemanaDemo } from "@/lib/tourDemo";
 
 export function useEvalModeSelect() {

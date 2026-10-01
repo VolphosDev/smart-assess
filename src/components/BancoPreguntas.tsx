@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
     Loader2, ChevronDown, ChevronRight, CheckCircle2, XCircle, AlertTriangle, Search,
 } from "lucide-react";
-import { bancoPreguntasApi, type PreguntaDelBanco } from "@/api/bancoPreguntas";
+import { bancoPreguntasApi, type PreguntaDelBanco } from "@/services/bancoPreguntas";
 import { cn } from "@/lib/utils";
 import { reproducirClic } from "@/lib/sonidos";
 
