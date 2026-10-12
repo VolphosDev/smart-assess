@@ -31,6 +31,8 @@ import { esIaNoDisponible } from "@/services/http/config";
 import { adaptiveApi } from "../services/courses";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { refrescarProgreso } from "@/lib/refrescarProgreso";
 import {
     Radar,
     RadarChart,
@@ -157,6 +159,7 @@ function getQuestionBadgeStyle(idx: number, q: any, bloomLevel: string) {
 
 export default function AdaptivePractice() {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const { courseId = "", semanaId = "" } = useParams();
     const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -570,6 +573,7 @@ export default function AdaptivePractice() {
                     notaFinal: 0.0,
                 });
                 setIsWaitingForDebateApi(false);
+                refrescarProgreso(queryClient);
                 setResultadoUbicacion(r);
                 setPhase("results");
                 toast.success(r.mensajeAlumno || "Listo, ya ajustamos tu nivel para esta semana.");
@@ -583,6 +587,7 @@ export default function AdaptivePractice() {
         try {
             const res = await adaptiveApi.guardarIntento(payload);
             setIsWaitingForDebateApi(false);
+            refrescarProgreso(queryClient);
             setDebateData(res);
 
             // Update user profile in localStorage

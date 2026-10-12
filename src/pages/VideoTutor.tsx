@@ -8,6 +8,8 @@ import { esIaNoDisponible } from "@/services/http/config";
 import { abrirStream } from "@/services/http/sse";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import { refrescarProgreso } from "@/lib/refrescarProgreso";
 
 interface Diapositiva {
     titulo: string;
@@ -169,6 +171,7 @@ const videoImageCache = new Map<string, string>();
 const videoPendingRequests = new Set<string>();
 
 export default function VideoTutor() {
+    const queryClient = useQueryClient();
     const { courseId = "", semanaId = "" } = useParams();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -813,6 +816,7 @@ export default function VideoTutor() {
             });
 
             localStorage.setItem(`semantika.completed_mode.${user.id}.${semanaId}.video`, "true");
+            refrescarProgreso(queryClient);
             setExamenCompletado(true);
             toast.success("¡Tu videolección y test han sido guardados exitosamente!");
         } catch (err) {

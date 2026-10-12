@@ -11,6 +11,7 @@ import { AriaSvg, type ExpresionAria } from "@/components/Aria";
 import { cn } from "@/lib/utils";
 import { CURSO_DEMO_ID, RUTA_PRACTICA_DEMO, SEMANA_DEMO_ID } from "@/lib/tourDemo";
 import { EVENTO_ABRIR_BIENVENIDA } from "@/lib/ariaEventos";
+import { clavePorUsuario } from "@/lib/almacenUsuario";
 
 /**
  * Guía interactiva de Aria: bienvenida, centro de misiones y recorrido sobre la app real.
@@ -28,9 +29,9 @@ import { EVENTO_ABRIR_BIENVENIDA } from "@/lib/ariaEventos";
  * flotante: ahí sería un "seductive detail" (Harp y Mayer, 1998; ver Aria.tsx).
  */
 
-const CLAVE_BIENVENIDA = "aria_welcome_seen";
-const CLAVE_VOZ = "aria_voz";
-const CLAVE_COMPLETADAS = "aria_misiones_completadas";
+const BASE_BIENVENIDA = "aria_welcome_seen";
+const BASE_VOZ = "aria_voz";
+const BASE_COMPLETADAS = "aria_misiones_completadas";
 
 const RUTA_CURSO = `/app/curso/${CURSO_DEMO_ID}`;
 const RUTA_SEMANA = `${RUTA_CURSO}/semana/${SEMANA_DEMO_ID}`;
@@ -197,7 +198,7 @@ const PASO_FINAL: PasoTour = {
 };
 
 function leerCompletadas(): MisionId[] {
-  try { return JSON.parse(localStorage.getItem(CLAVE_COMPLETADAS) || "[]"); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(clavePorUsuario(BASE_COMPLETADAS)) || "[]"); } catch { return []; }
 }
 
 /**
@@ -259,7 +260,7 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
   // sola al cargar la página; empieza con el clic en "Empezar", que además es el gesto que el
   // navegador exige para permitir audio.
   const [voz, setVoz] = useState(() => {
-    try { return localStorage.getItem(CLAVE_VOZ) !== "0"; } catch { return true; }
+    try { return localStorage.getItem(clavePorUsuario(BASE_VOZ)) !== "0"; } catch { return true; }
   });
   const direccion = useRef<1 | -1>(1);
   /** Saltar una misión no es completarla: sin esta marca, el menú la pintaba con check. */
@@ -292,7 +293,7 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
   // Bienvenida automática en el primer ingreso (y nunca encima del consentimiento de datos).
   useEffect(() => {
     if (pausado || tourActivo) return;
-    if (!localStorage.getItem(CLAVE_BIENVENIDA) && location.pathname === "/app") setBienvenida(true);
+    if (!localStorage.getItem(clavePorUsuario(BASE_BIENVENIDA)) && location.pathname === "/app") setBienvenida(true);
   }, [location.pathname, pausado, tourActivo]);
 
   useEffect(() => {
@@ -326,14 +327,14 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
     setCompletadas((prev) => {
       if (prev.includes(id)) return prev;
       const nuevas = [...prev, id];
-      try { localStorage.setItem(CLAVE_COMPLETADAS, JSON.stringify(nuevas)); } catch { /* sin persistencia */ }
+      try { localStorage.setItem(clavePorUsuario(BASE_COMPLETADAS), JSON.stringify(nuevas)); } catch { /* sin persistencia */ }
       return nuevas;
     });
   }, []);
 
   const iniciar = (misiones?: MisionId[]) => {
     const lista = misiones ? PASOS.filter((p) => misiones.includes(p.mision as MisionId)) : PASOS;
-    try { localStorage.setItem(CLAVE_BIENVENIDA, "true"); } catch { /* sin persistencia */ }
+    try { localStorage.setItem(clavePorUsuario(BASE_BIENVENIDA), "true"); } catch { /* sin persistencia */ }
     localStorage.setItem("aria_tour_active", "true");
     window.dispatchEvent(new Event("aria_tour_change"));
     direccion.current = 1;
@@ -487,7 +488,7 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
   const alternarVoz = () => {
     setVoz((v) => {
       const nueva = !v;
-      try { localStorage.setItem(CLAVE_VOZ, nueva ? "1" : "0"); } catch { /* sin persistencia */ }
+      try { localStorage.setItem(clavePorUsuario(BASE_VOZ), nueva ? "1" : "0"); } catch { /* sin persistencia */ }
       if (!nueva) callar();
       else if (paso) hablar(`${paso.titulo}. ${paso.texto}`);
       return nueva;
@@ -621,12 +622,12 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
           onVoz={alternarVoz}
           onIniciar={() => iniciar()}
           onElegir={() => {
-            try { localStorage.setItem(CLAVE_BIENVENIDA, "true"); } catch { /* sin persistencia */ }
+            try { localStorage.setItem(clavePorUsuario(BASE_BIENVENIDA), "true"); } catch { /* sin persistencia */ }
             setBienvenida(false);
             setMenuAbierto(true);
           }}
           onCerrar={() => {
-            try { localStorage.setItem(CLAVE_BIENVENIDA, "true"); } catch { /* sin persistencia */ }
+            try { localStorage.setItem(clavePorUsuario(BASE_BIENVENIDA), "true"); } catch { /* sin persistencia */ }
             setBienvenida(false);
           }}
         />,

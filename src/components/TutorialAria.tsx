@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ArrowLeft, X, Volume2, VolumeX } from "lucide-react";
 import { AriaSvg, type EstadoAvatar } from "@/components/Aria";
 import { cn } from "@/lib/utils";
+import { clavePorUsuario } from "@/lib/almacenUsuario";
 
 /**
  * Recorrido guiado de primer ingreso, narrado por Aria.
@@ -26,7 +27,7 @@ import { cn } from "@/lib/utils";
  * de un reactivo de análisis.
  */
 
-const CLAVE_VISTO = "semantika.tutorial.visto.v1";
+const BASE_VISTO = "semantika.tutorial.visto.v1";
 
 interface Paso {
     titulo: string;
@@ -97,7 +98,7 @@ export function TutorialAria({ abiertoForzado = false, onCerrar }: Props) {
     useEffect(() => {
         if (abiertoForzado) { setAbierto(true); setPaso(0); return; }
         try {
-            if (!localStorage.getItem(CLAVE_VISTO)) setAbierto(true);
+            if (!localStorage.getItem(clavePorUsuario(BASE_VISTO))) setAbierto(true);
         } catch {
             // Modo privado: no se abre solo, pero el boton manual sigue estando.
         }
@@ -121,7 +122,7 @@ export function TutorialAria({ abiertoForzado = false, onCerrar }: Props) {
 
     const cerrar = () => {
         speechSynthesis.cancel();
-        try { localStorage.setItem(CLAVE_VISTO, "1"); } catch { /* sin persistencia */ }
+        try { localStorage.setItem(clavePorUsuario(BASE_VISTO), "1"); } catch { /* sin persistencia */ }
         setAbierto(false);
         onCerrar?.();
     };
@@ -223,5 +224,5 @@ export function TutorialAria({ abiertoForzado = false, onCerrar }: Props) {
 
 /** Permite volver a verlo desde la cabecera, sin tener que borrar el navegador. */
 export function reabrirTutorial() {
-    try { localStorage.removeItem(CLAVE_VISTO); } catch { /* sin persistencia */ }
+    try { localStorage.removeItem(clavePorUsuario(BASE_VISTO)); } catch { /* sin persistencia */ }
 }

@@ -10,6 +10,8 @@ import {
     archivosApi,
 } from "@/services/courses";
 import { reproducirAcierto, reproducirError, reproducirLogro } from "@/lib/sonidos";
+import { useQueryClient } from "@tanstack/react-query";
+import { refrescarProgreso } from "@/lib/refrescarProgreso";
 
 // Instancias globales de los casos de uso / repositorios
 
@@ -56,6 +58,7 @@ const quizPendingRequests = new Set<string>();
 
 export function usePractice() {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const { courseId = "", semanaId = "", mode = "OPCION_MULTIPLE" } = useParams();
     const [searchParams] = useSearchParams();
     const cantidad = Number(searchParams.get("cantidad") ?? "5");
@@ -501,6 +504,7 @@ export function usePractice() {
             });
 
             localStorage.setItem(`semantika.completed_mode.${user.id}.${semanaId}.${mode}`, "true");
+            refrescarProgreso(queryClient);
             reproducirLogro();
             toast.success("¡Examen calificado y guardado en tu historial!");
             setFinalizado(true);

@@ -12,6 +12,8 @@ import { limpiarEtiquetas, leerEtiquetas } from "@/lib/tutorEtiquetas";
 // AriaSvg y EstadoAvatar viven ahora en components/Aria.tsx, para que el mismo personaje
 // pueda recibir al alumno y guiarlo por la aplicacion, no solo atenderlo por voz.
 import { AriaSvg, type EstadoAvatar } from "@/components/Aria";
+import { useQueryClient } from "@tanstack/react-query";
+import { refrescarProgreso } from "@/lib/refrescarProgreso";
 
 interface TurnData {
     turno: number;
@@ -329,6 +331,7 @@ const ESTADO_LABEL: Record<EstadoAvatar, string> = {
 // ── Página principal ──────────────────────────────────────────────────────
 
 export default function AvatarTutor() {
+    const queryClient = useQueryClient();
 
     const {courseId = "", semanaId = ""} = useParams();
     const [searchParams] = useSearchParams();
@@ -1020,6 +1023,7 @@ export default function AvatarTutor() {
 
             toast.success("¡Sesión guardada en tu historial!");
             localStorage.setItem(`semantika.completed_mode.${user.id}.${semanaId}.avatar`, "true");
+            refrescarProgreso(queryClient);
             localStorage.removeItem(storageKey);
             setSesionFinalizada(true);
         } catch (err: any) {
