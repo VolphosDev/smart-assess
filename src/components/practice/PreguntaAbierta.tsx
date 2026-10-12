@@ -1,4 +1,5 @@
 import { Question } from "@/types/Evaluation";
+import { AriaNubecita } from "@/components/AriaNubecita";
 
 interface PreguntaAbiertaProps {
     pregunta: Question;
@@ -16,6 +17,7 @@ export function PreguntaAbierta({
     return (
         <div className="space-y-3">
             <p className="font-semibold text-foreground leading-relaxed">{pregunta.enunciado}</p>
+            {!disabled && <AriaNubecita />}
             <textarea
                 rows={4}
                 value={valor}

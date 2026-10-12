@@ -16,6 +16,7 @@ import { getCourseIcon } from "@/lib/icon-mapper";
 import { useIsAriaTourActive, useAriaTourStep } from "@/hooks/useIsAriaTourActive";
 import { ModalPortal } from "@/components/ModalPortal";
 
+import { fechaHoraPeru, formatoPeru } from "@/lib/fechas";
 const DEMO_INTENTOS = [
     {
         id: "demo-h1",
@@ -178,7 +179,7 @@ export default function HistoryPage() {
                                     {h.cursoNombre} · {h.semana} · {getTecnicaLabel(h.tecnica)} (Intento #{h.attemptNumber})
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-0.5">
-                                    {new Date(h.fecha).toLocaleDateString("es-PE", { day: "numeric", month: "short", year: "numeric" })}
+                                    {formatoPeru(h.fecha, { day: "numeric", month: "short", year: "numeric" })}
                                 </div>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
@@ -218,7 +219,7 @@ export default function HistoryPage() {
                                 {intentoAbierto.nombreTema || intentoAbierto.semana} · {getTecnicaLabel(intentoAbierto.tecnica)} (Intento #{intentoAbierto.attemptNumber})
                             </p>
                             <p className="text-xs text-muted-foreground">
-                                {new Date(intentoAbierto.fecha).toLocaleString("es-PE")}{" · "}
+                                {fechaHoraPeru(intentoAbierto.fecha)}{" · "}
                                 {intentoAbierto.respuestas.filter((r: any) => r.esCorrecta).length} de{" "}
                                 {intentoAbierto.respuestas.length} correctas
                             </p>

@@ -43,6 +43,7 @@ const TeacherCourse = lazy(() => import("./pages/teacher/TeacherCourse"));
 const TeacherWeek = lazy(() => import("./pages/teacher/TeacherWeek"));
 const CourseStudentsManager = lazy(() => import("./pages/teacher/CourseStudentsManager"));
 const ValidacionJuez = lazy(() => import("./pages/teacher/ValidacionJuez"));
+const TeacherSeguimiento = lazy(() => import("./pages/teacher/TeacherSeguimiento"));
 
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const Trazabilidad = lazy(() => import("./pages/admin/Trazabilidad"));
@@ -109,6 +110,7 @@ const App = () => (
                 <Route index element={<TeacherDashboard />} />
                 <Route path="curso/:courseId" element={<TeacherCourse />} />
                 <Route path="curso/:courseId/semana/:semanaId" element={<TeacherWeek />} />
+                <Route path="seguimiento" element={<TeacherSeguimiento />} />
                 <Route path="validacion-juez" element={<ValidacionJuez />} />
                 <Route path="curso/:courseId/alumnos" element={<CourseStudentsManager />} />
               </Route>

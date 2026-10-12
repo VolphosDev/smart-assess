@@ -196,6 +196,9 @@ export default function EvalModeSelect() {
      * y además vuelve imposible ver de un vistazo qué SÍ puede hacer.
      */
     const [mostrarNoDisponibles, setMostrarNoDisponibles] = useState(false);
+    // El mapa de calor de la semana empieza cerrado: es grande y empuja los modos de práctica hacia abajo.
+    // En el recorrido de Aria (modo demo) se abre solo: ese paso explica el mapa y pide tocar un tema.
+    const [mapaSemanaAbierto, setMapaSemanaAbierto] = useState(esDemo);
 
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const isStudent = user?.role?.toLowerCase() === "student";
@@ -758,7 +761,7 @@ const isUnfinished = m.id === unfinishedMode;
                                 n: 2,
                                 texto: "Elige el tema",
                                 ancla: "#paso-elegir-tema",
-                                activo: completedAdaptive && allSubtemas.length > 0,
+                                activo: (ubicacionCompletada || completedAdaptive) && allSubtemas.length > 0,
                             },
                             { n: 3, texto: "Practica", ancla: "#paso-elegir-metodo", activo: true },
                         ].map((paso, i, todos) => (
@@ -881,7 +884,7 @@ const isUnfinished = m.id === unfinishedMode;
                 parecían etiquetas decorativas. Ahora cada uno lleva una casilla visible, que
                 es la señal universal de "esto se marca", y el encabezado dice explícitamente
                 que es opcional para que nadie se quede atascado creyendo que debe elegir. */}
-            {completedAdaptive && allSubtemas.length > 0 && (
+            {(ubicacionCompletada || completedAdaptive) && allSubtemas.length > 0 && (
                 <div id="paso-elegir-tema" data-guide="elegir-tema" className="bg-card border border-border/80 rounded-xl p-5 sm:p-6 shadow-xs text-left mt-4 scroll-mt-24">
                     <div className="flex items-start gap-3 mb-4">
                         <span className="w-7 h-7 rounded-lg bg-primary text-primary-foreground grid place-items-center text-xs font-black shrink-0">
@@ -1084,21 +1087,41 @@ const isUnfinished = m.id === unfinishedMode;
                         decidir, y no una pantalla aparte a la que hay que ir a buscarla. */}
                     {isStudent && (
                         <div id="mapa-calor-semana" data-guide="mapa-calor-semana" className="pt-2 scroll-mt-24">
-                            <div className="flex items-start gap-3 mb-3">
-                                <span className="w-9 h-9 rounded-xl bg-rose-500/10 grid place-items-center shrink-0">
-                                    <Flame className="w-4.5 h-4.5 text-rose-500" />
-                                </span>
-                                <div className="min-w-0">
-                                    <h3 className="font-display font-bold text-lg leading-tight">
-                                        Cómo llevas esta semana
-                                    </h3>
-                                    <p className="text-sm text-muted-foreground">
-                                        Solo los temas de {semanaTitulo}. Lo azul ya lo dominas; lo rojo
-                                        conviene repasarlo.
-                                    </p>
-                                </div>
+                            {/* Tarjeta desplegable: borde, fondo y un boton visible a la derecha. Sin eso
+                                el encabezado parecia un titulo suelto y nadie sabia que se podia abrir. */}
+                            <div className={cn(
+                                "rounded-2xl border bg-card shadow-xs overflow-hidden transition-colors",
+                                mapaSemanaAbierto ? "border-primary/40" : "border-border/80 hover:border-primary/40"
+                            )}>
+                                <button
+                                    type="button"
+                                    onClick={() => setMapaSemanaAbierto((v) => !v)}
+                                    aria-expanded={mapaSemanaAbierto}
+                                    className="flex w-full items-center gap-3 p-4 text-left cursor-pointer hover:bg-secondary/30 transition-colors"
+                                >
+                                    <span className="w-10 h-10 rounded-xl bg-rose-500/10 grid place-items-center shrink-0">
+                                        <Flame className="w-5 h-5 text-rose-500" />
+                                    </span>
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="font-display font-bold text-lg leading-tight">
+                                            Cómo llevas esta semana
+                                        </h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Solo los temas de {semanaTitulo}. Lo azul ya lo dominas; lo rojo
+                                            conviene repasarlo.
+                                        </p>
+                                    </div>
+                                    <span className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-bold text-foreground">
+                                        <span className="hidden sm:inline">{mapaSemanaAbierto ? "Ocultar" : "Ver mapa"}</span>
+                                        <ChevronDown className={cn("w-4 h-4 transition-transform", mapaSemanaAbierto && "rotate-180")} />
+                                    </span>
+                                </button>
+                                {mapaSemanaAbierto && (
+                                    <div className="border-t border-border/80 p-4">
+                                        <MapaCalorTemas cursos={esDemo ? MAPA_CONOCIMIENTO_DEMO : mapaConocimiento} soloSemanaId={week} compacto />
+                                    </div>
+                                )}
                             </div>
-                            <MapaCalorTemas cursos={esDemo ? MAPA_CONOCIMIENTO_DEMO : mapaConocimiento} soloSemanaId={week} compacto />
                             {/* La vista completa sigue estando, pero como salida explicita y
                                 secundaria: desde aqui el alumno decide si quiere comparar con
                                 el resto del curso. Antes esto era el destino del boton de

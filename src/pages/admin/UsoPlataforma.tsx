@@ -6,6 +6,7 @@ import { CalendarDays, Download, Loader2, Search, UserCheck, UserX, Users, Calen
 import { usoApi, type UsoPorAlumno } from "@/services/uso";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { desdeServidor, fechaHoraPeruCsv, formatoPeru } from "@/lib/fechas";
 
 const PERIODOS = [7, 14, 30] as const;
 
@@ -19,18 +20,23 @@ function fechaLocal(iso: string) {
 
 function haceCuanto(iso: string | null) {
     if (!iso) return "Nunca";
-    const dias = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+    const dias = Math.floor((Date.now() - (desdeServidor(iso)?.getTime() ?? Date.now())) / 86_400_000);
     if (dias <= 0) return "Hoy";
     if (dias === 1) return "Ayer";
     if (dias < 30) return `Hace ${dias} días`;
-    return formatoCorto.format(new Date(iso));
+    return formatoPeru(iso, { day: "2-digit", month: "2-digit" });
+}
+
+/** "12 oct, 12:20" en hora de Perú: cuándo fue exactamente el último acceso. */
+function horaDeAcceso(iso: string) {
+    return formatoPeru(iso, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
 function descargarCsv(filas: UsoPorAlumno[], desde: string, hasta: string) {
     const escapar = (v: string | number | null) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const lineas = [
-        ["Alumno", "Correo o usuario", "Días de uso", "Accesos", "Último acceso"].map(escapar).join(","),
-        ...filas.map((f) => [f.nombre, f.correo, f.diasDeUso, f.accesos, f.ultimoAcceso ?? ""].map(escapar).join(",")),
+        ["Alumno", "Correo o usuario", "Días de uso", "Accesos", "Último acceso (hora de Perú)"].map(escapar).join(","),
+        ...filas.map((f) => [f.nombre, f.correo, f.diasDeUso, f.accesos, f.ultimoAcceso ? fechaHoraPeruCsv(f.ultimoAcceso) : ""].map(escapar).join(",")),
     ];
     const blob = new Blob(["﻿" + lineas.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -242,7 +248,10 @@ export default function UsoPlataforma() {
                                                 )}
                                             </div>
                                             <span className="hidden sm:block text-right text-sm tabular-nums text-muted-foreground">{a.accesos}</span>
-                                            <span className="text-right text-sm text-muted-foreground">{haceCuanto(a.ultimoAcceso)}</span>
+                                            <span className="text-right text-sm text-muted-foreground">
+                                                {haceCuanto(a.ultimoAcceso)}
+                                                {a.ultimoAcceso && (<span className="block text-xs tabular-nums opacity-80">{horaDeAcceso(a.ultimoAcceso)}</span>)}
+                                            </span>
                                         </li>
                                     ))}
                                 </ul>

@@ -13,6 +13,7 @@ import BancoPreguntas from "@/components/BancoPreguntas";
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import {cn} from "@/lib/utils.ts";
 
+import { fechaHoraPeru, formatoPeru } from "@/lib/fechas";
 export default function TeacherWeek() {
     const { courseId = "", semanaId = "" } = useParams();
     const queryClient = useQueryClient();
@@ -245,7 +246,7 @@ export default function TeacherWeek() {
                         student.correo,
                         tecnicaLabel,
                         i.nota,
-                        new Date(i.fecha).toLocaleString()
+                        fechaHoraPeru(i.fecha)
                     ]);
                 });
             }
@@ -403,7 +404,7 @@ export default function TeacherWeek() {
                                         {mat.fechaCarga && (
                                             <>
                                                 <span>•</span>
-                                                <span>{new Date(mat.fechaCarga).toLocaleDateString()}</span>
+                                                <span>{formatoPeru(mat.fechaCarga, { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
                                             </>
                                         )}
                                     </div>
@@ -642,7 +643,7 @@ export default function TeacherWeek() {
                                                                                         </span>
                                                                                     </td>
                                                                                     <td className="py-2 px-3 text-right text-muted-foreground">
-                                                                                        {new Date(i.fecha).toLocaleString("es-PE", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                                                                                        {formatoPeru(i.fecha, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                                                                                     </td>
                                                                                 </tr>
                                                                             );

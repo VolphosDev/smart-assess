@@ -6,6 +6,7 @@ import {
 import { bancoPreguntasApi, type PreguntaDelBanco } from "@/services/bancoPreguntas";
 import { cn } from "@/lib/utils";
 import { reproducirClic } from "@/lib/sonidos";
+import { formatoPeru } from "@/lib/fechas";
 
 /**
  * Banco de preguntas de la semana, para el docente.
@@ -130,7 +131,7 @@ function Fila({ p }: { p: PreguntaDelBanco }) {
                                             <span className="font-semibold">{r.alumno}</span>
                                             {r.fecha && (
                                                 <span className="text-[11px] text-muted-foreground ml-auto">
-                                                    {new Date(r.fecha).toLocaleDateString("es-PE")}
+                                                    {formatoPeru(r.fecha, { day: "2-digit", month: "2-digit", year: "numeric" })}
                                                 </span>
                                             )}
                                         </div>

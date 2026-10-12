@@ -14,6 +14,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { UserAvatar } from "@/lib/icon-mapper";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 
+import { fechaHoraPeru, formatoPeru } from "@/lib/fechas";
+import { TooltipIntentos } from "@/components/TooltipIntentos";
 const avatars = ["🦊", "🐼", "🦄", "🐯", "🦋", "🚀", "🐙", "🐵", "🦁", "🐨"];
 
 export default function AdminDashboard() {
@@ -88,7 +90,7 @@ export default function AdminDashboard() {
                     i.semana,
                     tecnicaLabel,
                     i.nota,
-                    new Date(i.fecha).toLocaleString()
+                    fechaHoraPeru(i.fecha)
                 ];
             });
 
@@ -415,7 +417,7 @@ export default function AdminDashboard() {
 
     // Extraer fechas únicas formateadas de los intentos filtrados
     const uniqueDates = Array.from(new Set(filteredAttempts.map((att: any) => 
-        new Date(att.fecha).toLocaleDateString("es-PE", { day: "numeric", month: "short" })
+        formatoPeru(att.fecha, { day: "numeric", month: "short" })
     )));
 
     // Paleta de colores para las líneas/barras del gráfico comparativo
@@ -436,7 +438,7 @@ export default function AdminDashboard() {
     const chartDataGrades = uniqueDates.map(dateStr => {
         const dataPoint: any = { date: dateStr };
         const attemptsOnDate = filteredAttempts.filter((att: any) => 
-            new Date(att.fecha).toLocaleDateString("es-PE", { day: "numeric", month: "short" }) === dateStr
+            formatoPeru(att.fecha, { day: "numeric", month: "short" }) === dateStr
         );
         
         if (selectedStudentNames.length === 0) {
@@ -462,7 +464,7 @@ export default function AdminDashboard() {
     const chartDataActivity = uniqueDates.map(dateStr => {
         const dataPoint: any = { date: dateStr };
         const attemptsOnDate = filteredAttempts.filter((att: any) => 
-            new Date(att.fecha).toLocaleDateString("es-PE", { day: "numeric", month: "short" }) === dateStr
+            formatoPeru(att.fecha, { day: "numeric", month: "short" }) === dateStr
         );
         
         if (selectedStudentNames.length === 0) {
@@ -691,14 +693,7 @@ export default function AdminDashboard() {
                                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                                         <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} fontWeight={600} />
                                         <YAxis domain={[0, 20]} stroke="hsl(var(--muted-foreground))" fontSize={11} fontWeight={600} />
-                                        <Tooltip
-                                            contentStyle={{
-                                                background: "hsl(var(--card))",
-                                                border: "1px solid hsl(var(--border))",
-                                                borderRadius: 8,
-                                                fontSize: 12
-                                            }}
-                                        />
+                                        <Tooltip content={<TooltipIntentos intentos={filteredAttempts} modo="notas" />} />
                                         <Legend wrapperStyle={{ fontSize: 11, pt: 10 }} />
                                         {activeKeys.map((key) => (
                                             <Line
@@ -717,14 +712,7 @@ export default function AdminDashboard() {
                                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                                         <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={11} fontWeight={600} />
                                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} fontWeight={600} />
-                                        <Tooltip
-                                            contentStyle={{
-                                                background: "hsl(var(--card))",
-                                                border: "1px solid hsl(var(--border))",
-                                                borderRadius: 8,
-                                                fontSize: 12
-                                            }}
-                                        />
+                                        <Tooltip cursor={{ fill: "hsl(var(--muted) / 0.4)" }} content={<TooltipIntentos intentos={filteredAttempts} modo="actividad" />} />
                                         <Legend wrapperStyle={{ fontSize: 11, pt: 10 }} />
                                         {activeKeys.map((key) => (
                                             <Bar

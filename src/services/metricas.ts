@@ -1,4 +1,5 @@
 import { apiClient } from "./http/client";
+import { fechaHoraPeruCsv } from "@/lib/fechas";
 
 /**
  * Métricas del canal de IA.
@@ -42,7 +43,14 @@ export const metricasApi = {
         });
         if (!res.ok) throw new Error("No se pudo exportar la telemetría");
 
-        const blob = await res.blob();
+        // El servidor escribe la columna `fecha` en UTC sin zona. Se pasa a hora de Perú aquí,
+        // sin tocar lo guardado, y se rotula la columna para que nadie la lea como UTC.
+        const texto = await res.text();
+        const enHoraPeru = texto
+            .replace(/^﻿?id,tipo,fecha,/, "id,tipo,fecha_hora_peru,")
+            .replace(/^(\d+,[A-Z_]+,)(\d{4}-\d{2}-\d{2}T[\d:.]+)/gm,
+                (_, antes: string, fecha: string) => antes + fechaHoraPeruCsv(fecha));
+        const blob = new Blob(["﻿" + enHoraPeru], { type: "text/csv;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const enlace = document.createElement("a");
         enlace.href = url;

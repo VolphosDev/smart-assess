@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AriaAcompana } from "@/components/AriaAcompana";
+import { AriaNubecita } from "@/components/AriaNubecita";
 import { AriaDescansando } from "@/components/AriaDescansando";
 import { esIaNoDisponible } from "@/services/http/config";
 import { adaptiveApi } from "../services/courses";
@@ -184,6 +185,8 @@ export default function AdaptivePractice() {
 
     // Debate states
     const [debateData, setDebateData] = useState<any>(null);
+    /** Nivel que dio la prueba de ubicación de esta semana, para mostrarlo junto a la decisión del comité. */
+    const [nivelUbicacion, setNivelUbicacion] = useState<string | null>(null);
     const [debateMessages, setDebateMessages] = useState<ParsedMessage[]>([]);
     const [visibleMessages, setVisibleMessages] = useState<ParsedMessage[]>([]);
     const [isTyping, setIsTyping] = useState<boolean>(false);
@@ -245,6 +248,15 @@ export default function AdaptivePractice() {
 
         fetchEvaluation();
     }, [semanaId, user.id]);
+
+    // El resultado del comité se explica junto al nivel de la prueba de ubicación: son dos fuentes
+    // distintas y el alumno veía solo la segunda, sin saber de dónde salía.
+    useEffect(() => {
+        if (!debateData || isAcra || !semanaId) return;
+        adaptiveApi.estadoSemana(semanaId)
+            .then((e: any) => setNivelUbicacion(e?.nivelUbicacion ?? null))
+            .catch(() => setNivelUbicacion(null));
+    }, [debateData, isAcra, semanaId]);
 
     // Helper to normalize static or dynamic questions
     const normalizeFormativeQuestions = (pregJson: any) => {
@@ -546,7 +558,12 @@ export default function AdaptivePractice() {
                     // Primero el de la pregunta (lo trae el normalizador); el del lote solo
                     // como respaldo para las evaluaciones de un único estrato.
                     nivelBloom: q.nivelBloom || q.nivel_bloom || evaluationData?.nivel_bloom || null,
-                    conceptos: q.concepto || null
+                    conceptos: q.concepto || null,
+                    // Criterio con el que el SERVIDOR califica las preguntas abiertas. La nota ya no
+                    // se acepta del cliente: antes toda respuesta abierta contaba como correcta.
+                    respuestaCorrecta: q.tipoPregunta === "ABIERTA"
+                        ? [q.justificacion, q.rubrica ? `Rúbrica: ${q.rubrica}` : ""].filter(Boolean).join(" ") || null
+                        : (q.respuestaCorrectaText || null)
                 };
             });
 
@@ -819,6 +836,8 @@ export default function AdaptivePractice() {
                                             })}
                                         </div>
                                     ) : (
+                                        <div className="space-y-3">
+                                        <AriaNubecita />
                                         <textarea
                                             rows={5}
                                             value={formativeAnswers[currentSlide] || ""}
@@ -826,6 +845,7 @@ export default function AdaptivePractice() {
                                             placeholder="Escribe tu respuesta detalladamente con tus propias palabras basándote en el material..."
                                             className="w-full p-5 rounded-2xl border-2 border-border bg-background text-sm font-semibold focus:outline-none focus:border-primary transition-all resize-none shadow-inner"
                                         />
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -1199,6 +1219,40 @@ export default function AdaptivePractice() {
                             </p>
                         </div>
                     </div>
+
+                    {/* Cómo se llegó a ese nivel: qué dijo la ubicación, qué propuso el comité y qué
+                        aplicó la regla de seguridad. Sin esto, un debate que decía AVANZADO y un
+                        resultado INTERMEDIO parecían contradictorios. */}
+                    {!isAcra && debateData.nivel_propuesto && (
+                        <div className="bg-card border border-border rounded-3xl p-6 shadow-soft space-y-4">
+                            <h3 className="font-display font-bold text-lg">Cómo se decidió tu nivel</h3>
+                            <ul className="space-y-2 text-sm">
+                                {nivelUbicacion && (
+                                    <li className="flex items-start justify-between gap-4">
+                                        <span className="text-muted-foreground">Prueba de ubicación de esta semana</span>
+                                        <span className="font-black uppercase text-foreground">{nivelUbicacion}</span>
+                                    </li>
+                                )}
+                                <li className="flex items-start justify-between gap-4">
+                                    <span className="text-muted-foreground">Tu nivel anterior</span>
+                                    <span className="font-black uppercase text-foreground">{debateData.nivel_anterior}</span>
+                                </li>
+                                <li className="flex items-start justify-between gap-4">
+                                    <span className="text-muted-foreground">El comité propuso</span>
+                                    <span className="font-black uppercase text-foreground">{debateData.nivel_propuesto}</span>
+                                </li>
+                                <li className="flex items-start justify-between gap-4">
+                                    <span className="text-muted-foreground">Nivel aplicado</span>
+                                    <span className="font-black uppercase text-primary">{debateData.nivel_nuevo}</span>
+                                </li>
+                            </ul>
+                            {debateData.veto?.aplicado && (
+                                <p className="rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-xs font-semibold text-foreground/90 leading-relaxed">
+                                    Regla de seguridad: {debateData.veto.motivo}
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     {/* Dashboard de Progreso Cognitivo (Taxonomía de Bloom) y Medidor Adaptativo */}
                     <div className="grid md:grid-cols-5 gap-6">

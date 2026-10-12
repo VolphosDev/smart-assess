@@ -29,8 +29,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { desdeServidor, fechaHoraPeruCsv, ZONA_PERU } from "@/lib/fechas";
 
 const formatoFechaHora = new Intl.DateTimeFormat("es-PE", {
+    timeZone: ZONA_PERU,
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -40,6 +42,7 @@ const formatoFechaHora = new Intl.DateTimeFormat("es-PE", {
 });
 
 const formatoFechaCorta = new Intl.DateTimeFormat("es-PE", {
+    timeZone: ZONA_PERU,
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -47,7 +50,7 @@ const formatoFechaCorta = new Intl.DateTimeFormat("es-PE", {
 });
 
 function tiempoRelativo(fechaIso: string): string {
-    const timestamp = new Date(fechaIso).getTime();
+    const timestamp = desdeServidor(fechaIso)?.getTime() ?? NaN;
     if (isNaN(timestamp)) return fechaIso;
     const diffMs = Date.now() - timestamp;
     const diffSec = Math.floor(diffMs / 1000);
@@ -60,7 +63,7 @@ function tiempoRelativo(fechaIso: string): string {
     if (diffHoras < 24) return `Hace ${diffHoras} ${diffHoras === 1 ? "hora" : "horas"}`;
     if (diffDias === 1) return "Ayer";
     if (diffDias < 7) return `Hace ${diffDias} días`;
-    return formatoFechaCorta.format(new Date(fechaIso));
+    return formatoFechaCorta.format(desdeServidor(fechaIso) as Date);
 }
 
 interface MetaAccion {
@@ -193,7 +196,7 @@ function descargarCsv(filas: RegistroAuditoriaDTO[]) {
     const lineas = [
         encabezados.map(escapar).join(","),
         ...filas.map((f) => [
-            f.fecha,
+            fechaHoraPeruCsv(f.fecha),
             f.actor,
             f.rol,
             f.accion,
@@ -464,7 +467,7 @@ export default function Trazabilidad() {
                                 registrosFiltrados.map((r, i) => {
                                     const meta = obtenerMetaAccion(r.accion);
                                     const IconoAccion = meta.icono;
-                                    const fechaObj = new Date(r.fecha);
+                                    const fechaObj = desdeServidor(r.fecha) ?? new Date(NaN);
                                     const fechaValida = !isNaN(fechaObj.getTime());
 
                                     return (

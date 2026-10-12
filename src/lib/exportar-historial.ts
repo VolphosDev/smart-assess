@@ -6,6 +6,7 @@
  * mismo formato de archivo. Una fila por pregunta, no por intento: lo que el alumno quiere
  * revisar es en qué preguntas falló, no una lista de notas.
  */
+import { fechaHoraPeru } from "@/lib/fechas";
 
 export const etiquetaTecnica = (tecnica?: string): string => {
     if (!tecnica) return "Práctica";
@@ -42,7 +43,7 @@ const filasDeIntento = (intento: any): string[][] =>
         intento.nombreTema ?? "",
         etiquetaTecnica(intento.tecnica),
         intento.attemptNumber ?? "",
-        intento.fecha ? new Date(intento.fecha).toLocaleString("es-PE") : "",
+        fechaHoraPeru(intento.fecha),
         intento.nota ?? "",
         i + 1,
         r.pregunta ?? "",
