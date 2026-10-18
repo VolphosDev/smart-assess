@@ -13,6 +13,7 @@ import { getCourseIcon } from "@/lib/icon-mapper";
 import { ModalPortal } from "@/components/ModalPortal";
 import { SelectorBannerCurso, SelectorColorCurso, VistaPreviaCurso } from "@/components/curso/EditorAparienciaCurso";
 import { useBannerCurso } from "@/lib/bannerCurso";
+import { CURSO_DOCENTE_DEMO, esCursoDocenteDemo, useGuiaDocenteActiva } from "@/lib/guiaDocenteDemo";
 import { variablesCurso } from "@/lib/colorCurso";
 
 const iconColorMap = {
@@ -33,6 +34,10 @@ export default function TeacherDashboard() {
         queryFn: () => coursesApi.forTeacher(teacherId),
         enabled: !!teacherId
     });
+
+    // Con la guía de uso activa se muestra además el curso de ejemplo (ver lib/guiaDocenteDemo).
+    const guiaActiva = useGuiaDocenteActiva();
+    const cursosVisibles: any[] = guiaActiva ? [CURSO_DOCENTE_DEMO, ...courses] : courses;
 
     const { data: rendimiento = [] } = useQuery({
         queryKey: ['teacher-rendimiento', teacherId],
@@ -180,6 +185,7 @@ export default function TeacherDashboard() {
                 <div className="flex items-end justify-between mb-5">
                     <h2 className="font-display text-2xl md:text-3xl font-bold">Mis cursos</h2>
                     <Button
+                        data-guide="docente-crear-curso"
                         onClick={() => {
                             setForm({ name: "", description: "", weeks: 4, emoji: "📘", color: "#4F46E5" });
                             setBanner({ blob: null, url: null, quitar: false });
@@ -193,17 +199,18 @@ export default function TeacherDashboard() {
 
                 {loadingCourses ? (
                     <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
-                ) : courses.length === 0 ? (
+                ) : cursosVisibles.length === 0 ? (
                     <div className="bg-card border border-dashed border-border rounded-xl p-10 text-center">
                         <p className="text-muted-foreground text-sm">Aún no tienes cursos. Crea tu primer curso para comenzar.</p>
                     </div>
                 ) : (
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {courses.map((c: any, i: number) => (
+                    <div data-guide="docente-cursos" className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {cursosVisibles.map((c: any, i: number) => (
                             <motion.div key={c.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                                 <div className="relative group/card h-full">
 
                                     <Link
+                                        data-guide={esCursoDocenteDemo(c.id) ? "docente-tarjeta-curso" : undefined}
                                         to={`/docente/curso/${c.id}`}
                                         style={variablesCurso(c.color)}
                                         className="block bg-card border border-border rounded-xl shadow-xs hover:-translate-y-0.5 hover:shadow-xs hover:border-border/80 transition-all h-full relative overflow-hidden text-left"
@@ -230,7 +237,7 @@ export default function TeacherDashboard() {
                                         </div>
                                     </Link>
 
-                                    <div className="absolute top-3 right-3 z-20">
+                                    <div className={`absolute top-3 right-3 z-20${esCursoDocenteDemo(c.id) ? " hidden" : ""}`}>
                                         <button
                                             onClick={(e) => {
                                                 e.preventDefault();

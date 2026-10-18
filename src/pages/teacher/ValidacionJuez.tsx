@@ -77,7 +77,7 @@ export default function ValidacionJuez() {
 
     return (
         <div className="space-y-6 max-w-4xl">
-            <div>
+            <div data-guide="docente-validacion-intro">
                 <h1 className="font-display text-3xl font-bold flex items-center gap-2">
                     <ShieldCheck className="w-7 h-7 text-primary" />
                     Validación del calificador automático
@@ -89,7 +89,7 @@ export default function ValidacionJuez() {
                 </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div data-guide="docente-validacion-origen" className="flex flex-wrap items-center gap-2">
                 {(["PRACTICA", "ARIA", "ARIA_VOZ"] as Origen[]).map((o) => (
                     <button
                         key={o}

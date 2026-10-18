@@ -2,6 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Upload, Trash2, FileText, BookOpen, Loader2, Eye, EyeOff, Download, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { CURSO_DOCENTE_DEMO, INTENTOS_DOCENTE_DEMO, esSemanaDocenteDemo, semanaDocenteDemo } from "@/lib/guiaDocenteDemo";
 import { semanasApi, intentosApi, coursesApi } from "@/services/courses.ts";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -19,15 +20,17 @@ export default function TeacherWeek() {
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // La semana de ejemplo de la guía de uso no existe en el servidor: ver lib/guiaDocenteDemo.
+    const esDemo = esSemanaDocenteDemo(semanaId);
     const { data: semana, isLoading } = useQuery({
         queryKey: ["semana", semanaId],
-        queryFn: () => semanasApi.get(semanaId),
+        queryFn: () => (esDemo ? Promise.resolve(semanaDocenteDemo(semanaId)) : semanasApi.get(semanaId)),
         enabled: !!semanaId,
     });
 
     const { data: intentos = [], isLoading: loadingIntentos } = useQuery({
         queryKey: ["semana-intentos", semanaId],
-        queryFn: () => intentosApi.porSemana(semanaId),
+        queryFn: () => (esDemo ? Promise.resolve(INTENTOS_DOCENTE_DEMO) : intentosApi.porSemana(semanaId)),
         enabled: !!semanaId,
     });
 
@@ -39,7 +42,7 @@ export default function TeacherWeek() {
         queryFn: () => coursesApi.forTeacher(teacherId),
         enabled: !!teacherId,
     });
-    const course = courses.find((c: any) => String(c.id) === String(courseId));
+    const course = esDemo ? CURSO_DOCENTE_DEMO : courses.find((c: any) => String(c.id) === String(courseId));
     const courseColor = course?.color || "primary";
     const bgSolid = courseColor === "lime" ? "bg-emerald-600" : courseColor === "coral" ? "bg-rose-600" : "bg-indigo-600";
 
@@ -359,6 +362,7 @@ export default function TeacherWeek() {
 
             {/* Zona Archivos Múltiples */}
             <motion.section
+                data-guide="docente-material"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -367,6 +371,7 @@ export default function TeacherWeek() {
                 <div className="flex items-center justify-between">
                     <h2 className="font-display font-bold text-xl">Material de la semana</h2>
                     <Button
+                        data-guide="docente-subir"
                         size="sm"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploadMutation.isPending || !!ingestaId}
@@ -507,6 +512,7 @@ export default function TeacherWeek() {
 
             {/* Banco de preguntas: lo que la IA generó, auditable por el docente. */}
             <motion.section
+                data-guide="docente-banco"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25 }}
@@ -524,6 +530,7 @@ export default function TeacherWeek() {
 
             {/* Notas de Estudiantes */}
             <motion.section
+                data-guide="docente-notas"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { EVIDENCIA_DOCENTE_DEMO, esMaterialDocenteDemo, temasDocenteDemo } from "@/lib/guiaDocenteDemo";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Check, ChevronDown, Loader2, Tags, X } from "lucide-react";
@@ -29,7 +30,7 @@ export default function CuracionTemas({ materialId, nombreArchivo }: Props) {
     // La evidencia del tema desplegado se pide sola, no viene en el listado.
     const { data: evidencia, isLoading: cargandoEvidencia } = useQuery({
         queryKey: ["curacion-evidencia", materialId, expandido],
-        queryFn: () => curacionTemasApi.evidenciaDe(materialId, expandido!),
+        queryFn: () => (esMaterialDocenteDemo(materialId) ? Promise.resolve({ tema: expandido!, evidencia: EVIDENCIA_DOCENTE_DEMO }) : curacionTemasApi.evidenciaDe(materialId, expandido!)),
         enabled: !!expandido,
         // La evidencia de un tema no cambia mientras no se reingiera el material, así que
         // volver a abrirlo no debe costar otra búsqueda vectorial.
@@ -39,7 +40,7 @@ export default function CuracionTemas({ materialId, nombreArchivo }: Props) {
 
     const { data: temas = [], isLoading } = useQuery({
         queryKey: ["curacion-temas", materialId],
-        queryFn: () => curacionTemasApi.temasDe(materialId),
+        queryFn: () => (esMaterialDocenteDemo(materialId) ? Promise.resolve(temasDocenteDemo(materialId)) : curacionTemasApi.temasDe(materialId)),
         enabled: abierto,
     });
 
@@ -92,7 +93,7 @@ export default function CuracionTemas({ materialId, nombreArchivo }: Props) {
     const descartados = temas.filter((t) => t.aceptado === false).length;
 
     return (
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div data-guide="docente-temas" className="rounded-xl border border-border bg-card overflow-hidden">
             <button
                 onClick={() => { reproducirClic(); setAbierto((v) => !v); }}
                 className="w-full flex items-center gap-3 p-4 hover:bg-muted/40 transition-colors text-left min-h-[56px]"

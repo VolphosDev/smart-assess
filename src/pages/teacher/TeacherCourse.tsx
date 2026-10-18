@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { CURSO_DOCENTE_DEMO, SEMANAS_DOCENTE_DEMO, esCursoDocenteDemo } from "@/lib/guiaDocenteDemo";
 import { coursesApi, semanasApi } from "@/services";
 import { getCourseIcon } from "@/lib/icon-mapper";
 import { toast } from "sonner";
@@ -150,6 +151,7 @@ function TeacherWeekItem({
 
                 {/* Botones de acción del docente (a la derecha) - Se aísla el pointer para no interferir con el drag */}
                 <div
+                    data-guide="docente-semana-acciones"
                     onPointerDown={(e) => e.stopPropagation()}
                     className="flex items-center gap-2 self-end md:self-center shrink-0 w-full sm:w-auto justify-end pt-2 md:pt-0 border-t border-border/40 md:border-t-0 cursor-default"
                 >
@@ -211,6 +213,7 @@ function TeacherWeekItem({
 
                     {/* Botón Gestionar */}
                     <Link
+                        data-guide="docente-semana-gestionar"
                         to={`/docente/curso/${courseId}/semana/${w.id}`}
                         onClick={(e) => e.stopPropagation()}
                         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 h-8 rounded-lg font-semibold text-xs text-white shadow-xs transition hover:opacity-95 shrink-0 cursor-pointer"
@@ -242,14 +245,16 @@ export default function TeacherCourse() {
         queryFn: () => coursesApi.forTeacher(teacherId),
         enabled: !!teacherId,
     });
-    const course = courses.find((c: any) => String(c.id) === String(courseId));
+    // El curso de ejemplo de la guía de uso no existe en el servidor: ver lib/guiaDocenteDemo.
+    const esDemo = esCursoDocenteDemo(courseId);
+    const course = esDemo ? CURSO_DOCENTE_DEMO : courses.find((c: any) => String(c.id) === String(courseId));
     const bannerUrl = useBannerCurso(course?.id, course?.bannerVersion);
     const [subiendoPortada, setSubiendoPortada] = useState(false);
 
     // 2. Trae las semanas reales
     const { data: weeks = [], isLoading } = useQuery({
         queryKey: ['semanas', courseId],
-        queryFn: () => coursesApi.weeks(courseId),
+        queryFn: () => (esDemo ? Promise.resolve(SEMANAS_DOCENTE_DEMO) : coursesApi.weeks(courseId)),
         enabled: !!courseId,
     });
 
@@ -394,6 +399,7 @@ export default function TeacherCourse() {
 
             {/* Hero */}
             <motion.section
+                data-guide="docente-curso-hero"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="rounded-xl p-6 sm:p-8 text-primary-foreground shadow-sm relative overflow-hidden"
@@ -445,6 +451,7 @@ export default function TeacherCourse() {
 
                     {/* Botón para ir a gestionar alumnos */}
                     <Link
+                        data-guide="docente-gestionar-clase"
                         to={`/docente/curso/${courseId}/alumnos`}
                         className="inline-flex items-center gap-2 px-5 py-2.5 bg-black/20 hover:bg-black/30 border border-white/40 transition-all text-white font-semibold rounded-lg shrink-0 text-sm backdrop-blur"
                     >
@@ -465,6 +472,7 @@ export default function TeacherCourse() {
                     </div>
 
                     <Button
+                        data-guide="docente-agregar-semana"
                         onClick={() => {
                             setNuevoTema("");
                             setOpenCrearModal(true);
@@ -479,6 +487,7 @@ export default function TeacherCourse() {
 
                 {/* Lista reordenable con Framer Motion */}
                 <Reorder.Group
+                    data-guide="docente-semanas"
                     axis="y"
                     values={orderedWeeks}
                     onReorder={handleReorder}

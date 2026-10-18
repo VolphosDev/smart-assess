@@ -121,7 +121,7 @@ export default function TeacherSeguimiento() {
             </section>
 
             {/* Detailed Interactive Chart Section */}
-            <section className="bg-card border border-border rounded-xl p-6 shadow-xs text-left space-y-6">
+            <section data-guide="docente-analiticas" className="bg-card border border-border rounded-xl p-6 shadow-xs text-left space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-4">
                     <div>
                         <h2 className="font-display font-bold text-xl flex items-center gap-2">
@@ -157,7 +157,7 @@ export default function TeacherSeguimiento() {
                 </div>
 
                 {/* Filtros */}
-                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div data-guide="docente-filtros" className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
                     <div className="space-y-1.5 relative">
                         <Label className="text-xs font-bold text-muted-foreground">Filtrar Estudiantes</Label>
                         <div className="relative">
@@ -379,7 +379,7 @@ export default function TeacherSeguimiento() {
                 };
 
                 return (
-                    <section className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
+                    <section data-guide="docente-alertas" className="bg-card border border-border rounded-xl shadow-xs overflow-hidden">
                         <div className="p-5 border-b border-border flex flex-col lg:flex-row lg:items-center gap-4">
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <div className="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 grid place-items-center shrink-0">

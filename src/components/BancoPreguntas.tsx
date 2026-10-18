@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { BANCO_DOCENTE_DEMO, esSemanaDocenteDemo } from "@/lib/guiaDocenteDemo";
 import {
     Loader2, ChevronDown, ChevronRight, CheckCircle2, XCircle, AlertTriangle, Search,
 } from "lucide-react";
@@ -158,7 +159,7 @@ export default function BancoPreguntas({ semanaId }: { semanaId: string | number
 
     const { data, isLoading, isError } = useQuery({
         queryKey: ["banco-preguntas", semanaId],
-        queryFn: () => bancoPreguntasApi.porSemana(semanaId),
+        queryFn: () => (esSemanaDocenteDemo(semanaId) ? Promise.resolve(BANCO_DOCENTE_DEMO) : bancoPreguntasApi.porSemana(semanaId)),
         enabled: !!semanaId,
     });
 
