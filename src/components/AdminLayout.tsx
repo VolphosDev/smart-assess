@@ -1,10 +1,26 @@
 import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
-import { LogOut, Sparkles, ShieldCheck, Activity, CalendarDays, History } from "lucide-react";
+import { LogOut, Sparkles, ShieldCheck, Activity, CalendarDays, History, UserCog } from "lucide-react";
 import { SelectorTema } from "./SelectorTema";
 import { UserAvatar } from "@/lib/icon-mapper";
+import { usePermisos, type Permiso } from "@/lib/permisos";
+
+/**
+ * Cada pestaña aparece solo si el administrador tiene alguno de sus permisos. Un
+ * miniadministrador ve únicamente las secciones que le asignaron.
+ */
+const PESTANAS: { to: string; end?: boolean; etiqueta: string; icono: typeof ShieldCheck; permisos: Permiso[] }[] = [
+  { to: "/admin", end: true, etiqueta: "Usuarios", icono: ShieldCheck, permisos: ["CUENTAS_GESTIONAR", "CONTRASENAS_RESTABLECER", "NOTAS_VER"] },
+  { to: "/admin/trazabilidad", etiqueta: "Trazabilidad", icono: History, permisos: ["AUDITORIA_VER"] },
+  { to: "/admin/metricas-ia", etiqueta: "Métricas de IA", icono: Activity, permisos: ["METRICAS_IA_VER"] },
+  { to: "/admin/uso", etiqueta: "Uso", icono: CalendarDays, permisos: ["USO_VER"] },
+  { to: "/admin/administradores", etiqueta: "Administradores", icono: UserCog, permisos: ["ADMINISTRADORES_GESTIONAR"] },
+];
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const { usuario, algunoDe } = usePermisos();
+  const visibles = PESTANAS.filter((p) => algunoDe(...p.permisos));
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 bg-card border-b border-border/80 shadow-xs">
@@ -13,54 +29,29 @@ export default function AdminLayout() {
             <span className="grid place-items-center w-9 h-9 rounded-xl bg-primary text-primary-foreground">
               <Sparkles className="w-5 h-5" />
             </span>
-            Semantika · Admin
+            <span className="flex flex-col leading-tight">
+              Semantika · Admin
+              {usuario.colegio && (
+                <span className="text-[11px] font-semibold text-muted-foreground font-sans">{usuario.colegio}</span>
+              )}
+            </span>
           </Link>
           <nav className="hidden md:flex items-center gap-1 bg-muted rounded-lg p-1 border border-border">
-            <NavLink
-              to="/admin"
-              end
-              className={({ isActive }) =>
-                `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  isActive ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`
-              }
-            >
-              <ShieldCheck className="w-4 h-4" /> Usuarios
-            </NavLink>
-            <NavLink
-              to="/admin/trazabilidad"
-              className={({ isActive }) =>
-                `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  isActive ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`
-              }
-            >
-              <History className="w-4 h-4" /> Trazabilidad
-            </NavLink>
-            <NavLink
-              to="/admin/metricas-ia"
-              className={({ isActive }) =>
-                `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  isActive ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`
-              }
-            >
-              <Activity className="w-4 h-4" /> Métricas de IA
-            </NavLink>
-            <NavLink
-              to="/admin/uso"
-              className={({ isActive }) =>
-                `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                  isActive ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`
-              }
-            >
-              <CalendarDays className="w-4 h-4" /> Uso
-            </NavLink>
+            {visibles.map(({ to, end, etiqueta, icono: Icono }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    isActive ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`
+                }
+              >
+                <Icono className="w-4 h-4" /> {etiqueta}
+              </NavLink>
+            ))}
           </nav>
           <div className="flex items-center gap-3">
             {/* El selector de tema solo estaba en el layout del alumno, asi que el
@@ -79,7 +70,7 @@ export default function AdminLayout() {
             >
               <LogOut className="w-4 h-4" /> Salir
             </button>
-            <UserAvatar name="Administrador" className="w-9 h-9" />
+            <UserAvatar name={usuario.name || "Administrador"} className="w-9 h-9" />
           </div>
         </div>
       </header>

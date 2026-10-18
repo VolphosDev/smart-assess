@@ -6,6 +6,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RequierePermiso from "./components/RequierePermiso";
 import { ThemeProvider } from "./components/ThemeProvider";
 
 // Estas dos son la primera pantalla que ve cualquiera: se cargan de inmediato, sin trocear,
@@ -49,6 +50,8 @@ const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const Trazabilidad = lazy(() => import("./pages/admin/Trazabilidad"));
 const MetricasIA = lazy(() => import("./pages/admin/MetricasIA"));
 const UsoPlataforma = lazy(() => import("./pages/admin/UsoPlataforma"));
+const Administradores = lazy(() => import("./pages/admin/Administradores"));
+const SuperadminColegios = lazy(() => import("./pages/superadmin/SuperadminColegios"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const queryClient = new QueryClient({
@@ -119,11 +122,28 @@ const App = () => (
             {/* Rutas protegidas para ADMIN */}
             <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
               <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="trazabilidad" element={<Trazabilidad />} />
-                <Route path="metricas-ia" element={<MetricasIA />} />
-                <Route path="uso" element={<UsoPlataforma />} />
+                {/* Cada sección exige su permiso; un miniadministrador solo entra a las suyas. */}
+                <Route element={<RequierePermiso permisos={["CUENTAS_GESTIONAR", "CONTRASENAS_RESTABLECER", "NOTAS_VER"]} />}>
+                  <Route index element={<AdminDashboard />} />
+                </Route>
+                <Route element={<RequierePermiso permisos={["AUDITORIA_VER"]} />}>
+                  <Route path="trazabilidad" element={<Trazabilidad />} />
+                </Route>
+                <Route element={<RequierePermiso permisos={["METRICAS_IA_VER"]} />}>
+                  <Route path="metricas-ia" element={<MetricasIA />} />
+                </Route>
+                <Route element={<RequierePermiso permisos={["USO_VER"]} />}>
+                  <Route path="uso" element={<UsoPlataforma />} />
+                </Route>
+                <Route element={<RequierePermiso permisos={["ADMINISTRADORES_GESTIONAR"]} />}>
+                  <Route path="administradores" element={<Administradores />} />
+                </Route>
               </Route>
+            </Route>
+
+            {/* SUPERADMIN: gestión de colegios. No accede a datos académicos. */}
+            <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
+              <Route path="/superadmin" element={<SuperadminColegios />} />
             </Route>
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

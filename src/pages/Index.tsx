@@ -43,6 +43,8 @@ export default function Index() {
                     navigate("/docente");
                 } else if (userRole === "admin") {
                     navigate("/admin");
+                } else if (userRole === "superadmin") {
+                    navigate("/superadmin");
                 }
             } catch (e) {
                 console.error("Error parsing user from localStorage", e);
@@ -74,7 +76,8 @@ export default function Index() {
 
             // Redirigimos según el rol que nos devolvió tu base de datos
             const userRole = response.user.role.toLowerCase();
-            navigate(userRole === "student" ? "/app" : userRole === "teacher" ? "/docente" : "/admin");
+            navigate(userRole === "student" ? "/app" : userRole === "teacher" ? "/docente"
+                : userRole === "superadmin" ? "/superadmin" : "/admin");
 
         } catch (err: any) {
             let errorMsg = "Correo o contraseña incorrectos";

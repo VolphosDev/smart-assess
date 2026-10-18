@@ -10,6 +10,7 @@ import { usersApi } from "@/services";
 import { intentosApi } from "@/services/courses";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { usePermisos } from "@/lib/permisos";
 import { UserAvatar } from "@/lib/icon-mapper";
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 
@@ -19,6 +20,12 @@ const avatars = ["🦊", "🐼", "🦄", "🐯", "🦋", "🚀", "🐙", "🐵",
 
 export default function AdminDashboard() {
     const queryClient = useQueryClient();
+    // Cada sección se muestra (y cada consulta se hace) solo con su permiso: así un
+    // miniadministrador no ve botones que el backend le rechazaría.
+    const { tiene } = usePermisos();
+    const puedeCuentas = tiene("CUENTAS_GESTIONAR");
+    const puedeClaves = tiene("CONTRASENAS_RESTABLECER");
+    const puedeNotas = tiene("NOTAS_VER");
 
     // 1. Estados del formulario
     const [role, setRole] = useState<"student" | "teacher">("student");
@@ -41,6 +48,7 @@ export default function AdminDashboard() {
             const response = await usersApi.getAll();
             return response.data || response;
         },
+        enabled: puedeCuentas || puedeClaves,
     });
 
     // 2. Estados para filtros de analíticas
@@ -56,6 +64,7 @@ export default function AdminDashboard() {
             const response = await intentosApi.todos();
             return response.data || response;
         },
+        enabled: puedeNotas,
     });
 
     const downloadGlobalCSV = async () => {
@@ -453,14 +462,14 @@ export default function AdminDashboard() {
                             Registra nuevas cuentas y asígnales una contraseña temporal.
                         </p>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full md:w-auto">
+                    {puedeNotas && <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full md:w-auto">
                         <Button
                             onClick={downloadGlobalCSV}
                             className="bg-white/10 hover:bg-white/20 border border-white/40 text-white font-semibold rounded-lg px-5 py-2.5 flex items-center gap-2 active:scale-95 transition-all w-full sm:w-auto text-sm"
                         >
                             <Download className="w-4.5 h-4.5" /> Descargar Notas
                         </Button>
-                    </div>
+                    </div>}
                 </div>
             </motion.section>
 
@@ -472,7 +481,7 @@ export default function AdminDashboard() {
             </section>
 
             {/* Sección de Analíticas de Desempeño y Uso */}
-            <motion.section
+            {puedeNotas && <motion.section
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -673,10 +682,10 @@ export default function AdminDashboard() {
                         </div>
                     )}
                 </div>
-            </motion.section>
+            </motion.section>}
 
-            <div className="grid lg:grid-cols-[380px_1fr] gap-6">
-                <div className="bg-card border border-border rounded-xl shadow-xs h-fit text-left flex flex-col">
+            {(puedeCuentas || puedeClaves) && <div className={cn("grid gap-6", puedeCuentas && "lg:grid-cols-[380px_1fr]")}>
+                {puedeCuentas && <div className="bg-card border border-border rounded-xl shadow-xs h-fit text-left flex flex-col">
                     <div className="flex border-b border-border">
                         <button 
                             className={cn("flex-1 py-4 text-sm font-bold transition-all", activeTab === "individual" ? "text-primary border-b-2 border-primary" : "text-muted-foreground hover:bg-muted/50")}
@@ -821,7 +830,7 @@ export default function AdminDashboard() {
                             )}
                         </div>
                     )}
-                </div>
+                </div>}
 
                 {/* Listas */}
                 <div className="space-y-6">
@@ -833,26 +842,26 @@ export default function AdminDashboard() {
                                 title="Docentes" 
                                 tone="coral" 
                                 items={teachers} 
-                                onRemove={(id) => deleteMutation.mutate(id)} 
+                                onRemove={puedeCuentas ? (id) => deleteMutation.mutate(id) : undefined}
                                 isDeleting={deleteMutation.isPending}
-                                onToggleBlock={(id) => toggleBlockMutation.mutate(id)}
+                                onToggleBlock={puedeCuentas ? (id) => toggleBlockMutation.mutate(id) : undefined}
                                 isToggling={toggleBlockMutation.isPending}
-                                onChangePassword={(u) => setSelectedUserForPasswordChange(u)}
+                                onChangePassword={puedeClaves ? (u) => setSelectedUserForPasswordChange(u) : undefined}
                             />
                             <UserList 
                                 title="Alumnos" 
                                 tone="lime" 
                                 items={students} 
-                                onRemove={(id) => deleteMutation.mutate(id)} 
+                                onRemove={puedeCuentas ? (id) => deleteMutation.mutate(id) : undefined}
                                 isDeleting={deleteMutation.isPending}
-                                onToggleBlock={(id) => toggleBlockMutation.mutate(id)}
+                                onToggleBlock={puedeCuentas ? (id) => toggleBlockMutation.mutate(id) : undefined}
                                 isToggling={toggleBlockMutation.isPending}
-                                onChangePassword={(u) => setSelectedUserForPasswordChange(u)}
+                                onChangePassword={puedeClaves ? (u) => setSelectedUserForPasswordChange(u) : undefined}
                             />
                         </>
                     )}
                 </div>
-            </div>
+            </div>}
 
             {/* Dialog de Cambio de Contraseña */}
             <Dialog open={selectedUserForPasswordChange !== null} onOpenChange={(open) => { if (!open) setSelectedUserForPasswordChange(null); }}>
@@ -951,11 +960,11 @@ function UserList({
     title: string; 
     tone: "lime" | "coral"; 
     items: any[]; 
-    onRemove: (id: string) => void; 
-    isDeleting: boolean; 
-    onToggleBlock: (id: string) => void; 
-    isToggling: boolean; 
-    onChangePassword: (user: any) => void;
+    onRemove?: (id: string) => void;
+    isDeleting: boolean;
+    onToggleBlock?: (id: string) => void;
+    isToggling: boolean;
+    onChangePassword?: (user: any) => void;
 }) {
     return (
         <div className="bg-card border border-border rounded-xl shadow-xs overflow-hidden text-left">
@@ -984,7 +993,7 @@ function UserList({
                                 </div>
                             </div>
                             <div className="flex items-center gap-1.5 sm:justify-end self-end sm:self-auto w-full sm:w-auto justify-end">
-                                <button
+                                {onChangePassword && <button
                                     type="button"
                                     onClick={() => onChangePassword(u)}
                                     className="p-1.5 rounded-lg border border-border/80 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 transition-colors flex items-center gap-1 text-xs font-semibold"
@@ -992,8 +1001,8 @@ function UserList({
                                 >
                                     <Key className="w-3.5 h-3.5" />
                                     <span className="hidden sm:inline">Contraseña</span>
-                                </button>
-                                <button
+                                </button>}
+                                {onToggleBlock && <button
                                     type="button"
                                     onClick={() => onToggleBlock(u.id)}
                                     disabled={isToggling}
@@ -1006,8 +1015,8 @@ function UserList({
                                 >
                                     {u.cuentaBloqueada ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                                     <span className="hidden sm:inline">{u.cuentaBloqueada ? "Desbloquear" : "Bloquear"}</span>
-                                </button>
-                                <button
+                                </button>}
+                                {onRemove && <button
                                     type="button"
                                     onClick={() => onRemove(u.id)}
                                     disabled={isDeleting}
@@ -1015,7 +1024,7 @@ function UserList({
                                     title="Eliminar usuario"
                                 >
                                     <Trash2 className="w-4 h-4" />
-                                </button>
+                                </button>}
                             </div>
                         </li>
                     ))}

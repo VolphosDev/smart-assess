@@ -11,3 +11,5 @@ export { gradesApi } from "./grades";
 export { validacionJuezApi } from "./validacionJuez";
 export { bancoPreguntasApi } from "./bancoPreguntas";
 export { auditoriaApi } from "./auditoria";
+export { administradoresApi } from "./administradores";
+export { superadminApi } from "./superadmin";

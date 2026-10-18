@@ -82,7 +82,9 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
                 path.startsWith("/auth/setup-password") || 
                 path.startsWith("/auth/soporte");
 
-            if ((res.status === 401 || res.status === 403) && !isPublicAuthEndpoint) {
+            // Solo 401 significa que la sesión ya no vale (vencida, revocada o cuenta bloqueada).
+            // Un 403 es "no tienes permiso para esto": se informa sin cerrar la sesión.
+            if (res.status === 401 && !isPublicAuthEndpoint) {
                 localStorage.removeItem("token");
                 localStorage.removeItem("user");
                 window.location.href = "/";

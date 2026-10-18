@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
-type Role = "STUDENT" | "TEACHER" | "ADMIN";
+type Role = "STUDENT" | "TEACHER" | "ADMIN" | "SUPERADMIN";
 
 interface ProtectedRouteProps {
   allowedRoles?: Role[];
