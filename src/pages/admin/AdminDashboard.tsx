@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { UserPlus, Trash2, Users, GraduationCap, BookOpenCheck, Loader2, Download, ShieldCheck, TrendingUp, BarChart2, Calendar, Filter, ChevronDown, Check, RefreshCw, Unlock, Lock, Key, Database } from "lucide-react";
+import { UserPlus, Trash2, Users, GraduationCap, BookOpenCheck, Loader2, Download, ShieldCheck, TrendingUp, BarChart2, Calendar, Filter, ChevronDown, Check, RefreshCw, Unlock, Lock, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { usersApi } from "@/services";
 import { intentosApi } from "@/services/courses";
-import { API_CONFIG } from "@/services/http/config";
 import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { UserAvatar } from "@/lib/icon-mapper";
@@ -233,54 +232,6 @@ export default function AdminDashboard() {
         }
     });
 
-    const backupDatabase = async () => {
-        try {
-            toast.loading("Generando copia de seguridad de la base de datos...", { id: "backup-toast" });
-            const token = localStorage.getItem("token");
-            const response = await fetch(`${API_CONFIG.baseUrl}/admin/usuarios/backup`, {
-                method: "GET",
-                headers: {
-                    "Authorization": `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                let errorMsg = "Error al descargar el backup";
-                try {
-                    const parsed = JSON.parse(errorText);
-                    errorMsg = parsed.message || errorMsg;
-                } catch {
-                    errorMsg = errorText || errorMsg;
-                }
-                throw new Error(errorMsg);
-            }
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            const disposition = response.headers.get("content-disposition");
-            let filename = `colegio_db_backup_${new Date().toISOString().split('T')[0]}.sql`;
-            if (disposition && disposition.indexOf("attachment") !== -1) {
-                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-                const matches = filenameRegex.exec(disposition);
-                if (matches != null && matches[1]) { 
-                    filename = matches[1].replace(/['"]/g, '');
-                }
-            }
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-            
-            toast.success("Copia de seguridad descargada y guardada en MongoDB", { id: "backup-toast" });
-        } catch (err: any) {
-            toast.error("Error al generar backup: " + err.message, { id: "backup-toast" });
-        }
-    };
-
     const register = (e: React.FormEvent) => {
         e.preventDefault();
         createMutation.mutate({
@@ -503,12 +454,6 @@ export default function AdminDashboard() {
                         </p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full md:w-auto">
-                        <Button
-                            onClick={backupDatabase}
-                            className="bg-white/10 hover:bg-white/20 border border-white/40 text-white font-semibold rounded-lg px-5 py-2.5 flex items-center gap-2 active:scale-95 transition-all w-full sm:w-auto text-sm"
-                        >
-                            <Database className="w-4 h-4" /> Respaldar Base de Datos
-                        </Button>
                         <Button
                             onClick={downloadGlobalCSV}
                             className="bg-white/10 hover:bg-white/20 border border-white/40 text-white font-semibold rounded-lg px-5 py-2.5 flex items-center gap-2 active:scale-95 transition-all w-full sm:w-auto text-sm"

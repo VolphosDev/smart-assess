@@ -2,6 +2,7 @@ import { X, Loader2, AlertCircle, Download, FileText, Image as ImageIcon, Video 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { obtenerMaterial, htmlWordEnCache, guardarHtmlWord } from "@/lib/cacheMateriales";
+import DOMPurify from "dompurify";
 // mammoth (conversor de .docx a HTML) pesa ~500 KB sin comprimir. Se importa de forma
 // DINÁMICA, dentro del if que lo necesita: solo se descarga si el usuario abre la vista
 // previa de un archivo Word. Importado arriba de forma estática, entraba en el paquete de
@@ -69,15 +70,19 @@ export function UniversalPreviewModal({ mongoId, fileName, isOpen, onClose }: Un
                 setFileBlobUrl(url);
 
                 if (isWord) {
+                    // mammoth no sanitiza: un .docx manipulado puede traer enlaces javascript: o
+                    // atributos con código, y este HTML se inserta tal cual en la página, donde
+                    // está el token de sesión. Se limpia siempre, también lo que viene de caché.
                     const enCache = htmlWordEnCache(mongoId);
                     if (enCache) {
-                        setDocxHtml(enCache);
+                        setDocxHtml(DOMPurify.sanitize(enCache));
                     } else {
                         const arrayBuffer = await blob.arrayBuffer();
                         const mammoth = await import("mammoth");
                         const result = await mammoth.convertToHtml({ arrayBuffer });
-                        guardarHtmlWord(mongoId, result.value);
-                        if (vigente) setDocxHtml(result.value);
+                        const limpio = DOMPurify.sanitize(result.value);
+                        guardarHtmlWord(mongoId, limpio);
+                        if (vigente) setDocxHtml(limpio);
                     }
                 }
             } catch (err) {
