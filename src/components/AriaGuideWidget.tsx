@@ -509,17 +509,17 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
           onClick={() => setMenuAbierto((v) => !v)}
           aria-label="Abrir la guía de Aria"
           aria-expanded={menuAbierto}
-          className="group fixed bottom-24 right-4 md:bottom-6 md:right-6 z-40 flex items-center gap-2.5 rounded-full bg-card/95 backdrop-blur border border-violet-500/30 shadow-lg shadow-violet-500/10 pl-1.5 pr-4 py-1.5 hover:shadow-xl hover:shadow-violet-500/20 hover:-translate-y-0.5 active:translate-y-0 transition-all"
+          className="group fixed bottom-24 left-4 md:bottom-6 md:left-6 z-40 flex items-center gap-3 rounded-full bg-card backdrop-blur border-2 border-violet-500/60 ring-4 ring-violet-500/15 shadow-xl shadow-violet-500/25 pl-2 pr-5 py-2 hover:shadow-2xl hover:shadow-violet-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all"
         >
-          <span className="relative w-11 h-11 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 p-[2px] shrink-0">
+          <span className="relative w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 p-[2px] shrink-0">
             <span className="grid place-items-center w-full h-full rounded-full bg-violet-50 dark:bg-violet-950 overflow-hidden">
-              <AriaSvg estado={menuAbierto ? "feliz" : "idle"} recorte="cara" className="w-10 h-10 translate-y-0.5" />
+              <AriaSvg estado={menuAbierto ? "feliz" : "idle"} recorte="cara" className="w-12 h-12 translate-y-0.5" />
             </span>
-            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-card" />
+            <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-400 border-2 border-card" />
           </span>
           <span className="flex flex-col items-start leading-tight text-left">
-            <span className="text-[13px] font-display font-bold text-foreground">¿Te ayudo?</span>
-            <span className="text-[11px] text-muted-foreground">Guía de Aria</span>
+            <span className="text-base font-display font-bold text-foreground">¿Te ayudo?</span>
+            <span className="text-[13px] text-muted-foreground">Guía de Aria</span>
           </span>
         </button>
       )}
@@ -532,7 +532,7 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ duration: 0.18 }}
-            className="fixed bottom-40 right-4 md:bottom-24 md:right-6 z-50 w-[calc(100vw-2rem)] max-w-sm rounded-3xl border border-border bg-card shadow-2xl overflow-hidden"
+            className="fixed bottom-44 left-4 md:bottom-28 md:left-6 z-50 w-[calc(100vw-2rem)] max-w-sm rounded-3xl border border-border bg-card shadow-2xl overflow-hidden"
           >
             <div className="relative px-5 pt-5 pb-4 bg-gradient-to-br from-violet-600 via-violet-600 to-indigo-600 text-white overflow-hidden">
               <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10 blur-xl" />

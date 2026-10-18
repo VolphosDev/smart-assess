@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Activity, BookOpenCheck, Check, ChevronLeft, ChevronRight, FolderKanban, LayoutGrid, MousePointerClick,
-  ShieldCheck, X, type LucideIcon,
+  CircleHelp, ShieldCheck, X, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { clavePorUsuario } from "@/lib/almacenUsuario";
@@ -86,7 +86,7 @@ const PASOS: Paso[] = [
     texto: "Defina el nombre, el número de semanas y un color que lo identifique. El curso se crea vacío: las semanas y el material se agregan después, desde el propio curso." },
   { id: "ayuda", seccion: "cursos", objetivo: '[data-guide="docente-ayuda"]', opcional: true,
     titulo: "Volver a esta guía",
-    texto: "Este botón abre el menú de la guía. Puede repetir solo la sección que necesite." },
+    texto: "Este botón flotante abre el menú de la guía desde cualquier pantalla. Puede repetir solo la sección que necesite." },
 
   // ── Organización de un curso ────────────────────────────────────────────
   { id: "abrir-curso", seccion: "curso", ruta: "/docente", omitirEn: EN_CURSO,
@@ -157,7 +157,7 @@ const PASOS: Paso[] = [
 const PASO_FINAL: Paso = {
   id: "fin", seccion: "validacion",
   titulo: "Recorrido terminado",
-  texto: "Puede volver a cualquier sección desde el botón «Guía» de la cabecera.",
+  texto: "Puede volver a cualquier sección desde el botón flotante «Guía».",
 };
 
 function buscarVisible(selector: string): Element | null {
@@ -367,7 +367,24 @@ export default function GuiaDocente() {
     );
   }
 
-  if (!pasos || !paso) return null;
+  // Botón flotante, como el de la guía del alumno pero sobrio: abre el menú de la guía.
+  if (!pasos || !paso) {
+    return createPortal(
+      <button
+        type="button"
+        data-guide="docente-ayuda"
+        onClick={() => setMenu(true)}
+        title="Guía de uso"
+        className="fixed bottom-4 left-4 md:bottom-6 md:left-6 z-40 inline-flex items-center gap-3 h-14 pl-2.5 pr-6 rounded-full bg-card border-2 border-primary/60 ring-4 ring-primary/15 shadow-xl text-base font-bold text-foreground hover:bg-muted hover:-translate-y-0.5 transition-all"
+      >
+        <span className="w-9 h-9 grid place-items-center rounded-full bg-primary text-primary-foreground">
+          <CircleHelp className="w-5 h-5" />
+        </span>
+        Guía
+      </button>,
+      document.body,
+    );
+  }
 
   const seccion = SECCIONES.find((s) => s.id === paso.seccion)!;
   // Se numeran las secciones y no los pasos: algunos pasos se omiten según los datos (un

@@ -1,9 +1,9 @@
 import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
-import { Home, LogOut, Sparkles, ShieldCheck, Activity, CircleHelp } from "lucide-react";
+import { Home, LogOut, Sparkles, ShieldCheck, Activity } from "lucide-react";
 import { SelectorTema } from "./SelectorTema";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/lib/icon-mapper";
-import GuiaDocente, { EVENTO_ABRIR_GUIA_DOCENTE } from "./GuiaDocente";
+import GuiaDocente from "./GuiaDocente";
 
 export default function TeacherLayout() {
   const navigate = useNavigate();
@@ -13,18 +13,7 @@ export default function TeacherLayout() {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 bg-card border-b border-border/80 shadow-xs">
         <div className="container flex h-16 items-center justify-between">
-          {/* La guía va en la esquina superior izquierda, junto al nombre: es lo primero que
-              se lee de la pantalla y no compite con los botones de la derecha. */}
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              data-guide="docente-ayuda"
-              onClick={() => window.dispatchEvent(new Event(EVENTO_ABRIR_GUIA_DOCENTE))}
-              title="Guía de uso"
-              className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-border text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              <CircleHelp className="w-4 h-4" /> <span className="hidden sm:inline">Guía</span>
-            </button>
             <Link to="/docente" className="flex items-center gap-2 font-display font-bold text-xl">
               <span className="grid place-items-center w-9 h-9 rounded-lg bg-primary text-primary-foreground">
                 <Sparkles className="w-5 h-5" />
