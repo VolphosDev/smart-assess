@@ -163,7 +163,7 @@ export default function SetupPassword() {
                             required
                         />
                         <Label htmlFor="terms" className="text-xs text-muted-foreground leading-relaxed select-none cursor-pointer">
-                            Doy mi consentimiento libre, previo e informado para que la información recolectada (incluyendo registros de acceso, notas, respuestas escritas y grabaciones de voz) sea tratada de forma confidencial y utilizada con fines de estudio, análisis de rendimiento e investigación académica institucional.
+                            Doy mi consentimiento previo, informado, expreso e inequívoco para que mi colegio y Semantika traten mis datos (accesos, notas, respuestas escritas y grabaciones de voz) con el fin de brindarme la evaluación formativa, mostrar mi progreso a mí y a mis docentes, y mejorar el servicio, de forma confidencial y conforme a la Ley N.° 29733. Si tengo menos de 14 años, mi padre, madre o tutor lo autorizó ante mi colegio.
                         </Label>
                     </div>
                     <Button

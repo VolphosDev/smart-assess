@@ -31,7 +31,7 @@ export default function AppLayout() {
     if (!acceptedCheckbox) return;
     setIsSubmitting(true);
     try {
-      await authApi.registrarConsentimiento("v1.0");
+      await authApi.registrarConsentimiento("v2.0");
       const updatedUser = { ...user, consentimientoAceptado: true };
       localStorage.setItem("user", JSON.stringify(updatedUser));
       setShowConsent(false);
@@ -62,7 +62,7 @@ export default function AppLayout() {
 
               <div className="space-y-4 text-sm text-muted-foreground leading-relaxed">
                 <p>
-                  Para cumplir con la normativa de protección de datos personales y garantizar el uso ético de tu información, requerimos tu consentimiento antes de que uses la plataforma.
+                  Semantika trata tus datos por encargo de tu colegio, conforme a la Ley N.° 29733 de Protección de Datos Personales. Antes de usar la plataforma, necesitamos tu consentimiento.
                 </p>
                 <div className="bg-muted/40 border border-border rounded-xl p-4 space-y-3">
                   <p className="font-bold text-xs text-foreground/80 uppercase tracking-wider mb-2">
@@ -83,12 +83,12 @@ export default function AppLayout() {
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-0.5">✔</span>
-                      <span><strong>Uso con Fines de Estudio:</strong> Toda la información guardada se usará de forma segura y ética para fines académicos de estudio e investigación.</span>
+                      <span><strong>Para qué se usan:</strong> Para darte práctica adaptada a tu nivel, mostrar tu progreso a ti y a tus docentes, y mejorar el servicio. No se venden; el servicio de IA recibe tus respuestas sin tu nombre ni tu correo.</span>
                     </li>
                   </ul>
                 </div>
                 <p className="text-xs">
-                  Puedes retirar tu consentimiento en cualquier momento o solicitar información sobre el uso de tus datos escribiendo al soporte institucional.
+                  Puedes retirar tu consentimiento o pedir acceso, corrección o eliminación de tus datos en cualquier momento a través de tu colegio o del soporte de Semantika.
                 </p>
               </div>
 
@@ -107,7 +107,7 @@ export default function AppLayout() {
                     </div>
                   </div>
                   <span className="text-xs font-semibold text-foreground/95 leading-normal">
-                    Doy mi consentimiento libre, previo e informado para evaluar mi actividad académica y tratar mis datos según las políticas descritas.
+                    Doy mi consentimiento previo, informado, expreso e inequívoco para el tratamiento de mis datos según lo descrito. Si tengo menos de 14 años, mi padre, madre o tutor lo autorizó ante mi colegio.
                   </span>
                 </label>
 
