@@ -1,5 +1,5 @@
 import { NavLink, Link, Outlet, useNavigate } from "react-router-dom";
-import { LogOut, Sparkles, ShieldCheck, Activity, CalendarDays, History, UserCog } from "lucide-react";
+import { LogOut, Sparkles, ShieldCheck, CalendarDays, History, UserCog } from "lucide-react";
 import { SelectorTema } from "./SelectorTema";
 import { UserAvatar } from "@/lib/icon-mapper";
 import { usePermisos, type Permiso } from "@/lib/permisos";
@@ -11,7 +11,6 @@ import { usePermisos, type Permiso } from "@/lib/permisos";
 const PESTANAS: { to: string; end?: boolean; etiqueta: string; icono: typeof ShieldCheck; permisos: Permiso[] }[] = [
   { to: "/admin", end: true, etiqueta: "Usuarios", icono: ShieldCheck, permisos: ["CUENTAS_GESTIONAR", "CONTRASENAS_RESTABLECER", "NOTAS_VER"] },
   { to: "/admin/trazabilidad", etiqueta: "Trazabilidad", icono: History, permisos: ["AUDITORIA_VER"] },
-  { to: "/admin/metricas-ia", etiqueta: "Métricas de IA", icono: Activity, permisos: ["METRICAS_IA_VER"] },
   { to: "/admin/uso", etiqueta: "Uso", icono: CalendarDays, permisos: ["USO_VER"] },
   { to: "/admin/administradores", etiqueta: "Administradores", icono: UserCog, permisos: ["ADMINISTRADORES_GESTIONAR"] },
 ];
