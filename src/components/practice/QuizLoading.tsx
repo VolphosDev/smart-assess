@@ -1,6 +1,15 @@
 import { motion } from "framer-motion";
+import type { AvanceGeneracion } from "@/services/courses";
 
-export function QuizLoading() {
+/** Sin avance (conexión antigua o reintento), la barra queda en espera indefinida. */
+export function QuizLoading({ avance }: { avance?: AvanceGeneracion | null }) {
+    const revisando = avance?.fase === "revisando";
+    const porcentaje = avance ? (revisando ? 94 : 8 + (avance.listas / Math.max(1, avance.total)) * 80) : null;
+    const estado = !avance
+        ? "Leyendo el material de la semana"
+        : revisando
+            ? "Revisando la calidad de las preguntas"
+            : `Redactando pregunta ${Math.min(avance.listas + 1, avance.total)} de ${avance.total}`;
     return (
         <div className="flex flex-col items-center justify-center py-16 max-w-md mx-auto text-center space-y-8">
             <motion.div
@@ -37,19 +46,15 @@ export function QuizLoading() {
             <div className="w-full bg-secondary/50 rounded-full h-2.5 overflow-hidden relative border border-border">
                 <motion.div
                     className="bg-primary h-full rounded-full"
-                    animate={{
-                        width: ["5%", "95%"],
-                    }}
-                    transition={{
-                        duration: 15,
-                        ease: "easeInOut",
-                        repeat: Infinity,
-                    }}
+                    animate={porcentaje === null ? { width: ["5%", "35%"] } : { width: `${porcentaje}%` }}
+                    transition={porcentaje === null
+                        ? { duration: 3, ease: "easeInOut", repeat: Infinity, repeatType: "reverse" }
+                        : { duration: 0.5, ease: "easeOut" }}
                 />
             </div>
 
             <div className="text-xs font-bold text-primary animate-pulse tracking-wider uppercase">
-                Generando preguntas... ¡Prepárate!
+                {estado}
             </div>
         </div>
     );

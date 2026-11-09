@@ -7,6 +7,14 @@ import { gamificacionApi, type ArticuloTienda } from "@/services/gamificacion";
 import { cn } from "@/lib/utils";
 import { VarianteAriaContext, guardarVariante, type VarianteAria } from "@/lib/ariaAccesorios";
 
+/** Los precios y reglas se aplican en el servidor (PoderesService); aquí solo se explican. */
+const COMODINES = [
+    { icono: "⏳", nombre: "Reloj de arena", precio: "10", detalle: "Suma 15 segundos a la pregunta. Sirve en todos los tipos y no baja tu puntaje." },
+    { icono: "❄️", nombre: "Congelar", precio: "15", detalle: "Detiene el reloj 10 segundos. Sirve en todos los tipos y no baja tu puntaje." },
+    { icono: "✂️", nombre: "50/50", precio: "20", detalle: "Descarta alternativas incorrectas. Solo en opción múltiple. La pregunta vale la mitad." },
+    { icono: "💡", nombre: "Pista", precio: "10, 20 o 40", detalle: "Aria te orienta sin darte la respuesta y cada pista cuesta más. La pregunta vale la mitad." },
+];
+
 /** La rareza es vocabulario de videojuego: dice de un vistazo cuánto cuesta conseguir algo. */
 const RAREZA: Record<string, { nombre: string; color: string }> = {
     bufanda: { nombre: "Común", color: "var(--j-comun)" },
@@ -251,6 +259,25 @@ export default function Tienda() {
                     </p>
                 </section>
             </div>
+
+            <section className="pieza rounded-3xl bg-card p-5">
+                <h2 className="font-juego text-2xl font-extrabold leading-tight mb-1">Comodines de Aria</h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                    No se compran por adelantado: los pagas durante una práctica con contrarreloj activado.
+                    Puedes usar hasta 3 por práctica.
+                </p>
+                <ul className="grid sm:grid-cols-2 gap-3">
+                    {COMODINES.map((c) => (
+                        <li key={c.nombre} className="rounded-2xl bg-muted/70 p-3">
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="font-juego font-extrabold text-base">{c.icono} {c.nombre}</span>
+                                <span className="font-juego font-extrabold text-sm shrink-0">{c.precio} 🪙</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">{c.detalle}</p>
+                        </li>
+                    ))}
+                </ul>
+            </section>
 
             {billetera.movimientos.length > 0 && (
                 <section className="pieza rounded-3xl bg-card p-5">

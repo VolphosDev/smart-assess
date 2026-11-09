@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { gamificacionApi, type Poder } from "@/services/gamificacion";
+import { rondasApi } from "@/services/courses";
 import type { Question } from "@/types/Evaluation";
 import { ESCENA_MS, IMPACTO_MS } from "@/components/gamificacion/AriaComodin";
 
@@ -27,6 +28,8 @@ const SEGUNDOS_CONGELADO = 10;
 
 interface Opciones {
     activo: boolean;
+    /** Ronda en el servidor. Sin ella (vista previa del docente) no hay comodines. */
+    rondaId?: string;
     preguntas: Question[];
     slide: number;
     resultados: any[];
@@ -40,9 +43,8 @@ interface Opciones {
  * El reloj se detiene mientras la IA califica y cuando la pregunta ya tiene resultado.
  * Si llega a cero NO es error: solo se pierde el bono de rapidez, y se puede seguir respondiendo.
  */
-export function useContrarreloj({ activo, preguntas, slide, resultados, evaluando, tipo, nivelBloom }: Opciones) {
+export function useContrarreloj({ activo, rondaId, preguntas, slide, resultados, evaluando, tipo, nivelBloom }: Opciones) {
     const qc = useQueryClient();
-    const partidaId = useMemo(() => (crypto.randomUUID?.() ?? `p-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`), []);
     const [restante, setRestante] = useState<Record<number, number>>({});
     const [total, setTotal] = useState<Record<number, number>>({});
     const [congeladoHasta, setCongeladoHasta] = useState(0);
@@ -106,21 +108,19 @@ export function useContrarreloj({ activo, preguntas, slide, resultados, evaluand
     }, [activo, resultados, restante]);
 
     useEffect(() => {
-        if (!activo) return;
-        gamificacionApi.precioPoder(partidaId, "PISTA").then((r) => setPrecioPista(r.precio)).catch(() => {});
-    }, [activo, partidaId]);
+        if (!activo || !rondaId) return;
+        gamificacionApi.precioPoder(rondaId, "PISTA").then((r) => setPrecioPista(r.precio)).catch(() => {});
+    }, [activo, rondaId]);
 
     const usarPoder = useCallback(async (poder: Poder) => {
         if (!pregunta || usando) return;
+        if (!rondaId) {
+            toast.info("Los comodines se usan en la práctica de un alumno.");
+            return;
+        }
         setUsando(poder);
         try {
-            const opciones = Array.isArray(pregunta.opciones_o_respuesta) ? pregunta.opciones_o_respuesta : null;
-            const r = await gamificacionApi.usarPoder(partidaId, poder, poder === "PISTA" ? {
-                enunciado: pregunta.enunciado,
-                opciones,
-                respuestaCorrecta: pregunta.respuesta_correcta ?? null,
-                concepto: pregunta.concepto ?? null,
-            } : undefined);
+            const r = await rondasApi.comodin(rondaId, slide, poder);
             setPoderesRestantes(r.restantes);
             qc.invalidateQueries({ queryKey: ["gamificacion", "resumen"] });
             // Los tres comodines tienen escena de Aria: el efecto se aplica cuando ella "pega".
@@ -134,18 +134,15 @@ export function useContrarreloj({ activo, preguntas, slide, resultados, evaluand
                 setCongeladoHasta(hasta);
                 setTimeout(() => setEscarchaHasta(hasta), IMPACTO_MS + 70);
             }
-            if (poder === "MITAD" && opciones) {
-                const correcta = (pregunta.respuesta_correcta ?? "").trim();
-                const incorrectas = opciones.filter((o) => o.trim() !== correcta).sort(() => Math.random() - 0.5);
-                // Siempre quedan al menos dos alternativas: con 4 se quitan 2, con 3 se quita 1.
-                const quitar = incorrectas.slice(0, Math.max(0, Math.min(2, opciones.length - 2)));
+            if (poder === "MITAD") {
+                const quitar = r.ocultas ?? [];
                 setTimeout(() => setOcultas((o) => ({ ...o, [slide]: quitar })), IMPACTO_MS);
                 setAyudas((a) => new Set(a).add(slide));
             }
             if (poder === "PISTA") {
                 setPista(r.pista ?? "Relee la pregunta despacio y descarta lo que no encaja.");
                 setAyudas((a) => new Set(a).add(slide));
-                gamificacionApi.precioPoder(partidaId, "PISTA").then((p) => setPrecioPista(p.precio)).catch(() => {});
+                gamificacionApi.precioPoder(rondaId, "PISTA").then((p) => setPrecioPista(p.precio)).catch(() => {});
             }
         } catch (e) {
             const texto = e instanceof Error ? e.message : "";
@@ -155,35 +152,16 @@ export function useContrarreloj({ activo, preguntas, slide, resultados, evaluand
         } finally {
             setUsando(null);
         }
-    }, [pregunta, usando, partidaId, slide, qc]);
+    }, [pregunta, usando, rondaId, slide, qc]);
 
-    /**
-     * Una pregunta resuelta con pista o 50/50 vale la mitad en la nota: la ayuda se nota en el
-     * puntaje, así la nota sigue diciendo cuánto sabe el alumno por sí mismo.
-     */
-    const ajustar = useCallback((rs: any[]) => rs.map((r, i) => {
-        if (!r || !ayudas.has(i)) return r;
-        return {
-            ...r,
-            evaluacion: {
-                ...r.evaluacion,
-                puntaje: Number(((r.evaluacion?.puntaje ?? 0) / 2).toFixed(2)),
-                explicacion: `${r.evaluacion?.explicacion ?? ""} (Usaste una ayuda en esta pregunta: vale la mitad.)`,
-            },
-        };
-    }), [ayudas]);
-
-    const cobrarBono = useCallback(async () => {
-        try {
-            const { bono } = await gamificacionApi.bonoPartida(partidaId, rapidas, comboMaximo);
-            setBono(bono);
-            if (bono > 0) toast.success(`Bono de contrarreloj: +${bono} monedas 🪙`);
-            qc.invalidateQueries({ queryKey: ["gamificacion"] });
-        } catch { setBono(0); /* sin bono: no es un error para el alumno */ }
-    }, [partidaId, rapidas, comboMaximo, qc]);
+    /** El bono lo calcula el servidor con los tiempos que él mismo midió. */
+    const fijarBono = useCallback((valor: number | null) => {
+        setBono(valor ?? 0);
+        if (valor) toast.success(`Bono de contrarreloj: +${valor} monedas 🪙`);
+        qc.invalidateQueries({ queryKey: ["gamificacion"] });
+    }, [qc]);
 
     return {
-        partidaId,
         restante: restante[slide] ?? 0,
         total: total[slide] ?? 0,
         congelado: Date.now() < congeladoHasta,
@@ -192,7 +170,7 @@ export function useContrarreloj({ activo, preguntas, slide, resultados, evaluand
         usoAyuda: ayudas.has(slide),
         pista, cerrarPista: () => setPista(null),
         usando, usarPoder, poderesRestantes, precioPista,
-        ajustar, cobrarBono, bono,
+        fijarBono, bono,
         comodinEnEscena, terminarComodin: () => setComodinEnEscena(null),
         escarchaHasta,
     };

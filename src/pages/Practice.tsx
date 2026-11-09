@@ -96,7 +96,8 @@ export default function Practice() {
         handleVolver,
         handleAnswerChange,
         comprobarRespuestaActual,
-        finalizarExamen
+        finalizarExamen,
+        avance
     } = usePractice();
 
     const modeInfo = modeLabels[mode] ?? modeLabels["OPCION_MULTIPLE"];
@@ -108,6 +109,7 @@ export default function Practice() {
     const yaEmpezo = resultados.some(Boolean);
     const juego = useContrarreloj({
         activo: contrarreloj && !finalizado,
+        rondaId: evaluacion?.ronda_id,
         preguntas,
         slide: currentSlide,
         resultados,
@@ -115,15 +117,15 @@ export default function Practice() {
         tipo: mode,
         nivelBloom: evaluacion?.nivel_bloom,
     });
-    // Con ayuda (pista o 50/50) la pregunta vale la mitad: se ve así y se guarda así.
-    const resultadosVista = contrarreloj ? juego.ajustar(resultados) : resultados;
+    // Con ayuda (pista o 50/50) la pregunta vale la mitad: el servidor ya devuelve el puntaje ajustado.
+    const resultadosVista = resultados;
     const notaTotal = resultadosVista.reduce((t: number, r: any) => t + (r?.evaluacion?.puntaje || 0), 0).toFixed(2);
     const opcionesActuales = preguntas[currentSlide] && Array.isArray(preguntas[currentSlide].opciones_o_respuesta)
         ? (preguntas[currentSlide].opciones_o_respuesta as string[]) : [];
 
     const terminar = async () => {
-        await finalizarExamen(resultadosVista);
-        if (contrarreloj) juego.cobrarBono();
+        const bono = await finalizarExamen(contrarreloj);
+        if (contrarreloj && bono !== null) juego.fijarBono(bono);
     };
 
     if (!mongoId) {
@@ -142,7 +144,7 @@ export default function Practice() {
     }
 
     if (isLoading) {
-        return <QuizLoading />;
+        return <QuizLoading avance={avance} />;
     }
 
     if (isError) {

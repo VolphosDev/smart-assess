@@ -18,6 +18,8 @@ export interface Question {
 }
 
 export interface EvaluationResponse {
+    /** Id de la ronda en el servidor; solo existe para alumnos. */
+    ronda_id?: string;
     preguntas: Question[];
     tipo_pregunta: string;
     nivel_bloom: string;

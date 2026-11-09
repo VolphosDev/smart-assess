@@ -3,6 +3,7 @@ import { API_CONFIG, ApiError } from "./config";
 export type ManejadoresSse = {
     onChunk?: (data: string) => void;
     onResult?: (data: string) => void;
+    onAvance?: (data: string) => void;
     onDone?: () => void;
     onError: (err: unknown) => void;
 };
@@ -69,6 +70,7 @@ export function abrirStream(ruta: string, manejadores: ManejadoresSse): () => vo
                     if (!parseado) continue;
                     if (parseado.evento === "chunk") manejadores.onChunk?.(parseado.datos);
                     else if (parseado.evento === "result") manejadores.onResult?.(parseado.datos);
+                    else if (parseado.evento === "avance") manejadores.onAvance?.(parseado.datos);
                     else if (parseado.evento === "error") manejadores.onError(new Error(parseado.datos));
                     else if (parseado.evento === "done") manejadores.onDone?.();
                 }

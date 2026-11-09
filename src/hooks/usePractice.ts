@@ -5,6 +5,8 @@ import { EvaluationResponse, Question } from "@/types/Evaluation";
 import {
     evaluacionApi,
     generarPreguntasStream,
+    rondasApi,
+    type AvanceGeneracion,
     intentosApi,
     agentJudgeApi,
     archivosApi,
@@ -73,6 +75,18 @@ export function usePractice() {
     if (localStorage.getItem("semantika.testing_ignorar_continuar") === "true") {
         localStorage.removeItem(storageKey);
     }
+
+    // Un intento guardado antes de la custodia en el servidor no se puede continuar: ya no tiene ronda.
+    if (isStudent) {
+        try {
+            const guardado = JSON.parse(localStorage.getItem(storageKey) || "null");
+            if (guardado && !guardado.evaluacion?.ronda_id) localStorage.removeItem(storageKey);
+        } catch {
+            localStorage.removeItem(storageKey);
+        }
+    }
+
+    const [avance, setAvance] = useState<AvanceGeneracion | null>(null);
 
     const [respuestas, setRespuestas] = useState<Record<number, string>>(() => {
         try {
@@ -342,7 +356,8 @@ export function usePractice() {
                         setStreamCompleted(true);
                         setPracticeStreamCompleted(true);
                     }
-                }
+                },
+                (a) => { if (isMounted.current) setAvance(a); }
             );
         } catch (e) {
             console.error("Failed to construct stream connections:", e);
@@ -443,13 +458,30 @@ export function usePractice() {
         const respuestaEsperada = respuestaEsperadaDe(p);
 
         try {
-            const res = await agentJudgeApi.evaluarRespuesta({
-                pregunta: p.enunciado,
-                respuestaEsperada,
-                respuestaEstudiante,
-                totalPreguntas: preguntas.length,
-                tipoPregunta: mode,
-            });
+            // Los alumnos responden contra su ronda; el docente que previsualiza usa el juez directo.
+            const rondaId = evaluacion?.ronda_id;
+            const res: any = rondaId
+                ? await rondasApi.responder(rondaId, currentSlide, respuestaEstudiante)
+                : await agentJudgeApi.evaluarRespuesta({
+                    pregunta: p.enunciado,
+                    respuestaEsperada,
+                    respuestaEstudiante,
+                    totalPreguntas: preguntas.length,
+                    tipoPregunta: mode,
+                });
+
+            // Si la IA no pudo calificar no se registra nada: el alumno puede volver a enviar.
+            if (res?.evaluacion?.fallo) {
+                toast.error(res.evaluacion.explicacion || "No se pudo calificar. Inténtalo de nuevo.");
+                return;
+            }
+
+            if (res?.revelado) {
+                const indice = currentSlide;
+                setEvaluacion((prev) => prev
+                    ? { ...prev, preguntas: prev.preguntas.map((q, i) => (i === indice ? { ...q, ...res.revelado } : q)) }
+                    : prev);
+            }
 
             setResultados((prev) => {
                 const copy = [...prev];
@@ -473,54 +505,30 @@ export function usePractice() {
         }
     };
 
-    const finalizarExamen = async (resultadosFinales: any[]) => {
+    /** La nota y el bono los calcula el servidor. Devuelve el bono, o null si no se guardó. */
+    const finalizarExamen = async (contrarreloj = false): Promise<number | null> => {
+        const rondaId = evaluacion?.ronda_id;
+        if (!rondaId) {
+            // Vista previa del docente: no genera intento.
+            setFinalizado(true);
+            return null;
+        }
         setEvaluando(true);
         try {
-            const notaCalculada = resultadosFinales.reduce((total, r) => total + (r?.evaluacion?.puntaje || 0), 0);
+            const { bono } = await rondasApi.finalizar(rondaId, contrarreloj);
             const user = JSON.parse(localStorage.getItem("user") || "{}");
-            const respuestasDetalle = resultadosFinales.map((res, i) => ({
-                preguntaTexto: preguntas[i].enunciado,
-                tipoPregunta: mode,
-                respuestaEstudiante: respuestas[i] || "No respondió",
-                esCorrecta: res.evaluacion.esCorrecta,
-                // Alimentan el mapa de conocimiento por concepto (backend:
-                // ConocimientoBktService). nivelBloom es el mismo para todo el lote;
-                // concepto es específico por pregunta.
-                nivelBloom: evaluacion?.nivel_bloom || null,
-                conceptos: preguntas[i].concepto || null,
-                // Sin estos dos, el historial del alumno podía decirle que falló pero no
-                // qué era lo correcto ni por qué: la parte que sirve para estudiar se
-                // perdía al cerrar la pantalla del examen.
-                respuestaCorrecta: respuestaEsperadaDe(preguntas[i]) || null,
-                retroalimentacion: res?.evaluacion?.explicacion || null
-            }));
-
-            await intentosApi.guardar({
-                usuarioId: Number(user.id),
-                semanaId: semanaId,
-                notaFinal: Number(notaCalculada.toFixed(2)),
-                tecnica: mode,
-                respuestas: respuestasDetalle
-            });
-
             localStorage.setItem(`semantika.completed_mode.${user.id}.${semanaId}.${mode}`, "true");
             refrescarProgreso(queryClient);
             reproducirLogro();
             toast.success("¡Examen calificado y guardado en tu historial!");
             setFinalizado(true);
-
-            // Eliminar el intento inacabado de localStorage al finalizar con éxito
-            const key = `semantika.unfinished_attempt.${user.id}.${courseId}.${semanaId}.${mode}`;
-            localStorage.removeItem(key);
-        } catch (e) {
+            localStorage.removeItem(`semantika.unfinished_attempt.${user.id}.${courseId}.${semanaId}.${mode}`);
+            return bono;
+        } catch (e: any) {
             console.error("Error while saving test attempt:", e);
-            toast.error("Hubo un error al guardar el intento en el historial.");
-            setFinalizado(true);
-
-            // Eliminar el intento inacabado de localStorage también en caso de error en el guardado
-            const user = JSON.parse(localStorage.getItem("user") || "{}");
-            const key = `semantika.unfinished_attempt.${user.id}.${courseId}.${semanaId}.${mode}`;
-            localStorage.removeItem(key);
+            // Se conserva la ronda para que el alumno pueda reintentar sin perder lo respondido.
+            toast.error(e?.message || "No se pudo guardar el intento. Inténtalo de nuevo.");
+            return null;
         } finally {
             setEvaluando(false);
         }
@@ -555,6 +563,7 @@ export function usePractice() {
         handleVolver,
         handleAnswerChange,
         comprobarRespuestaActual,
-        finalizarExamen
+        finalizarExamen,
+        avance
     };
 }

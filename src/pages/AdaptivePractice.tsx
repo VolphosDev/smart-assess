@@ -169,6 +169,7 @@ export default function AdaptivePractice() {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [iaDormida, setIaDormida] = useState(false);
     const [startTime] = useState<number>(Date.now());
+    const [rondaId, setRondaId] = useState("");
     const [isAcra, setIsAcra] = useState<boolean>(false);
     // La prueba de ubicacion no genera nota: su resultado es un NIVEL, no una calificacion.
     const [esUbicacion, setEsUbicacion] = useState<boolean>(false);
@@ -216,6 +217,7 @@ export default function AdaptivePractice() {
             try {
                 const response = await adaptiveApi.getEvaluacion(user.id, semanaId);
                 setEvaluationData(response);
+                setRondaId(response.ronda_id || "");
 
                 if (response.tipo_evaluacion === "DIAGNOSTICA" && response.instrumento === "ACRA") {
                     setIsAcra(true);
@@ -538,13 +540,8 @@ export default function AdaptivePractice() {
             }))
             : questions.map((q, idx) => {
                 const answer = formativeAnswers[idx] || "";
-                let isCorrect = false;
-                if (q.tipoPregunta === "OPCION_MULTIPLE") {
-                    const opt = q.opciones.find((o: any) => o.texto === answer);
-                    isCorrect = opt ? opt.esCorrecta : false;
-                } else {
-                    isCorrect = true; // Open questions evaluated by the LLM
-                }
+                // La corrección la hace el servidor: el navegador ya no conoce la respuesta.
+                const isCorrect = false;
                 return {
                     preguntaTexto: q.enunciado,
                     tipoPregunta: q.tipoPregunta,
@@ -559,11 +556,7 @@ export default function AdaptivePractice() {
                     // como respaldo para las evaluaciones de un único estrato.
                     nivelBloom: q.nivelBloom || q.nivel_bloom || evaluationData?.nivel_bloom || null,
                     conceptos: q.concepto || null,
-                    // Criterio con el que el SERVIDOR califica las preguntas abiertas. La nota ya no
-                    // se acepta del cliente: antes toda respuesta abierta contaba como correcta.
-                    respuestaCorrecta: q.tipoPregunta === "ABIERTA"
-                        ? [q.justificacion, q.rubrica ? `Rúbrica: ${q.rubrica}` : ""].filter(Boolean).join(" ") || null
-                        : (q.respuestaCorrectaText || null)
+                    respuestaCorrecta: null
                 };
             });
 
@@ -572,6 +565,7 @@ export default function AdaptivePractice() {
             : respuestasDetalle.reduce((sum, r) => sum + (r.esCorrecta ? 4.0 : 0.0), 0.0); // 5 questions * 4 pts = 20 pts max
 
         const payload = {
+            rondaId,
             usuarioId: Number(user.id),
             semanaId: semanaId,
             notaFinal: Number(notaCalculada.toFixed(2)),

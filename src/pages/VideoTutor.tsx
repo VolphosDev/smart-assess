@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Play, Pause, RotateCcw, ArrowRight, Loader2, Award, Star, Check, X, AlertCircle, Volume2, VolumeX, CheckCircle2, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { evaluacionApi, agentJudgeApi, intentosApi, archivosApi } from "@/services/courses";
+import { evaluacionApi, agentJudgeApi, intentosApi, archivosApi , rondasApi } from "@/services/courses";
 import { AriaDescansando } from "@/components/AriaDescansando";
 import { esIaNoDisponible } from "@/services/http/config";
 import { abrirStream } from "@/services/http/sse";
@@ -33,6 +33,7 @@ interface Pregunta {
 }
 
 interface EvaluacionResponse {
+    ronda_id?: string;
     leccion?: Leccion;
     preguntas: Pregunta[];
     tipo_pregunta: string;
@@ -763,13 +764,27 @@ export default function VideoTutor() {
         const p = preguntas[currentQuestionIdx];
 
         try {
-            const res = await agentJudgeApi.evaluarRespuesta({
-                pregunta: p.enunciado,
-                respuestaEsperada: p.respuesta_correcta || p.justificacion_pregunta,
-                respuestaEstudiante: selected,
-                totalPreguntas: preguntas.length,
-                tipoPregunta: "VIDEO_EXPLICATIVO",
-            });
+            const rondaId = evaluacion?.ronda_id;
+            const res: any = rondaId
+                ? await rondasApi.responder(rondaId, currentQuestionIdx, selected)
+                : await agentJudgeApi.evaluarRespuesta({
+                    pregunta: p.enunciado,
+                    respuestaEsperada: p.respuesta_correcta || p.justificacion_pregunta,
+                    respuestaEstudiante: selected,
+                    totalPreguntas: preguntas.length,
+                    tipoPregunta: "VIDEO_EXPLICATIVO",
+                });
+
+            if (res?.evaluacion?.fallo) {
+                toast.error(res.evaluacion.explicacion || "No se pudo calificar. Inténtalo de nuevo.");
+                return;
+            }
+            if (res?.revelado) {
+                const indice = currentQuestionIdx;
+                setEvaluacion((prev) => prev
+                    ? { ...prev, preguntas: prev.preguntas.map((q, i) => (i === indice ? { ...q, ...res.revelado } : q)) }
+                    : prev);
+            }
 
             setPreguntaEvaluada(res);
             setResultadosQuiz(prev => [...prev, res]);
@@ -795,25 +810,7 @@ export default function VideoTutor() {
         setCargando(true);
         try {
             const user = JSON.parse(localStorage.getItem("user") || "{}");
-            const finalScore = resultadosQuiz.reduce((total, r) => total + (r?.evaluacion?.puntaje || 0), 0);
-
-            const respuestasDetalle = preguntas.map((p, idx) => {
-                const resEval = resultadosQuiz[idx];
-                return {
-                    preguntaTexto: p.enunciado,
-                    tipoPregunta: "VIDEO_EXPLICATIVO",
-                    respuestaEstudiante: respuestas[idx] || "No respondió",
-                    esCorrecta: resEval?.evaluacion?.esCorrecta || false
-                };
-            });
-
-            await intentosApi.guardar({
-                usuarioId: Number(user.id),
-                semanaId: semanaId,
-                notaFinal: Number(finalScore.toFixed(2)),
-                tecnica: "video",
-                respuestas: respuestasDetalle
-            });
+            if (evaluacion?.ronda_id) await rondasApi.finalizar(evaluacion.ronda_id);
 
             localStorage.setItem(`semantika.completed_mode.${user.id}.${semanaId}.video`, "true");
             refrescarProgreso(queryClient);

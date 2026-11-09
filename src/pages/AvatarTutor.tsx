@@ -2,7 +2,7 @@ import {useState, useEffect, useRef} from "react";
 import {useParams, useSearchParams, Link} from "react-router-dom";
 import {ArrowLeft, Mic, MicOff, Volume2} from "lucide-react";
 import {motion, AnimatePresence} from "framer-motion";
-import {intentosApi} from "@/services/courses";
+import {rondasApi} from "@/services/courses";
 import { AriaDescansando } from "@/components/AriaDescansando";
 import { esIaNoDisponible } from "@/services/http/config";
 import {toast} from "sonner";
@@ -20,6 +20,8 @@ interface TurnData {
     pregunta: string;
     conceptoClave: string;
     pistaSiNoResponde: string;
+    /** Posición del turno en la sesión del servidor. */
+    turnoIndice?: number;
     respuestaEstudiante?: string;
     feedback?: string;
     puntuacion?: number;
@@ -341,6 +343,10 @@ export default function AvatarTutor() {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const isStudent = user?.role?.toLowerCase() === "student";
     const storageKey = `semantika.unfinished_attempt.${user.id}.${courseId}.${semanaId}.avatar`;
+    const claveRonda = `${storageKey}.ronda`;
+    // Una sesión guardada antes de la custodia en el servidor no se puede continuar.
+    if (!localStorage.getItem(claveRonda)) localStorage.removeItem(storageKey);
+    const rondaIdRef = useRef<string | null>(localStorage.getItem(claveRonda));
 
     // Si está activada la opción de pruebas para ignorar la continuación, limpiamos el intento guardado
     if (localStorage.getItem("semantika.testing_ignorar_continuar") === "true") {
@@ -554,7 +560,9 @@ export default function AvatarTutor() {
                     tema,
                     mongoId,
                     turno: turnoNum,
-                    preguntasEvitar: historial.map(h => h.pregunta)
+                    preguntasEvitar: historial.map(h => h.pregunta),
+                    rondaId: rondaIdRef.current,
+                    totalTurnos: totalPreguntas
                 }),
             });
             if (!res.ok) {
@@ -574,11 +582,16 @@ export default function AvatarTutor() {
             }
 
             const data = await res.json();
+            if (data.ronda_id) {
+                rondaIdRef.current = data.ronda_id;
+                localStorage.setItem(claveRonda, data.ronda_id);
+            }
             const nuevo: TurnData = {
                 turno: turnoNum,
                 pregunta: data.pregunta ?? "¿Qué puedes decirme sobre este tema?",
                 conceptoClave: data.concepto_clave ?? "",
                 pistaSiNoResponde: data.pista_si_no_responde ?? "",
+                turnoIndice: data.turno_indice,
             };
             setTurnoActual(nuevo);
             setEstado("hablando");
@@ -623,6 +636,8 @@ export default function AvatarTutor() {
                     escalon,
                     // Esta pista se generaba desde el principio y nunca salía de aquí.
                     pistaDisponible: turnoActual.pistaSiNoResponde || null,
+                    rondaId: rondaIdRef.current,
+                    turnoIndice: turnoActual.turnoIndice,
                 }),
             });
 
@@ -784,6 +799,8 @@ export default function AvatarTutor() {
             formData.append("tema", tema);
             formData.append("nivelDificultad", turno <= 2 ? "básico" : turno <= 4 ? "intermedio" : "avanzado");
             formData.append("escalon", String(escalon));
+            if (rondaIdRef.current) formData.append("rondaId", rondaIdRef.current);
+            if (turnoActual.turnoIndice !== undefined) formData.append("turnoIndice", String(turnoActual.turnoIndice));
             if (turnoActual.pistaSiNoResponde) {
                 formData.append("pistaDisponible", turnoActual.pistaSiNoResponde);
             }
@@ -999,32 +1016,14 @@ export default function AvatarTutor() {
             const user = JSON.parse(localStorage.getItem("user") || "{}");
             if (!user.id) throw new Error("Usuario no encontrado en la sesión");
 
-            // Convertir puntajes a escala de 20 puntos:
-            const maxWeight = 20 / totalPreguntas;
-            const notaCalculada = historial.reduce((acc, h) => {
-                const pts = h.puntuacion || 1;
-                return acc + (pts / 4) * maxWeight;
-            }, 0);
-
-            const respuestasDetalle = historial.map(h => ({
-                preguntaTexto: h.pregunta,
-                tipoPregunta: "ABIERTA",
-                respuestaEstudiante: h.respuestaEstudiante || "No respondió",
-                esCorrecta: (h.puntuacion !== undefined && h.puntuacion >= 2)
-            }));
-
-            await intentosApi.guardar({
-                usuarioId: Number(user.id),
-                semanaId: semanaId,
-                notaFinal: Number(notaCalculada.toFixed(2)),
-                tecnica: "avatar",
-                respuestas: respuestasDetalle
-            });
+            // La nota sale de los veredictos que el servidor registró en cada turno.
+            if (rondaIdRef.current) await rondasApi.finalizar(rondaIdRef.current);
 
             toast.success("¡Sesión guardada en tu historial!");
             localStorage.setItem(`semantika.completed_mode.${user.id}.${semanaId}.avatar`, "true");
             refrescarProgreso(queryClient);
             localStorage.removeItem(storageKey);
+            localStorage.removeItem(claveRonda);
             setSesionFinalizada(true);
         } catch (err: any) {
             console.error("Error al guardar el intento:", err);

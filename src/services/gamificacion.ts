@@ -119,13 +119,6 @@ export interface JefeSemana {
 /** Poderes del contrarreloj (ver PoderesService en el backend, que fija precios y límites). */
 export type Poder = "TIEMPO" | "CONGELAR" | "MITAD" | "PISTA";
 
-export interface PreguntaParaPista {
-    enunciado: string;
-    opciones: string[] | null;
-    respuestaCorrecta: string | null;
-    concepto: string | null;
-}
-
 export const gamificacionApi = {
     resumen: () => apiClient.get<ResumenJugador>("/gamificacion/resumen"),
     liga: (cursoId?: number) =>
@@ -144,8 +137,4 @@ export const gamificacionApi = {
     equipar: (equipado: string[]) => apiClient.put<{ equipado: string[] }>("/gamificacion/aria", { equipado }),
     precioPoder: (partidaId: string, poder: Poder) =>
         apiClient.get<{ precio: number }>(`/gamificacion/poderes/precio?partidaId=${encodeURIComponent(partidaId)}&poder=${poder}`),
-    usarPoder: (partidaId: string, poder: Poder, pregunta?: PreguntaParaPista) =>
-        apiClient.post<{ saldo: number; precio: number; restantes: number; pista?: string }>("/gamificacion/poderes", { partidaId, poder, pregunta }),
-    bonoPartida: (partidaId: string, rapidas: number, comboMaximo: number) =>
-        apiClient.post<{ bono: number }>(`/gamificacion/partidas/${encodeURIComponent(partidaId)}/bono`, { rapidas, comboMaximo }),
 };

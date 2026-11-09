@@ -38,6 +38,13 @@ export const evaluacionApi = {
  *
  * El parámetro `_token` se conserva por compatibilidad con quienes ya la llamaban; se ignora.
  */
+/** Progreso real de la generación: cuántas preguntas van redactadas y en qué fase está. */
+export interface AvanceGeneracion {
+    fase: "generando" | "revisando";
+    listas: number;
+    total: number;
+}
+
 export const generarPreguntasStream = (
     mongoId: string,
     tipo: string,
@@ -46,7 +53,8 @@ export const generarPreguntasStream = (
     _token: string,
     onChunk: (chunk: string) => void,
     onResult: (data: any) => void,
-    onError: (err: any) => void
+    onError: (err: any) => void,
+    onAvance?: (avance: AvanceGeneracion) => void
 ): (() => void) => {
     const ruta = `/archivos/stream-tecnica-pdf?mongoId=${encodeURIComponent(mongoId)}`
         + `&tipo=${tipo}&cantidad=${cantidad}`
@@ -56,6 +64,9 @@ export const generarPreguntasStream = (
     const abortar = abrirStream(ruta, {
         onChunk: (datos) => {
             if (datos) onChunk(datos);
+        },
+        onAvance: (datos) => {
+            try { onAvance?.(JSON.parse(datos)); } catch { /* el avance es solo informativo */ }
         },
         onResult: (datos) => {
             try {
@@ -199,7 +210,6 @@ export const semanasApi = {
 };
 
 export const intentosApi = {
-    guardar: (data: any) => apiClient.post('/intentos/guardar', data),
     misIntentos: (usuarioId: number) =>
         apiClient.get<any[]>(`/intentos/mis-intentos/${usuarioId}`),
     porSemana: (semanaId: number | string) =>
@@ -256,6 +266,24 @@ export interface EvaluarRespuestaResponse {
     };
 }
 
+/**
+ * Las respuestas correctas y la nota viven en el servidor. El navegador solo envía lo que
+ * respondió el alumno, y recibe la solución de una pregunta después de contestarla.
+ */
+export interface ResultadoRonda extends EvaluarRespuestaResponse {
+    revelado?: Record<string, unknown>;
+}
+
+export const rondasApi = {
+    responder: (rondaId: string, indice: number, respuesta: string) =>
+        apiClient.post<any>(`/rondas/${rondaId}/responder`, { indice, respuesta }),
+    comodin: (rondaId: string, indice: number, poder: string) =>
+        apiClient.post<{ saldo: number; precio: number; restantes: number; pista?: string; ocultas?: string[] }>(
+            `/rondas/${rondaId}/comodin`, { indice, poder }),
+    finalizar: (rondaId: string, contrarreloj = false) =>
+        apiClient.post<{ notaFinal: number; bono: number }>(`/rondas/${rondaId}/finalizar`, { contrarreloj }),
+};
+
 export const agentJudgeApi = {
     evaluarRespuesta: (data: EvaluarRespuestaRequest) =>
         // Usamos apiClient como en las demás rutas
@@ -263,6 +291,7 @@ export const agentJudgeApi = {
 };
 
 export interface GuardarIntentoAdaptativoRequest {
+    rondaId: string;
     usuarioId: number;
     semanaId: string;
     notaFinal: number;
