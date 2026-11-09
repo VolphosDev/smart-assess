@@ -37,7 +37,7 @@ export function guardarVozActivada(activa: boolean) {
 }
 
 /** Lee el texto con la voz de Aria. Devuelve false si el navegador no puede hablar. */
-export function hablarComoAria(texto: string, eventos: { alEmpezar?: () => void; alTerminar?: () => void } = {}): boolean {
+export function hablarComoAria(texto: string, eventos: { alEmpezar?: () => void; alTerminar?: () => void; alPalabra?: (caracter: number) => void } = {}): boolean {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(texto.replace(/[«»*#]/g, ""));
@@ -48,7 +48,9 @@ export function hablarComoAria(texto: string, eventos: { alEmpezar?: () => void;
     u.pitch = 1.15;
     u.onstart = () => eventos.alEmpezar?.();
     u.onboundary = (e) => {
-        if (e.name === "word") window.dispatchEvent(new CustomEvent("semantika:aria-palabra", { detail: e.charLength || 4 }));
+        if (e.name !== "word") return;
+        window.dispatchEvent(new CustomEvent("semantika:aria-palabra", { detail: e.charLength || 4 }));
+        eventos.alPalabra?.(e.charIndex);
     };
     u.onend = () => eventos.alTerminar?.();
     u.onerror = () => eventos.alTerminar?.();

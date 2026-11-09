@@ -140,7 +140,7 @@ const PASOS: PasoTour[] = [
   { id: "cantidad-preguntas", mision: "semana", ruta: RUTA_SEMANA, objetivo: '[data-guide="cantidad-preguntas"]', interactivo: true, estado: "guino",
     titulo: "¿Cuántas preguntas?", texto: "Cinco para un repaso rápido, diez si tienes más tiempo." },
   { id: "tarjetas-modos", mision: "semana", ruta: RUTA_SEMANA, objetivo: '[data-guide="tarjetas-modos"]', estado: "feliz",
-    titulo: "Elige cómo practicar", texto: "Todas evalúan lo mismo, cambia la forma. Las marcadas «Recomendada» dan puntos extra, pero ninguna está bloqueada." },
+    titulo: "Elige cómo practicar", texto: "Todas evalúan lo mismo, cambia la forma. Las marcadas «Recomendada» te convienen ahora, pero ninguna está bloqueada." },
 
   // ── Cómo responder ─────────────────────────────────────────────────────
   { id: "elegir-modo", mision: "responder", ruta: RUTA_SEMANA, objetivo: '[data-guide="modo-OPCION_MULTIPLE"]', clic: '[data-guide="modo-OPCION_MULTIPLE"]', estado: "emocionado",
@@ -477,6 +477,9 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
     [pasos],
   );
 
+  // En la tienda y la charla el contenido llega hasta el borde: basta con la cara de Aria.
+  const compacto = /\/(tienda|charla)$/.test(location.pathname);
+
   return (
     <>
       {/* ── Botón flotante ─────────────────────────────────────────────── */}
@@ -486,7 +489,7 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
           onClick={() => setMenuAbierto((v) => !v)}
           aria-label="Abrir la guía de Aria"
           aria-expanded={menuAbierto}
-          className="boton-juego group fixed bottom-24 left-4 md:bottom-6 md:left-6 z-40 flex items-center gap-3 !rounded-full bg-card pl-2 pr-5 py-2 font-normal"
+          className={cn("boton-juego group fixed bottom-24 left-4 md:bottom-6 md:left-6 z-40 flex items-center gap-3 !rounded-full bg-card pl-2 pr-5 py-2 font-normal", compacto && "!pr-2")}
         >
           <span className="relative w-14 h-14 rounded-full bg-[var(--j-indigo)] border-[2.5px] border-[var(--j-tinta)] shrink-0">
             <span className="grid place-items-center w-full h-full rounded-full bg-[#EDE9FE] overflow-hidden">
@@ -494,7 +497,7 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
             </span>
             <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-400 border-2 border-card" />
           </span>
-          <span className="flex flex-col items-start leading-tight text-left">
+          <span className={cn("guia-texto flex flex-col items-start leading-tight text-left", compacto && "hidden")}>
             <span className="font-juego text-lg font-extrabold text-foreground">¿Te ayudo?</span>
             <span className="text-[13px] text-muted-foreground">Guía de Aria</span>
           </span>

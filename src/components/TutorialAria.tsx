@@ -64,7 +64,7 @@ const PASOS: Paso[] = [
     {
         titulo: "3 · Elige cómo quieres practicar",
         texto: "Puedes responder preguntas, conversar conmigo, ver una videolección o buscar "
-            + "errores en un texto. Algunas aparecerán recomendadas y dan puntos extra, pero "
+            + "errores en un texto. Algunas aparecerán recomendadas, pero "
             + "puedes elegir la que quieras: ninguna está bloqueada.",
         estado: "hablando",
     },

@@ -16,8 +16,12 @@ export interface ResumenJugador {
     ariaEquipado: string[];
     /** Etapa escolar según el grado del alumno; decide el estilo de Aria por defecto. */
     etapa: "PRIMARIA" | "SECUNDARIA" | null;
+    /** Ciclo del CNEB; junto con la etapa decide el tema de toda la aplicación. */
+    ciclo?: string | null;
     /** Estilo de Aria guardado en el servidor; null si nunca eligió (se usa el de su etapa). */
     ariaVariante: VarianteAria | null;
+    /** Aria que le corresponde por su grado mientras no elija otra. */
+    ariaVarianteInicial?: VarianteAria;
     /** Si sus compañeros de curso pueden ver su perfil. */
     perfilVisible: boolean;
 }

@@ -13,6 +13,7 @@ import { enMantenimiento } from "@/lib/mantenimiento";
 import BarraJugador from "./gamificacion/BarraJugador";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { gamificacionApi } from "@/services/gamificacion";
+import { estiloDe } from "@/services/charla";
 import { AccesoriosAriaContext, VarianteAriaContext, varianteElegida, type VarianteAria } from "@/lib/ariaAccesorios";
 
 const nav = [
@@ -50,15 +51,21 @@ export default function AppLayout() {
     staleTime: 30_000,
     enabled: !enMantenimiento,
   });
+  // Un solo tema por edad para toda la app: barra superior, guía, tienda y charla.
+  const estiloEdad = resumenJugador ? estiloDe(resumenJugador.etapa ?? undefined, resumenJugador.ciclo) : undefined;
+  useEffect(() => {
+    if (estiloEdad) document.body.dataset.estilo = estiloEdad;
+    return () => { delete document.body.dataset.estilo; };
+  }, [estiloEdad]);
   // Estilo de Aria: el que eligió el alumno en la tienda, o el de su etapa escolar.
   const queryClient = useQueryClient();
   const [variante, setVariante] = useState<VarianteAria>(() => varianteElegida());
   useEffect(() => {
-    const actualizar = () => setVariante(varianteElegida(resumenJugador?.etapa, resumenJugador?.ariaVariante));
+    const actualizar = () => setVariante(varianteElegida(resumenJugador?.ariaVarianteInicial, resumenJugador?.ariaVariante));
     actualizar();
     window.addEventListener("semantika:variante-aria", actualizar);
     return () => window.removeEventListener("semantika:variante-aria", actualizar);
-  }, [resumenJugador?.etapa, resumenJugador?.ariaVariante]);
+  }, [resumenJugador?.ariaVarianteInicial, resumenJugador?.ariaVariante]);
   // Quien eligió su Aria antes de que se guardara en el servidor: se sube una vez, para que sus
   // compañeros la vean igual en su perfil.
   useEffect(() => {
@@ -91,7 +98,7 @@ export default function AppLayout() {
   return (
     <VarianteAriaContext.Provider value={variante}>
     <AccesoriosAriaContext.Provider value={resumenJugador?.ariaEquipado ?? []}>
-    <div className="tema-juego min-h-screen">
+    <div className="tema-juego min-h-screen" data-estilo={estiloEdad}>
       {showConsent && (
         <ModalPortal>
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md p-4 overflow-y-auto">

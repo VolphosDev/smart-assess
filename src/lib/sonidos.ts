@@ -132,6 +132,21 @@ export const reproducirError = () =>
         { frecuencia: 311.13, duracion: 0.18, retraso: 0.1, volumen: 0.05 },
     ]);
 
+/** Ronroneo: pulsos graves y muy suaves, generados aquí sin descargar audio. */
+export const reproducirRonroneo = () =>
+    void tocar(Array.from({ length: 14 }, (_, i) => ({
+        frecuencia: i % 2 ? 62 : 74, duracion: 0.07, retraso: i * 0.062, volumen: 0.05, tipo: "sawtooth" as OscillatorType,
+    })));
+
+/** "¿Miau?" de duda: sube, se queda y cae un poquito, como una pregunta. */
+export const reproducirMiau = () =>
+    void tocar([
+        { frecuencia: 560, duracion: 0.09, volumen: 0.035, tipo: "triangle" },
+        { frecuencia: 760, duracion: 0.1, retraso: 0.07, volumen: 0.045, tipo: "triangle" },
+        { frecuencia: 860, duracion: 0.12, retraso: 0.15, volumen: 0.04, tipo: "triangle" },
+        { frecuencia: 700, duracion: 0.14, retraso: 0.25, volumen: 0.025, tipo: "triangle" },
+    ]);
+
 /** Fin de una evaluación: arpegio breve de tres notas. */
 export const reproducirLogro = () =>
     void tocar([

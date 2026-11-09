@@ -47,7 +47,7 @@ const SHOW_TESTING_TOOLS =
     // ANTES DEL ESTUDIO CON ALUMNOS hay que devolverlo a la linea comentada de abajo. Con
     // `true`, cualquier alumno abre el menu y se salta el bloqueo de examenes y las practicas
     // obligatorias; los datos que salgan de ahi no sirven para sustentar nada.
-    true;
+    import.meta.env.DEV || import.meta.env.VITE_TESTING_TOOLS === "true";
     // import.meta.env.DEV || import.meta.env.VITE_TESTING_TOOLS === "true";
 
 const evalModes = [
@@ -349,7 +349,7 @@ export default function EvalModeSelect() {
         const isBlockedByOtherUnfinished = !ignorarBloqueo && unfinishedMode !== null && !isUnfinished;
         const isRecommended = isModeRecommended(m.id, recommendations, modosRecomendados);
         // Solo se exige la evaluacion de ubicacion inicial. Una vez hecha, TODOS los modos
-        // quedan disponibles: los recomendados se destacan y dan puntos extra, pero no se
+        // quedan disponibles: los recomendados se destacan, pero no se
         // bloquea ninguno.
         //
         // Por que se quito el bloqueo: la motivacion intrinseca se sostiene sobre la
@@ -405,7 +405,7 @@ const isUnfinished = m.id === unfinishedMode;
                                         /* Se destaca como incentivo, no como restricción: no estar
                                            recomendada ya no bloquea la tarjeta, solo deja de sumar. */
                                         <div className="absolute top-3 right-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full">
-                                            ✨ Recomendada · +puntos
+                                            ✨ Recomendada
                                         </div>
                                     ) : null}
 

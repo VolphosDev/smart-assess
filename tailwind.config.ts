@@ -122,5 +122,10 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    // Tamaño grande de la charla: solo si la ventana es ancha y además alta.
+    ({ addVariant }: { addVariant: (nombre: string, regla: string) => void }) =>
+      addVariant("alto", "@media (min-width: 1024px) and (min-height: 800px)"),
+  ],
 } satisfies Config;

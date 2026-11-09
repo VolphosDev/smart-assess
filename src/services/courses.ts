@@ -278,7 +278,7 @@ export const rondasApi = {
     responder: (rondaId: string, indice: number, respuesta: string) =>
         apiClient.post<any>(`/rondas/${rondaId}/responder`, { indice, respuesta }),
     comodin: (rondaId: string, indice: number, poder: string) =>
-        apiClient.post<{ saldo: number; precio: number; restantes: number; pista?: string; ocultas?: string[] }>(
+        apiClient.post<{ saldo: number; precio: number; restantes: number; pista?: string; ocultas?: string[]; reformulacion?: string }>(
             `/rondas/${rondaId}/comodin`, { indice, poder }),
     finalizar: (rondaId: string, contrarreloj = false) =>
         apiClient.post<{ notaFinal: number; bono: number }>(`/rondas/${rondaId}/finalizar`, { contrarreloj }),

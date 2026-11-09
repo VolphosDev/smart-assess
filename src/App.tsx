@@ -36,6 +36,8 @@ const ClaseEnVivoAlumno = lazy(() => import("./pages/ClaseEnVivoAlumno"));
 const ClaseEnVivoDocente = lazy(() => import("./pages/teacher/ClaseEnVivoDocente"));
 const Course = lazy(() => import("./pages/Course"));
 const EvalModeSelect = lazy(() => import("./pages/EvalModeSelect"));
+const SemanaAria = lazy(() => import("./pages/SemanaAria"));
+const CharlaAria = lazy(() => import("./pages/CharlaAria"));
 const AvatarTutor = lazy(() => import("./pages/AvatarTutor"));
 const VideoTutor = lazy(() => import("./pages/VideoTutor"));
 const AdaptivePractice = lazy(() => import("./pages/AdaptivePractice"));
@@ -100,7 +102,8 @@ const App = () => (
                 <Route index element={<Dashboard />} />
                 <Route path="practica" element={<Practice />} />
                 <Route path="curso/:courseId" element={<Course />} />
-                <Route path="curso/:courseId/semana/:semanaId" element={<EvalModeSelect />} />
+                <Route path="curso/:courseId/semana/:semanaId" element={<SemanaAria />} />
+                <Route path="curso/:courseId/semana/:semanaId/charla" element={<CharlaAria />} />
                 <Route path="curso/:courseId/semana/:semanaId/evaluacion/:mode" element={<Practice />} />
                 <Route path="curso/:courseId/semana/:semanaId/evaluacion/avatar" element={<AvatarTutor />} />
                 <Route path="curso/:courseId/semana/:semanaId/evaluacion/video" element={<VideoTutor />} />
