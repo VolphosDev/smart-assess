@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { CURSO_DEMO_ID, RUTA_PRACTICA_DEMO, SEMANA_DEMO_ID } from "@/lib/tourDemo";
 import { EVENTO_ABRIR_BIENVENIDA } from "@/lib/ariaEventos";
 import { clavePorUsuario } from "@/lib/almacenUsuario";
+import { elegirVozEspanol } from "@/lib/vozAria";
 
 /**
  * Guía interactiva de Aria: bienvenida, centro de misiones y recorrido sobre la app real.
@@ -201,30 +202,6 @@ function leerCompletadas(): MisionId[] {
   try { return JSON.parse(localStorage.getItem(clavePorUsuario(BASE_COMPLETADAS)) || "[]"); } catch { return []; }
 }
 
-/**
- * Voz en español, de preferencia latinoamericana y femenina. Sin elegirla, Chrome en una PC
- * configurada en inglés leía el texto en español con acento inglés, que no se entiende.
- */
-function elegirVozEspanol(): SpeechSynthesisVoice | undefined {
-  if (!("speechSynthesis" in window)) return undefined;
-  const voces = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().replace("_", "-").startsWith("es"));
-  if (voces.length === 0) return undefined;
-  const puntuar = (v: SpeechSynthesisVoice) => {
-    const lang = v.lang.toLowerCase().replace("_", "-");
-    const nombre = v.name.toLowerCase();
-    let p = 0;
-    if (["es-pe", "es-419", "es-mx", "es-us", "es-co"].some((l) => lang.startsWith(l))) p += 4;
-    if (/natural|neural|online|google/.test(nombre)) p += 3;
-    if (/paulina|sabina|dalia|helena|elvira|camila|lupe|monica|mónica|female|mujer/.test(nombre)) p += 2;
-    return p;
-  };
-  return [...voces].sort((a, b) => puntuar(b) - puntuar(a))[0];
-}
-
-// Chrome carga la lista de voces de forma asíncrona: se pide una vez al cargar el módulo.
-if (typeof window !== "undefined" && "speechSynthesis" in window) {
-  window.speechSynthesis.getVoices();
-}
 
 /** Subtrazado de un rectángulo con esquinas redondeadas (para el hueco de la máscara). */
 function rectRedondeado(x: number, y: number, w: number, h: number, r: number) {
@@ -509,16 +486,16 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
           onClick={() => setMenuAbierto((v) => !v)}
           aria-label="Abrir la guía de Aria"
           aria-expanded={menuAbierto}
-          className="group fixed bottom-24 left-4 md:bottom-6 md:left-6 z-40 flex items-center gap-3 rounded-full bg-card backdrop-blur border-2 border-violet-500/60 ring-4 ring-violet-500/15 shadow-xl shadow-violet-500/25 pl-2 pr-5 py-2 hover:shadow-2xl hover:shadow-violet-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all"
+          className="boton-juego group fixed bottom-24 left-4 md:bottom-6 md:left-6 z-40 flex items-center gap-3 !rounded-full bg-card pl-2 pr-5 py-2 font-normal"
         >
-          <span className="relative w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 p-[2px] shrink-0">
-            <span className="grid place-items-center w-full h-full rounded-full bg-violet-50 dark:bg-violet-950 overflow-hidden">
+          <span className="relative w-14 h-14 rounded-full bg-[var(--j-indigo)] border-[2.5px] border-[var(--j-tinta)] shrink-0">
+            <span className="grid place-items-center w-full h-full rounded-full bg-[#EDE9FE] overflow-hidden">
               <AriaSvg estado={menuAbierto ? "feliz" : "idle"} recorte="cara" className="w-12 h-12 translate-y-0.5" />
             </span>
             <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-400 border-2 border-card" />
           </span>
           <span className="flex flex-col items-start leading-tight text-left">
-            <span className="text-base font-display font-bold text-foreground">¿Te ayudo?</span>
+            <span className="font-juego text-lg font-extrabold text-foreground">¿Te ayudo?</span>
             <span className="text-[13px] text-muted-foreground">Guía de Aria</span>
           </span>
         </button>
@@ -532,10 +509,9 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ duration: 0.18 }}
-            className="fixed bottom-44 left-4 md:bottom-28 md:left-6 z-50 w-[calc(100vw-2rem)] max-w-sm rounded-3xl border border-border bg-card shadow-2xl overflow-hidden"
+            className="pieza fixed bottom-44 left-4 md:bottom-28 md:left-6 z-50 w-[calc(100vw-2rem)] max-w-sm rounded-3xl bg-card overflow-hidden"
           >
-            <div className="relative px-5 pt-5 pb-4 bg-gradient-to-br from-violet-600 via-violet-600 to-indigo-600 text-white overflow-hidden">
-              <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-white/10 blur-xl" />
+            <div className="relative px-5 pt-5 pb-4 bg-[var(--j-indigo)] text-white overflow-hidden border-b-[2.5px] border-[var(--j-tinta)]">
               <button
                 type="button"
                 onClick={() => setMenuAbierto(false)}
@@ -545,14 +521,14 @@ export default function AriaGuideWidget({ pausado = false }: { pausado?: boolean
                 <X className="w-4 h-4" />
               </button>
               <div className="flex items-center gap-3 relative">
-                <AriaSvg estado="guino" recorte="cara" className="w-14 h-14 drop-shadow" />
+                <AriaSvg estado="guino" recorte="cara" className="w-14 h-14 drop-shadow-[0_3px_0_rgba(43,33,64,.45)]" />
                 <div>
-                  <p className="font-display font-bold text-base leading-tight">Centro de misiones</p>
+                  <p className="font-juego text-xl font-extrabold leading-tight">Centro de misiones</p>
                   <p className="text-xs text-white/85">{completadas.length} de {MISIONES.length} completadas</p>
                 </div>
               </div>
-              <div className="mt-3 h-1.5 rounded-full bg-white/20 overflow-hidden">
-                <div className="h-full rounded-full bg-white transition-all" style={{ width: `${(completadas.length / MISIONES.length) * 100}%` }} />
+              <div className="mt-3 h-3 rounded-full bg-[#2B2140]/40 border-2 border-[var(--j-tinta)] overflow-hidden">
+                <div className="h-full rounded-full bg-[var(--j-oro)] transition-all" style={{ width: `${(completadas.length / MISIONES.length) * 100}%` }} />
               </div>
             </div>
 
@@ -730,7 +706,7 @@ function Bienvenida({
 
   return (
     <div
-      className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-3 sm:p-4 overflow-y-auto"
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-[#140E2B]/75 p-3 sm:p-4 overflow-y-auto"
       onClick={(e) => { if (e.target === e.currentTarget) onCerrar(); }}
     >
       <motion.div
@@ -740,7 +716,7 @@ function Bienvenida({
         initial={{ opacity: 0, y: 24, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
-        className="relative my-auto w-full max-w-[680px] rounded-[26px] bg-card border border-border shadow-2xl overflow-hidden grid md:grid-cols-[0.9fr_1.1fr]"
+        className="pieza relative my-auto w-full max-w-[680px] rounded-[28px] bg-card overflow-hidden grid md:grid-cols-[0.9fr_1.1fr]"
       >
         <button
           type="button"
@@ -752,12 +728,12 @@ function Bienvenida({
         </button>
 
         {/* Escenario de Aria */}
-        <div className="relative h-[210px] md:h-auto md:min-h-[400px] bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 overflow-hidden flex items-end justify-center">
+        <div className="relative h-[210px] md:h-auto md:min-h-[400px] bg-[var(--j-indigo)] overflow-hidden flex items-end justify-center md:border-r-[2.5px] border-[var(--j-tinta)]">
           <div
             className="absolute inset-0 opacity-25"
             style={{ backgroundImage: "radial-gradient(rgba(255,255,255,.55) 1px, transparent 1px)", backgroundSize: "18px 18px" }}
           />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-60 h-60 rounded-full bg-fuchsia-400/30 blur-3xl" />
+          <div className="rayos absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px]" aria-hidden />
           {[["12%", "20%", 0], ["82%", "16%", 0.6], ["14%", "64%", 1.2], ["86%", "58%", 0.3]].map(([x, y, d], i) => (
             <motion.span
               key={i}
@@ -775,7 +751,7 @@ function Bienvenida({
               initial={{ opacity: 0, y: 8, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ delay: 0.35 }}
-              className="rounded-2xl rounded-bl-sm bg-white text-slate-800 px-3.5 py-2 shadow-xl text-sm font-bold whitespace-nowrap"
+              className="pieza rounded-2xl rounded-bl-sm bg-white text-[var(--j-tinta)] px-3.5 py-2 font-juego text-base font-extrabold whitespace-nowrap"
             >
               ¡Hola{nombre ? `, ${nombre}` : ""}! 👋
             </motion.div>
@@ -786,7 +762,7 @@ function Bienvenida({
             transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
             className="relative w-32 md:w-56 -mb-2 md:-mb-3"
           >
-            <AriaSvg estado={cara} className="w-full h-auto drop-shadow-2xl" />
+            <AriaSvg estado={cara} className="w-full h-auto drop-shadow-[0_6px_0_rgba(43,33,64,.35)]" />
           </motion.div>
         </div>
 
@@ -818,7 +794,7 @@ function Bienvenida({
               type="button"
               onClick={onIniciar}
               autoFocus
-              className="w-full h-11 rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 text-white font-bold text-sm shadow-lg shadow-violet-600/25 active:scale-[0.98] transition-all inline-flex items-center justify-center gap-2"
+              className="boton-juego w-full h-12 bg-[var(--j-oro)] text-[var(--j-tinta)] text-lg inline-flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4 fill-white" /> Empezar el recorrido
             </button>
@@ -964,7 +940,7 @@ function Recorrido({
           </div>
         </>
       ) : (
-        <div className="fixed inset-0" style={{ ...oscuro, backdropFilter: centrado ? "blur(3px)" : undefined }} />
+        <div className="fixed inset-0" style={oscuro} />
       )}
 
       {/* Diálogo.
@@ -978,7 +954,7 @@ function Recorrido({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             onClick={() => onMinimizar(false)}
-            className="flex items-center gap-2 rounded-full bg-card border border-violet-500/40 shadow-2xl pl-1.5 pr-4 py-1.5"
+            className="pieza flex items-center gap-2 rounded-full bg-card pl-1.5 pr-4 py-1.5"
           >
             <span className="w-9 h-9 rounded-full bg-violet-100 dark:bg-violet-950 grid place-items-center overflow-hidden">
               <AriaSvg estado={estadoAria} recorte="cara" className="w-8 h-8" />
@@ -1034,13 +1010,13 @@ function Recorrido({
                   angosto ? "left-2 top-0 w-[4.75rem]" : "-left-2 bottom-1 w-28",
                 )}
               >
-                <AriaSvg estado={estadoAria} className="w-full h-auto drop-shadow-xl" />
+                <AriaSvg estado={estadoAria} className="w-full h-auto drop-shadow-[0_5px_0_rgba(43,33,64,.3)]" />
               </motion.div>
             )}
 
-            <div className="rounded-3xl border border-violet-500/30 bg-card/95 backdrop-blur-xl shadow-2xl shadow-violet-900/30 overflow-hidden">
+            <div className="pieza rounded-3xl bg-card overflow-hidden">
               <div className="h-1 bg-muted">
-                <div className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-300" style={{ width: `${((indice + 1) / total) * 100}%` }} />
+                <div className="h-full bg-[var(--j-oro)] transition-all duration-300" style={{ width: `${((indice + 1) / total) * 100}%` }} />
               </div>
 
               <div className={cn("pr-2.5 pt-2.5 flex items-center gap-1.5", compacto ? "pl-3" : angosto ? "pl-[5.5rem]" : "pl-4")}>
@@ -1114,7 +1090,7 @@ function Recorrido({
                     <button
                       type="button"
                       onClick={onSiguiente}
-                      className="h-9 inline-flex items-center gap-1 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 text-white text-sm font-bold shadow-md shadow-violet-600/25 active:scale-95 transition-all whitespace-nowrap"
+                      className="boton-juego h-10 inline-flex items-center gap-1 px-4 bg-[var(--j-indigo)] text-white text-base whitespace-nowrap"
                     >
                       {paso.boton || "Siguiente"} <ChevronRight className="w-4 h-4" />
                     </button>
@@ -1142,10 +1118,10 @@ function DialogoCentrado({
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
         className="relative z-10 mx-auto w-36 sm:w-44 -mb-12 pointer-events-none"
       >
-        <AriaSvg estado={estadoAria} className="w-full h-auto drop-shadow-2xl" />
+        <AriaSvg estado={estadoAria} className="w-full h-auto drop-shadow-[0_6px_0_rgba(43,33,64,.3)]" />
       </motion.div>
-      <div className="relative rounded-[28px] bg-card border border-violet-500/30 shadow-2xl shadow-violet-900/40 overflow-hidden text-center">
-        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-violet-500/20 to-transparent pointer-events-none" />
+      <div className="pieza relative rounded-[28px] bg-card overflow-hidden text-center">
+        
         {/* z-20: el bloque de contenido va después y es `relative`, así que sin esto se pintaba
             encima de estos botones y se tragaba sus clics (el botón de voz "no respondía"). */}
         <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between">
@@ -1172,7 +1148,7 @@ function DialogoCentrado({
               type="button"
               onClick={onSiguiente}
               autoFocus
-              className="h-11 inline-flex items-center gap-2 px-6 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:brightness-110 text-white text-sm font-bold shadow-lg shadow-violet-600/25 active:scale-95 transition-all"
+              className="boton-juego h-12 inline-flex items-center gap-2 px-6 bg-[var(--j-oro)] text-[var(--j-tinta)] text-lg"
             >
               {paso.boton || "Siguiente"} <ChevronRight className="w-4 h-4" />
             </button>

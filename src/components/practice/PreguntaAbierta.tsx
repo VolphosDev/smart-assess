@@ -16,7 +16,7 @@ export function PreguntaAbierta({
 }: PreguntaAbiertaProps) {
     return (
         <div className="space-y-3">
-            <p className="font-semibold text-foreground leading-relaxed">{pregunta.enunciado}</p>
+            <p className="font-bold text-lg md:text-xl text-foreground leading-relaxed">{pregunta.enunciado}</p>
             {!disabled && <AriaNubecita />}
             <textarea
                 rows={4}
@@ -24,7 +24,7 @@ export function PreguntaAbierta({
                 onChange={(e) => onChange(e.target.value)}
                 disabled={disabled}
                 placeholder="Escribe tu respuesta aquí..."
-                className="w-full rounded-xl border border-border bg-secondary/20 p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="pieza w-full rounded-2xl bg-card p-4 text-base resize-none focus:outline-none focus:ring-4 focus:ring-[var(--j-oro)]/60 transition disabled:opacity-50 disabled:cursor-not-allowed"
             />
         </div>
     );

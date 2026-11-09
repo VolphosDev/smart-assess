@@ -14,7 +14,7 @@ export function AriaNubecita() {
                 aria-hidden
                 className="shrink-0 grid place-items-center rounded-full bg-primary/5 border border-primary/10 w-9 h-9 overflow-hidden"
             >
-                <AriaSvg estado="idle" recorte="cara" className="w-7 h-7 translate-y-0.5 opacity-80" />
+                <AriaSvg estado="idle" recorte="cara" className="w-7 h-7 translate-y-0.5" />
             </span>
             <p className="relative rounded-2xl rounded-bl-sm border border-primary/15 bg-primary/5 px-3.5 py-2 text-xs font-semibold text-foreground/80 leading-snug">
                 Si no estás seguro, escribe lo que recuerdes, aunque sea poco.

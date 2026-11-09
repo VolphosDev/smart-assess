@@ -14,7 +14,7 @@ export function AriaAcompana({ className }: AriaAcompanaProps) {
                 className
             )}
         >
-            <AriaSvg estado="idle" recorte="cara" className="w-7 h-7 translate-y-0.5 opacity-80" />
+            <AriaSvg estado="idle" recorte="cara" className="w-7 h-7 translate-y-0.5" />
         </span>
     );
 }

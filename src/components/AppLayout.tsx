@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, Link, useNavigate } from "react-router-dom";
-import { Home, History, Sparkles, LogOut, Loader2, ShieldAlert, Check, Brain, HelpCircle } from "lucide-react";
+import { Home, History, Sparkles, LogOut, Loader2, ShieldAlert, Check, Brain, HelpCircle, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/lib/icon-mapper";
 import { authApi } from "@/services/auth";
@@ -10,12 +10,24 @@ import { abrirBienvenidaAria } from "@/lib/ariaEventos";
 import { ModalPortal } from "@/components/ModalPortal";
 import { PantallaMantenimiento } from "@/components/PantallaMantenimiento";
 import { enMantenimiento } from "@/lib/mantenimiento";
+import BarraJugador from "./gamificacion/BarraJugador";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { gamificacionApi } from "@/services/gamificacion";
+import { AccesoriosAriaContext, VarianteAriaContext, varianteElegida, type VarianteAria } from "@/lib/ariaAccesorios";
 
 const nav = [
   { to: "/app", icon: Home, label: "Inicio", end: true },
   { to: "/app/mapa-conocimiento", icon: Brain, label: "Mapa de Conocimiento" },
   { to: "/app/historial", icon: History, label: "Historial" },
+  { to: "/app/en-vivo", icon: Radio, label: "En vivo" },
 ];
+
+const GUIA_NAV: Record<string, string> = {
+  "/app": "nav-inicio",
+  "/app/mapa-conocimiento": "nav-mapa",
+  "/app/historial": "nav-historial",
+  "/app/en-vivo": "nav-en-vivo",
+};
 
 export default function AppLayout() {
   const navigate = useNavigate();
@@ -25,6 +37,40 @@ export default function AppLayout() {
     return user.role === "student" && !user.consentimientoAceptado;
   });
   const [acceptedCheckbox, setAcceptedCheckbox] = useState(false);
+  // El tema de juego también va en <body>: los modales se montan fuera de este árbol (portales)
+  // y sin esto conservarían el vidrio esmerilado. Se quita al salir de la vista del alumno.
+  useEffect(() => {
+    document.body.classList.add("tema-juego");
+    return () => document.body.classList.remove("tema-juego");
+  }, []);
+  // Misma consulta que BarraJugador (comparten caché): de aquí salen los accesorios de Aria.
+  const { data: resumenJugador } = useQuery({
+    queryKey: ["gamificacion", "resumen"],
+    queryFn: gamificacionApi.resumen,
+    staleTime: 30_000,
+    enabled: !enMantenimiento,
+  });
+  // Estilo de Aria: el que eligió el alumno en la tienda, o el de su etapa escolar.
+  const queryClient = useQueryClient();
+  const [variante, setVariante] = useState<VarianteAria>(() => varianteElegida());
+  useEffect(() => {
+    const actualizar = () => setVariante(varianteElegida(resumenJugador?.etapa, resumenJugador?.ariaVariante));
+    actualizar();
+    window.addEventListener("semantika:variante-aria", actualizar);
+    return () => window.removeEventListener("semantika:variante-aria", actualizar);
+  }, [resumenJugador?.etapa, resumenJugador?.ariaVariante]);
+  // Quien eligió su Aria antes de que se guardara en el servidor: se sube una vez, para que sus
+  // compañeros la vean igual en su perfil.
+  useEffect(() => {
+    if (!resumenJugador || resumenJugador.ariaVariante) return;
+    let local: string | null = null;
+    try { local = localStorage.getItem("semantika.varianteAria"); } catch { /* sin almacenamiento */ }
+    if (local === "clasica" || local === "nocturna" || local === "perro") {
+      gamificacionApi.ajustarPerfil({ variante: local })
+        .then(() => queryClient.invalidateQueries({ queryKey: ["gamificacion", "resumen"] }))
+        .catch(() => { /* se reintenta en la próxima carga */ });
+    }
+  }, [resumenJugador, queryClient]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAcceptConsent = async () => {
@@ -43,7 +89,9 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <VarianteAriaContext.Provider value={variante}>
+    <AccesoriosAriaContext.Provider value={resumenJugador?.ariaEquipado ?? []}>
+    <div className="tema-juego min-h-screen">
       {showConsent && (
         <ModalPortal>
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md p-4 overflow-y-auto">
@@ -137,7 +185,8 @@ export default function AppLayout() {
             <span className="grid place-items-center w-9 h-9 rounded-lg bg-primary text-primary-foreground">
               <Sparkles className="w-5 h-5" />
             </span>
-            Semantika
+            {/* En celular el nombre cede su sitio a la barra de nivel y monedas. */}
+            <span className="hidden sm:inline">Semantika</span>
           </Link>
           <nav data-guide="nav-desktop" className="hidden md:flex items-center gap-1 bg-muted rounded-lg p-1 border border-border">
             {nav.map(({ to, icon: Icon, label, end }) => (
@@ -145,7 +194,9 @@ export default function AppLayout() {
                 key={to}
                 to={to}
                 end={end}
-                data-guide={to === "/app" ? "nav-inicio" : to === "/app/mapa-conocimiento" ? "nav-mapa" : "nav-historial"}
+                data-guide={GUIA_NAV[to]}
+                title={label}
+                aria-label={label}
                 className={({ isActive }) =>
                   cn(
                     "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
@@ -155,11 +206,12 @@ export default function AppLayout() {
                   )
                 }
               >
-                <Icon className="w-4 h-4" /> {label}
+                <Icon className="w-4 h-4" /> <span className="hidden xl:inline">{label}</span>
               </NavLink>
             ))}
           </nav>
           <div className="flex items-center gap-2 sm:gap-3">
+            {!enMantenimiento && <BarraJugador />}
             {/* Permite volver a ver el recorrido sin borrar el navegador: un alumno que se
                 pierde en la semana 3 no deberia tener que limpiar datos del sitio para que
                 Aria se lo vuelva a explicar. */}
@@ -168,7 +220,7 @@ export default function AppLayout() {
               data-guide="boton-ayuda"
               onClick={abrirBienvenidaAria}
               title="Ver el tutorial otra vez"
-              className="h-9 w-9 grid place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="h-9 w-9 hidden sm:grid place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <HelpCircle className="w-4.5 h-4.5" />
             </button>
@@ -185,7 +237,8 @@ export default function AppLayout() {
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Salir</span>
             </button>
-            <UserAvatar name={user.nombre || user.name || "Estudiante"} className="w-9 h-9" />
+            {/* En celular, el tutorial sigue a mano en el botón flotante de Aria; el avatar es decorativo. */}
+            <UserAvatar name={user.nombre || user.name || "Estudiante"} className="w-9 h-9 hidden sm:flex" />
           </div>
         </div>
       </header>
@@ -202,7 +255,7 @@ export default function AppLayout() {
             key={to}
             to={to}
             end={end}
-            data-guide={to === "/app" ? "nav-inicio" : to === "/app/mapa-conocimiento" ? "nav-mapa" : "nav-historial"}
+            data-guide={GUIA_NAV[to]}
             className={({ isActive }) =>
               cn(
                 "flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg text-[11px] font-semibold flex-1",
@@ -218,5 +271,7 @@ export default function AppLayout() {
 
       <AriaGuideWidget pausado={showConsent || enMantenimiento} />
     </div>
+    </AccesoriosAriaContext.Provider>
+    </VarianteAriaContext.Provider>
   );
 }

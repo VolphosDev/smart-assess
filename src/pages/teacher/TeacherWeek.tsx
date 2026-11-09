@@ -10,6 +10,7 @@ import React, { useCallback, useRef, useState } from "react";
 import ProgresoIngestaBarra from "@/components/ProgresoIngestaBarra";
 import CuracionTemas from "@/components/CuracionTemas";
 import BancoPreguntas from "@/components/BancoPreguntas";
+import LanzarClaseEnVivo from "@/components/teacher/LanzarClaseEnVivo";
 // 1. IMPORTAMOS EL NUEVO MODAL UNIVERSAL
 import { UniversalPreviewModal } from "@/components/UniversalPreviewModal";
 import {cn} from "@/lib/utils.ts";
@@ -359,6 +360,8 @@ export default function TeacherWeek() {
                     {semana?.totalPreguntas ?? 0} preguntas generadas · {materiales.length} archivo(s)
                 </p>
             </motion.div>
+
+            <LanzarClaseEnVivo semanaId={semanaId} mongoId={materiales[0]?.mongoId} deshabilitado={esDemo} />
 
             {/* Zona Archivos Múltiples */}
             <motion.section

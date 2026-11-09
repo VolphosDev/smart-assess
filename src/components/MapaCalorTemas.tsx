@@ -159,9 +159,9 @@ export default function MapaCalorTemas({ cursos, soloSemanaId, compacto = false 
         && seleccionado.etiquetaSemana === p.etiquetaSemana;
     const [estilo, setEstilo] = useState<EstiloMapa>(() => {
         try {
-            return (localStorage.getItem("semantika.estiloMapa") as EstiloMapa) || "difuminado";
+            return (localStorage.getItem("semantika.estiloMapa") as EstiloMapa) || "nitido";
         } catch {
-            return "difuminado";
+            return "nitido";
         }
     });
 

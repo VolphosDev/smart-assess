@@ -4,6 +4,8 @@ import { Flame, Target, ArrowRight, BookOpen, Sparkles, Play, CheckCircle2, Comp
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import TarjetaProgreso from "@/components/TarjetaProgreso";
+import LigaSemanal from "@/components/gamificacion/LigaSemanal";
+import JefeSemanal from "@/components/gamificacion/JefeSemanal";
 import { coursesApi, intentosApi, rendimientoApi } from "@/services";
 import { cn } from "@/lib/utils";
 import type { GrupoCursoConocimiento } from "@/components/ConceptHeatMap";
@@ -196,7 +198,13 @@ export default function Dashboard() {
             {/* ── Progreso ──────────────────────────────────────────────────────
                 Va antes de los cursos: el alumno ve primero cómo va y luego decide
                 adónde ir. Son PUNTOS, no nivel de dominio — ver TarjetaProgreso. */}
-            {user?.id && <TarjetaProgreso usuarioId={user.id} />}
+            {user?.id && <JefeSemanal />}
+            {user?.id && (
+                <div className="grid gap-4 lg:grid-cols-2 items-start">
+                    <TarjetaProgreso usuarioId={user.id} />
+                    <LigaSemanal />
+                </div>
+            )}
 
             {/* ── Cursos ────────────────────────────────────────────────────── */}
             {(courses.length > 0 || tourActivo) && (

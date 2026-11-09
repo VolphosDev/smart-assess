@@ -181,6 +181,88 @@ All colors MUST be HSL.
 }
 
 /* --------------------------------------------------------------------------
+   Gamificación (barra de nivel, liga, tienda, celebración)
+
+   Una sola apuesta visual: piezas tipo sticker de videojuego, con el MISMO contorno violeta
+   oscuro con que está dibujada Aria (#2B2140) y una sombra dura debajo, como un botón 3D.
+   Así la interfaz y la mascota parecen del mismo juego. Todo lo demás de la app queda sobrio.
+   -------------------------------------------------------------------------- */
+:root, .tema-suave {
+  --j-tinta: #2B2140;           /* contorno de Aria */
+  --j-indigo: #5B3BEF;
+  --j-indigo-hondo: #3A23B5;
+  --j-oro: #FFC83D;
+  --j-oro-hondo: #B7790A;
+  --j-fuego: #FF7A2F;
+  --j-plata: #CBD5E1;
+  --j-bronce: #E8955E;
+  --j-comun: #7C93B5;
+  --j-raro: #2F95F5;
+  --j-epico: #A24BF2;
+  --j-legendario: #F5A800;
+}
+.dark {
+  --j-tinta: #06040D;
+}
+
+@layer components {
+  .font-juego { font-family: "Baloo 2", "Plus Jakarta Sans", system-ui, sans-serif; }
+
+  /* Pieza: contorno grueso + sombra dura. El radio cambia según la jerarquía (no uno solo para todo). */
+  .pieza {
+    border: 2.5px solid var(--j-tinta);
+    box-shadow: 0 4px 0 var(--j-tinta);
+  }
+
+  /* Botón 3D: se hunde al pulsarlo, que es la respuesta física que se espera de un juego. */
+  .boton-juego {
+    border: 2.5px solid var(--j-tinta);
+    box-shadow: 0 4px 0 var(--j-tinta);
+    border-radius: 14px;
+    font-family: "Baloo 2", system-ui, sans-serif;
+    font-weight: 800;
+    transition: transform .08s ease, box-shadow .08s ease, filter .15s ease;
+  }
+  .boton-juego:hover:not(:disabled) { filter: brightness(1.06); }
+  .boton-juego:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 var(--j-tinta); }
+  .boton-juego:disabled { opacity: .55; cursor: not-allowed; }
+  .boton-juego:focus-visible { outline: 3px solid var(--j-oro); outline-offset: 2px; }
+
+  /* Barra de XP gruesa con brillo diagonal, como en los juegos. */
+  .barra-xp {
+    border: 2px solid var(--j-tinta);
+    background: hsl(var(--muted));
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .barra-xp > span {
+    display: block; height: 100%;
+    background: linear-gradient(180deg, #8B72FF 0%, var(--j-indigo) 55%, var(--j-indigo-hondo) 100%);
+    box-shadow: inset 0 2px 0 rgba(255,255,255,.35);
+    border-radius: 999px;
+    transition: width .7s cubic-bezier(.2,.9,.3,1.2);
+  }
+
+  /* Rayos detrás de Aria en el escenario de la tienda y en la subida de nivel. */
+  .rayos {
+    background: repeating-conic-gradient(from 0deg, rgba(255,200,61,.28) 0deg 10deg, transparent 10deg 20deg);
+    -webkit-mask-image: radial-gradient(circle, #000 25%, transparent 70%);
+            mask-image: radial-gradient(circle, #000 25%, transparent 70%);
+    animation: rayos-giran 24s linear infinite;
+  }
+  @keyframes rayos-giran { to { transform: rotate(360deg); } }
+
+  /* El único momento orquestado de la liga: el podio sube una vez al cargar. */
+  .podio-sube { transform-origin: bottom; animation: podio-sube .7s cubic-bezier(.2,.9,.3,1.25) both; }
+  @keyframes podio-sube { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rayos, .podio-sube { animation: none; }
+    .barra-xp > span { transition: none; }
+  }
+}
+
+/* --------------------------------------------------------------------------
    Impresión: hoja de repaso de un intento
    --------------------------------------------------------------------------
    El botón "Imprimir o guardar PDF" del historial llama a window.print(), que
@@ -231,4 +313,168 @@ All colors MUST be HSL.
         break-inside: avoid;
         page-break-inside: avoid;
     }
+}
+
+/* Zarpazo del comodín 50/50: tres trazos naranjas con contorno que se dibujan una sola vez. */
+.zarpazo path {
+  fill: none;
+  stroke: #FF7A2F;
+  stroke-width: 3;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  filter: drop-shadow(0 0 0.6px #2B2140) drop-shadow(0 0 0.6px #2B2140);
+  animation: zarpazo .35s ease-in forwards;
+}
+.zarpazo path:nth-child(2) { animation-delay: .07s; }
+.zarpazo path:nth-child(3) { animation-delay: .14s; }
+@keyframes zarpazo { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .zarpazo path { animation: none; stroke-dashoffset: 0; } }
+
+/* --------------------------------------------------------------------------
+   Práctica con estética de juego: alternativas como fichas con contorno de sticker.
+   El estado de cada ficha se declara con data-estado (libre, elegida, correcta,
+   incorrecta, apagada, descartada) y aquí se decide cómo se ve.
+   -------------------------------------------------------------------------- */
+@layer components {
+  .opcion-juego {
+    position: relative;
+    border: 2.5px solid var(--j-tinta);
+    box-shadow: 0 4px 0 var(--j-tinta);
+    border-radius: 18px;
+    background: hsl(var(--card));
+    transition: transform .08s ease, box-shadow .08s ease, background-color .15s ease, opacity .2s ease;
+  }
+  .opcion-juego[data-estado="libre"]:hover { transform: translateY(-2px); box-shadow: 0 6px 0 var(--j-tinta); }
+  .opcion-juego[data-estado="libre"]:active,
+  .opcion-juego[data-estado="elegida"] { transform: translateY(3px); box-shadow: 0 1px 0 var(--j-tinta); }
+  .opcion-juego[data-estado="elegida"] { background: color-mix(in srgb, var(--j-indigo) 14%, hsl(var(--card))); }
+  .opcion-juego[data-estado="correcta"] { background: #DCFCE7; color: #14532D; }
+  .opcion-juego[data-estado="incorrecta"] { background: #FFE4E6; color: #881337; animation: sacudida .45s ease; }
+  .dark .opcion-juego[data-estado="correcta"] { background: rgba(22, 163, 74, .22); color: #BBF7D0; }
+  .dark .opcion-juego[data-estado="incorrecta"] { background: rgba(225, 29, 72, .2); color: #FECDD3; }
+  .opcion-juego[data-estado="apagada"] { opacity: .45; box-shadow: 0 2px 0 var(--j-tinta); }
+  .opcion-juego[data-estado="descartada"] { opacity: .4; border-style: dashed; box-shadow: none; }
+  .opcion-juego:focus-within { outline: 3px solid var(--j-oro); outline-offset: 2px; }
+
+  .ficha-letra {
+    display: grid; place-items: center; flex-shrink: 0;
+    width: 2.6rem; height: 2.6rem; border-radius: 12px;
+    border: 2.5px solid var(--j-tinta);
+    font-family: "Baloo 2", system-ui, sans-serif; font-weight: 800; font-size: 1.15rem;
+  }
+
+  @keyframes sacudida {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-7px); }
+    40% { transform: translateX(7px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .opcion-juego { transition: none; }
+    .opcion-juego[data-estado="incorrecta"] { animation: none; }
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Tema de juego para TODA la vista del alumno (AppLayout añade .tema-juego).
+   No toca las vistas del docente ni del administrador.
+   Reglas: contornos de sticker, sombras duras, títulos en Baloo 2, cero vidrio
+   esmerilado ni resplandores difuminados.
+   -------------------------------------------------------------------------- */
+.tema-juego {
+  background-color: hsl(var(--background));
+  background-image: radial-gradient(rgba(43, 33, 64, .08) 1.5px, transparent 1.6px);
+  background-size: 22px 22px;
+}
+.dark .tema-juego, .dark.tema-juego {
+  background-image: radial-gradient(rgba(255, 255, 255, .05) 1.5px, transparent 1.6px);
+}
+
+.tema-juego .font-display {
+  font-family: "Baloo 2", "Plus Jakarta Sans", system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+/* Sin vidrio esmerilado ni manchas de luz difuminadas. */
+.tema-juego .backdrop-blur, .tema-juego .backdrop-blur-sm, .tema-juego .backdrop-blur-md,
+.tema-juego .backdrop-blur-lg, .tema-juego .backdrop-blur-xl { backdrop-filter: none !important; }
+.tema-juego .blur-xl, .tema-juego .blur-2xl, .tema-juego .blur-3xl { display: none; }
+
+/* Tarjetas: todo bloque redondeado con fondo de tarjeta y borde se vuelve sticker. */
+.tema-juego .bg-card.border:is(.rounded-xl, .rounded-2xl, .rounded-3xl, [class*="rounded-["]),
+.tema-juego .bg-card.border-2:is(.rounded-xl, .rounded-2xl, .rounded-3xl, [class*="rounded-["]) {
+  border-width: 2.5px;
+  border-color: var(--j-tinta);
+  box-shadow: 0 4px 0 var(--j-tinta);
+}
+.tema-juego .shadow-soft, .tema-juego .shadow-glow, .tema-juego .shadow-pop { box-shadow: 0 4px 0 var(--j-tinta); }
+
+/* Secciones destacadas (bienvenida, avisos de color): mismo contorno. */
+.tema-juego .bg-hero-gradient, .tema-juego .bg-primary-gradient:is(section, div) {
+  border: 2.5px solid var(--j-tinta);
+  box-shadow: 0 5px 0 var(--j-tinta);
+}
+
+/* Botones principales en 3D: se hunden al pulsarlos. */
+.tema-juego :is(button, a).bg-primary,
+.tema-juego :is(button, a).bg-primary-gradient {
+  border: 2.5px solid var(--j-tinta);
+  box-shadow: 0 4px 0 var(--j-tinta);
+  font-family: "Baloo 2", system-ui, sans-serif;
+  font-weight: 800;
+  transition: transform .08s ease, box-shadow .08s ease, filter .15s ease;
+}
+.tema-juego :is(button, a).bg-primary:active,
+.tema-juego :is(button, a).bg-primary-gradient:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--j-tinta); }
+
+/* Botones dentro de la portada de bienvenida: dorados y en 3D, como en la tienda. */
+.tema-juego .bg-hero-gradient :is(a, button).bg-background {
+  background: var(--j-oro);
+  color: var(--j-tinta);
+  border: 2.5px solid var(--j-tinta);
+  box-shadow: 0 4px 0 var(--j-tinta);
+  font-family: "Baloo 2", system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+.tema-juego .bg-hero-gradient :is(a, button).bg-background:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--j-tinta); }
+
+/* Escarcha del comodín Congelar: crece (trazo que se dibuja) y se derrite (se encoge y se va). */
+.escarcha path {
+  fill: none;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  animation: escarcha-crece .9s cubic-bezier(.2,.9,.3,1) forwards;
+}
+.escarcha .escarcha-fondo { stroke: #0369A1; stroke-width: 3; opacity: .5; }
+.escarcha .escarcha-frente { stroke: #FFFFFF; stroke-width: 1.6; }
+.escarcha { animation: escarcha-aparece .25s ease-out; opacity: .85; }
+.escarcha.derritiendo { animation: escarcha-derrite .7s ease-in forwards; }
+@keyframes escarcha-crece { to { stroke-dashoffset: 0; } }
+@keyframes escarcha-aparece { from { opacity: 0; } to { opacity: 1; } }
+@keyframes escarcha-derrite { to { opacity: 0; transform: translateY(6px); } }
+
+/* Rasguños del 50/50: marcas con relieve que se revelan en la dirección del zarpazo. */
+.rasguno { clip-path: inset(0 100% 0 0); animation: rasguno-revela .28s ease-in forwards; }
+.rasguno:nth-of-type(2) { animation-delay: .07s; }
+.rasguno:nth-of-type(3) { animation-delay: .14s; }
+@keyframes rasguno-revela { to { clip-path: inset(0 0 0 0); } }
+/* La ficha golpeada se ladea y cae un poco antes de quedar descartada. */
+.opcion-juego[data-estado="descartada"] { animation: ficha-golpe .45s ease-out; }
+@keyframes ficha-golpe {
+  0% { transform: translateX(0) rotate(0); }
+  25% { transform: translateX(10px) rotate(-1.5deg); }
+  55% { transform: translateX(-4px) rotate(.8deg); }
+  100% { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .escarcha path { animation: none; stroke-dashoffset: 0; }
+  .rasguno { animation: none; clip-path: none; }
+  .opcion-juego[data-estado="descartada"] { animation: none; }
 }

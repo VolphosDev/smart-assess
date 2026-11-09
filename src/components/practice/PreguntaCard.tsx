@@ -16,6 +16,8 @@ interface PreguntaCardProps {
     disabled?: boolean;
     resultado?: any;
     imagenesCargadas: Record<string, string>;
+    /** Alternativas descartadas por el poder 50/50 del contrarreloj. */
+    ocultas?: string[];
 }
 
 export function PreguntaCard({
@@ -26,7 +28,8 @@ export function PreguntaCard({
     onChange,
     disabled,
     resultado,
-    imagenesCargadas
+    imagenesCargadas,
+    ocultas
 }: PreguntaCardProps) {
     if (tipo === "VISUAL_QUIZ") {
         return (
@@ -47,20 +50,20 @@ export function PreguntaCard({
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.07 }}
-            className="bg-card border border-border rounded-3xl p-6 shadow-soft space-y-4"
+            className="pieza bg-card rounded-[1.75rem] p-5 md:p-7 space-y-5"
         >
-            <div className="flex items-center gap-2">
-                <span className="w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold grid place-items-center shrink-0">
+            <div className="flex items-center gap-2.5">
+                <span className="pieza grid place-items-center w-10 h-10 rounded-xl bg-[var(--j-indigo)] text-white font-juego text-xl font-extrabold shrink-0">
                     {index + 1}
                 </span>
-                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                <span className="font-juego text-lg font-extrabold text-muted-foreground">
                     Pregunta {index + 1}
                 </span>
                 <AriaAcompana className="ml-auto" />
             </div>
 
             {tipo === "OPCION_MULTIPLE" && (
-                <PreguntaMultiple pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} resultado={resultado} />
+                <PreguntaMultiple pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} resultado={resultado} ocultas={ocultas} />
             )}
             {tipo === "VERDADERO_FALSO" && (
                 <PreguntaVF pregunta={pregunta} index={index} valor={valor} onChange={onChange} disabled={disabled} resultado={resultado} />

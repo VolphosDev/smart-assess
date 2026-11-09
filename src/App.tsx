@@ -30,6 +30,10 @@ const AdminLayout = lazy(() => import("./components/AdminLayout"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Practice = lazy(() => import("./pages/Practice"));
 const HistoryPage = lazy(() => import("./pages/HistoryPage"));
+const Tienda = lazy(() => import("./pages/Tienda"));
+const PerfilJugador = lazy(() => import("./pages/PerfilJugador"));
+const ClaseEnVivoAlumno = lazy(() => import("./pages/ClaseEnVivoAlumno"));
+const ClaseEnVivoDocente = lazy(() => import("./pages/teacher/ClaseEnVivoDocente"));
 const Course = lazy(() => import("./pages/Course"));
 const EvalModeSelect = lazy(() => import("./pages/EvalModeSelect"));
 const AvatarTutor = lazy(() => import("./pages/AvatarTutor"));
@@ -103,6 +107,9 @@ const App = () => (
                 <Route path="curso/:courseId/semana/:semanaId/evaluacion/adaptativa" element={<AdaptivePractice />} />
                 <Route path="mapa-conocimiento" element={<KnowledgeMap />} />
                 <Route path="historial" element={<HistoryPage />} />
+                <Route path="tienda" element={<Tienda />} />
+                <Route path="perfil/:perfilId" element={<PerfilJugador />} />
+                <Route path="en-vivo" element={<ClaseEnVivoAlumno />} />
                 <Route path="tour/practica" element={<PracticaDemo />} />
               </Route>
             </Route>
@@ -116,6 +123,7 @@ const App = () => (
                 <Route path="seguimiento" element={<TeacherSeguimiento />} />
                 <Route path="validacion-juez" element={<ValidacionJuez />} />
                 <Route path="curso/:courseId/alumnos" element={<CourseStudentsManager />} />
+                <Route path="en-vivo/:codigo" element={<ClaseEnVivoDocente />} />
               </Route>
             </Route>
 

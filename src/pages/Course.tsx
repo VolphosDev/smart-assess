@@ -105,7 +105,7 @@ export default function Course() {
                 data-guide="curso-hero"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl p-8 shadow-sm relative overflow-hidden"
+                className="pieza rounded-[1.75rem] p-8 relative overflow-hidden"
                 style={fondoCabeceraCurso(course.color, bannerUrl)}
             >
                 <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-[0.25] select-none text-white pointer-events-none">

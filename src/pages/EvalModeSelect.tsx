@@ -716,7 +716,7 @@ const isUnfinished = m.id === unfinishedMode;
                 siempre oscuro, así que `text-muted-foreground` — que sigue al tema claro/oscuro
                 del sistema — se volvería ilegible en modo claro.
             */}
-            <section data-guide="semana-hero" className="relative overflow-hidden rounded-2xl p-6 sm:p-8" style={fondoCabeceraCurso(cursoActual?.color, bannerSemana)}>
+            <section data-guide="semana-hero" className="pieza relative overflow-hidden rounded-[1.75rem] p-6 sm:p-8" style={fondoCabeceraCurso(cursoActual?.color, bannerSemana)}>
                 <div className="absolute -right-8 -top-10 opacity-[0.12] pointer-events-none select-none md:hidden">
                     <BookOpen className="w-48 h-48" />
                 </div>
