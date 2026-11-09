@@ -64,8 +64,10 @@ export default function Index() {
 
             // Verificar si el usuario necesita configurar su contraseña
             if (exigirCambioDeContrasena && response.user.requiresPasswordSetup) {
-                // Redirigir a la pantalla de setup-password, pasando el correo
-                navigate(`/setup-password?email=${encodeURIComponent(email)}`);
+                // Redirigir a la pantalla de setup-password, pasando el correo. La contraseña
+                // temporal viaja en el estado de navegación (memoria), nunca en la URL: el
+                // backend la exige para aceptar el cambio.
+                navigate(`/setup-password?email=${encodeURIComponent(email)}`, { state: { temporal: password } });
                 return; // Evita guardar el token para forzar que inicie sesión bien después
             }
 

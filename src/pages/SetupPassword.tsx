@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,10 @@ export default function SetupPassword() {
     const [searchParams] = useSearchParams();
     const email = searchParams.get("email") || "";
     const navigate = useNavigate();
+    // Llega desde el login. Si la página se recargó se pierde y se pide en el formulario.
+    const temporalDelLogin: string = (useLocation().state as { temporal?: string } | null)?.temporal ?? "";
 
+    const [temporal, setTemporal] = useState(temporalDelLogin);
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -53,7 +56,7 @@ export default function SetupPassword() {
         setIsLoading(true);
         try {
             // Llamamos a un nuevo método en authApi que configuraremos enseguida
-            await authApi.setupPassword(email, password);
+            await authApi.setupPassword(email, temporal, password);
             toast.success("¡Contraseña configurada con éxito! Iniciando sesión...");
             
             // Iniciar sesión automáticamente después de configurar
@@ -62,7 +65,8 @@ export default function SetupPassword() {
             localStorage.setItem("user", JSON.stringify(response.user));
 
             const userRole = response.user.role.toLowerCase();
-            navigate(userRole === "student" ? "/app" : userRole === "teacher" ? "/docente" : "/admin");
+            navigate(userRole === "student" ? "/app" : userRole === "teacher" ? "/docente"
+                : userRole === "superadmin" ? "/superadmin" : "/admin");
 
         } catch (err: any) {
             let errorMsg = "Error al configurar la contraseña.";
@@ -118,6 +122,19 @@ export default function SetupPassword() {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    {!temporalDelLogin && (
+                        <div className="space-y-1.5 text-left">
+                            <Label className="font-semibold text-xs text-foreground/80">Contraseña temporal</Label>
+                            <Input
+                                type="password"
+                                required
+                                placeholder="La que te entregó tu colegio"
+                                value={temporal}
+                                onChange={(e) => setTemporal(e.target.value)}
+                                className="h-11 rounded-lg border-input bg-background/50 focus-visible:ring-primary/30 text-sm"
+                            />
+                        </div>
+                    )}
                     <div className="space-y-1.5 text-left">
                         <Label className="font-semibold text-xs text-foreground/80">Nueva contraseña</Label>
                         <Input
